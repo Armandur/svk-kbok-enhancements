@@ -14,6 +14,23 @@ Installationssidan kör på **http://ubuntu-ai:8003/** och har en knapp som
 öppnar skriptet. Tampermonkey och Greasemonkey fångar automatiskt upp
 filer som slutar på `.user.js` och visar sin egen installationsdialog.
 
+Servern ligger i hemnätet och når bara den som är där. För att dela
+skriptet vidare är GitHub den naturliga vägen: `@updateURL` och
+`@downloadURL` pekar redan på repots raw-adress, som börjar fungera så
+snart repot är publicerat. GitHub Pages kan dessutom hosta README:n som en
+riktig installationssida - Jekyll renderar den automatiskt, och länken till
+`.user.js` fungerar likadant därifrån.
+
+## Uppdateringar
+
+Tampermonkey hämtar `@updateURL` med jämna mellanrum, jämför `@version` och
+erbjuder uppdatering när numret höjts. Det kräver bara att versionsnumret
+faktiskt räknas upp vid varje ändring.
+
+Panelen visar dessutom vilken version som körs och har en länk **Sök efter
+uppdatering**, som öppnar skriptet direkt så att tillägget visar sin dialog
+utan att man behöver vänta på nästa automatiska kontroll.
+
 ## Vad skriptet gör
 
 | Funktion | Beskrivning | Standard |
@@ -23,6 +40,7 @@ filer som slutar på `.user.js` och visar sin egen installationsdialog.
 | Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. | På |
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
 | D för dagens datum | `D` i ett tomt datumfält fyller i dagens datum, som i desktopklienten. Formatet läses ur fältets placeholder - dödsdatum vill ha ÅÅÅÅMMDD, övriga ÅÅÅÅ-MM-DD. | På |
+| Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. | **Av** |
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.4
+// @version      0.5
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -9,6 +9,8 @@
 // @match        https://testmiljön/*
 // @run-at       document-idle
 // @grant        none
+// @updateURL    https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
+// @downloadURL  https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
 // ==/UserScript==
 
 /* Kbok är en MUI-app. Tre saker styr hur skriptet är byggt:
@@ -37,6 +39,13 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
+    const VERSION = '0.5';
+    // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
+    // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
+    // först när repot är publicerat på GitHub; fram till dess installeras
+    // skriptet från den lokala servern och uppdateras för hand.
+    const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
+        + 'svk-kbok-enhancements/main/svk-kbok-enhancements.user.js';
     // Kboks egna färger, avlästa ur computed style i appen.
     const ACCENT = '#7d0037';
     const ACCENT_HOVER = '#570026';
@@ -48,6 +57,9 @@
         hoppaOverDatumvaljare: true,
         markerbartPersonnummer: true,
         dagensDatum: true,
+        // Av som standard: förifyllningen är Kboks avsedda beteende, och
+        // nästa söndag är rätt gissning i de flesta fall.
+        tomPalysningsdatum: false,
         // Av som standard: att bekräfta ett verifikat är slutregistrering
         // och går inte att ångra. En fokuserad knapp plus ett reflexmässigt
         // Enter är en obehaglig kombination, så den som vill ha tillbaka
@@ -63,6 +75,7 @@
         hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
         markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
+        tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar (irreversibelt)',
         genvagarPa: 'Tangentbordsgenvägar',
     };
@@ -367,6 +380,41 @@
         skrivDagensDatum(falt);
     }
 
+    /* ---------- Töm förifyllt pålysningsdatum ----------
+     *
+     * Kbok förifyller Pålysningsdatum med nästa söndag. Rimligt i
+     * normalfallet, men fel så fort pålysningen gäller en annan dag - och då
+     * måste värdet skrivas över varje gång. Desktopklienten lät en välja.
+     *
+     * Fältets id är genererat av MUI (:r3d: och liknande), så det hittas via
+     * etiketten i stället.
+     */
+
+    function faltForEtikett(etikett) {
+        const label = [...document.querySelectorAll('label')].find(
+            (l) => l.textContent.trim() === etikett);
+        if (!label) return null;
+        const id = label.getAttribute('for');
+        if (id) return document.getElementById(id);
+        // Utan for-attribut: fältet ligger i samma formulärgrupp.
+        const grupp = label.closest('.MuiFormControl-root, .MuiTextField-root');
+        return grupp ? grupp.querySelector('input') : null;
+    }
+
+    function tomPalysningsdatum() {
+        if (!installningar.tomPalysningsdatum) return;
+        if (!/\/palysning\//.test(location.pathname)) return;
+        const falt = faltForEtikett('Pålysningsdatum');
+        if (!falt || falt.dataset.svkKbokTomt) return;
+        if (!(falt.value || '').trim()) return;
+        falt.dataset.svkKbokTomt = '1';
+        const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value').set;
+        setter.call(falt, '');
+        falt.dispatchEvent(new Event('input', { bubbles: true }));
+        falt.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
     /* ---------- Hoppa över kalenderknappen vid tabb ---------- */
 
     function stallInDatumTabb() {
@@ -516,9 +564,27 @@
             ruta.appendChild(rad);
         });
 
+        const fot = document.createElement('div');
+        fot.style.cssText = 'margin-top:1.3rem;padding-top:.9rem;border-top:1px solid #e3e0da;'
+            + 'display:flex;align-items:center;gap:.8rem;font-size:.82rem;color:#6b6862';
+        const ver = document.createElement('span');
+        ver.textContent = `Version ${VERSION}`;
+        ver.style.flex = '1';
+        const uppdatera_lank = document.createElement('a');
+        uppdatera_lank.href = INSTALLATIONSURL;
+        uppdatera_lank.target = '_blank';
+        uppdatera_lank.rel = 'noopener';
+        uppdatera_lank.textContent = 'Sök efter uppdatering';
+        uppdatera_lank.title = 'Öppnar skriptet - Tampermonkey visar sin uppdateringsdialog '
+            + 'om en nyare version finns';
+        uppdatera_lank.style.cssText = `color:${ACCENT};text-decoration:underline`;
+        fot.appendChild(ver);
+        fot.appendChild(uppdatera_lank);
+        ruta.appendChild(fot);
+
         const stang = document.createElement('button');
         stang.textContent = 'Stäng';
-        stang.style.cssText = `margin-top:1.3rem;background:${ACCENT};color:#fff;border:none;`
+        stang.style.cssText = `margin-top:1rem;background:${ACCENT};color:#fff;border:none;`
             + 'border-radius:999px;padding:.55rem 1.5rem;cursor:pointer;font-weight:600;font-size:.9rem';
         stang.addEventListener('mouseenter', () => { stang.style.background = ACCENT_HOVER; });
         stang.addEventListener('mouseleave', () => { stang.style.background = ACCENT; });
@@ -647,6 +713,7 @@
             });
         }
         stallInDatumTabb();
+        tomPalysningsdatum();
         fokuseraBekrafta();
     }
 
