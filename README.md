@@ -54,6 +54,7 @@ kbok-web TASK-510.
 
 | Tangent | Gör | I gamla Kbok |
 | --- | --- | --- |
+| `Ctrl + S` | Spara | `Ctrl + S` - blockerar webbläsarens Spara sidan |
 | `Ctrl + Ö` | Skapa verifikat | `Ctrl + W`, som i webbläsaren stänger fliken |
 | `Ctrl + U` | Utträde | `Ctrl + U` - blockerar webbläsarens Visa källkod |
 | `F8` | Byt församling | `F8` |
@@ -218,8 +219,9 @@ kan ENTER ersätta OK-knappen eller annan funktion som är framhävd."*
 
 **Kräver att webbläsarens egen funktion blockeras**
 
-`Ctrl + S` (spara sidan) är det mest värdefulla i listan och det enda där
-det är värt att ta över tangenten. `Ctrl + N` och `Ctrl + K` är tveksamma.
+`Ctrl + S` är införd och tar över webbläsarens Spara sidan - det är den
+mest använda genvägen i listan. `Ctrl + N` och `Ctrl + K` är tveksamma och
+inte införda.
 
 **Bör inte återinföras på sin gamla tangent**
 

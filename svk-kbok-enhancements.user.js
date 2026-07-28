@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.5
+// @version      0.6
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.5';
+    const VERSION = '0.6';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -101,6 +101,12 @@
             gammal: 'F8 i gamla Kbok',
             kor: bytForsamling,
         },
+        spara: {
+            etikett: 'Spara',
+            standard: 'Ctrl+S',
+            gammal: 'Ctrl+S i gamla Kbok - blockerar webbläsarens Spara sidan',
+            kor: klickaSpara,
+        },
         uttrade: {
             etikett: 'Utträde',
             standard: 'Ctrl+U',
@@ -126,6 +132,25 @@
     function klickaKnappMedText(text) {
         const knapp = [...document.querySelectorAll('button')].find(
             (b) => (b.innerText || '').trim() === text && !b.disabled);
+        if (knapp) {
+            knapp.click();
+            return true;
+        }
+        return false;
+    }
+
+    /* Spara-knappen heter olika beroende på formulär: "Spara" i de kyrkliga
+     * handlingarna, "Spara inträde" och "Spara anteckning" under Inträden,
+     * "Spara preliminära" i konfirmationsgrupper. Exakt träff först, annars
+     * den som börjar med Spara - men aldrig "Spara preliminära", som skapar
+     * poster för en hel grupp och inte bör gå att utlösa av misstag.
+     */
+    function klickaSpara() {
+        if (klickaKnappMedText('Spara')) return true;
+        const knapp = [...document.querySelectorAll('button')].find((b) => {
+            const txt = (b.innerText || '').trim();
+            return /^Spara /.test(txt) && txt !== 'Spara preliminära' && !b.disabled;
+        });
         if (knapp) {
             knapp.click();
             return true;
