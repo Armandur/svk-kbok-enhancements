@@ -121,9 +121,20 @@ enda miljön med en välsignelsepost och en konfirmationsgrupp med
 innehåll). Dopposten saknade personakt och hade tom topprad - namnet lästes
 då ur sektionen, som avsett.
 
-Ännu inte sett i skarpt läge: `/Efternamn/` för ett barn utan förnamn, och
-Utträdesbeviset som visas i en dialog efter genomfört utträde i stället
-för via Rapporter-menyn.
+Snedstrecken är bekräftade i skarpt läge: en person utan förnamn har
+`Förnamn` och `Tilltalsnamn` satta till `-` och `/Efternamn/` i
+efternamnsfältet, och beviset fick namnet `Upptagandebevis -
+-Efternamn-.pdf`. Ett efternamn utan förnamn men utan snedstreck
+fungerar också - då blir det bara efternamnet, utan hängande komma.
+
+Ett genomfört utträde visar först "Utträde är nu slutfört" och därefter
+en modal med rubriken **Rapporter**, där Utträdesbevis ligger. Den vyn
+visar namnet som löpande text - "Örjan Persson" följt av "Tilltalsnamn:
+Örjan" - utan de fältetiketter resten av appen använder, och en sådan
+sträng går inte att dela i förnamn och efternamn med säkerhet. Namnet tas
+därför med från personakten, som är enda vägen in i utträdet, tillsammans
+med personnumret så att en kvarglömd post inte kan sätta fel namn på
+någon annans bevis.
 
 ### Genvägar
 

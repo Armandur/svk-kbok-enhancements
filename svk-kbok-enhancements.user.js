@@ -72,7 +72,7 @@
     const ETIKETTER = {
         nyflikLank: 'Länkikon i träfflistor som öppnar personakten i ny flik',
         mittenklick: 'Mittenklick på en rad öppnar personakten i ny flik',
-        autoHamta: 'Hämta relationspersonens namn automatiskt när personnumret är komplett',
+        autoHamta: 'Hämta personen automatiskt så fort personnumret är komplett',
         hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
         markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
