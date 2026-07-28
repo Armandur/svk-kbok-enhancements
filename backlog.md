@@ -1,5 +1,35 @@
 # Backlog Export
 
+## [P2][todo] [svk-kbok-enhancements] Publicera repot på GitHub och testa skriptet i riktig Tampermonkey
+
+Två saker som återstår innan skriptet kan sägas fungera på riktigt. Dokumenterat 2026-07-29 inför sessionsslut.
+
+ALDRIG TESTAT I TAMPERMONKEY
+
+Allt är verifierat genom att injicera skriptet med Playwright mot Utbildningsmiljön - kugghjul, panel, genvägar, kolumn, datumfält, allt. Men det är inte samma sak som en riktig installation: Tampermonkey kör i en isolerad sandlåda med egen kontext, och @grant none innebär att skriptet delar sidans window. Sådant som fungerar vid injektion kan bete sig annorlunda där.
+
+Installera från http://ubuntu-ai:8003/ och gå igenom funktionerna.
+
+INGEN GITHUB-REMOTE
+
+Repot är bara lokalt. @updateURL och @downloadURL pekar redan på
+https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
+men den adressen svarar inte förrän repot är publicerat. Fram till dess installeras skriptet från den lokala servern, och uppdateringar måste installeras om för hand.
+
+Rasmus idé om GitHub Pages: Jekyll renderar README automatiskt, så installationssidan kan flytta dit i stället för att bo på ubuntu-ai - som ändå bara nås inifrån hemnätet.
+
+STATUS I ÖVRIGT
+
+Version 0.7, nio inställningar, fyra genvägar med inspelning. Installationsservern kör på port 8003, registrerad i portalen.
+
+Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genomgånget i en riktig Tampermonkey-installation.
+
+- ID: `01KYNCHTA80GCT91Z0JGH6VJEY`
+- Type: task
+- Actor: ai:claude-code
+
+---
+
 ## [P3][todo] [svk-kbok-enhancements] Byt namn på utskrivna blanketter till datum, handlingstyp och namn
 
 Rasmus 2026-07-28. Gäller blanketterna för dop, konfirmation, vigsel, välsignelse och begravning som skrivs ut eller sparas.
