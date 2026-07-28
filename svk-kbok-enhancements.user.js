@@ -519,6 +519,8 @@
     const BLANKETTER = ['Dopblankett', 'Konfirmationsblankett', 'Vigselblankett',
         'Välsignelseblankett', 'Begravningsblankett'];
     const BEVIS = ['Upptagandebevis', 'Utträdesbevis'];
+    const GRUPPBLANKETT = 'Konfirmationsblankett_för_verksamhetsgrupp';
+    const GRUPPNYCKEL = 'svk-kbok-gruppnamn';
 
     function sektionMed(rubrik) {
         const rad = [...document.querySelectorAll('main *')].find(
@@ -599,8 +601,42 @@
         return traff ? traff[0] : null;
     }
 
+    /* Gruppblanketten hämtas från Skapa konfirmation, en vy som varken visar
+     * gruppnamnet eller har några personuppgifter att läsa - URL:en bär bara
+     * ett GUID. Namnet plockas därför upp i gruppvyn på vägen dit, som är
+     * enda sättet att nå formuläret, och sparas över sidbytet.
+     */
+
+    function kommIhagGruppnamn() {
+        if (!/^\/konfirmationsgrupper\/[^/]+$/.test(location.pathname)) return;
+        const rot = document.querySelector('main');
+        if (!rot) return;
+        // Gruppnamnet står utan etikett, på raden ovanför Grupptyp.
+        const rader = (rot.innerText || '').split('\n')
+            .map((s) => s.trim()).filter(Boolean);
+        const i = rader.indexOf('Grupptyp');
+        if (i > 0) sessionStorage.setItem(GRUPPNYCKEL, rader[i - 1]);
+    }
+
+    function gruppfilnamn() {
+        // Formulärets datumfält är en input - till skillnad från
+        // handlingspostens sektioner, som visar färdig text.
+        const sektion = sektionMed('Datum och tid');
+        const falt = sektion && sektion.querySelector('input[placeholder="ÅÅÅÅ-MM-DD"]');
+        const datum = falt && (falt.value || '').match(/\d{4}-\d{2}-\d{2}/);
+        const gruppnamn = sessionStorage.getItem(GRUPPNYCKEL);
+        const delar = [];
+        if (datum) delar.push(datum[0]);
+        // "gemensam" skiljer den från den enskilda blanketten: den här listar
+        // hela urvalet med avbockningskolumn, den enskilda gäller en person.
+        delar.push('Konfirmationsblankett-gemensam');
+        if (gruppnamn) delar.push(rensaFilnamnsdel(gruppnamn));
+        return `${delar.join(' - ')}.pdf`;
+    }
+
     function byggFilnamn(ursprung) {
         const typ = ursprung.replace(/\.pdf$/i, '');
+        if (typ === GRUPPBLANKETT) return gruppfilnamn();
         const arBlankett = BLANKETTER.indexOf(typ) >= 0;
         if (!arBlankett && BEVIS.indexOf(typ) < 0) return null;
         const namn = handlingensNamndel();
@@ -909,6 +945,7 @@
             });
         }
         stallInDatumTabb();
+        if (installningar.blankettnamn) kommIhagGruppnamn();
         tomPalysningsdatum();
         fokuseraBekrafta();
     }

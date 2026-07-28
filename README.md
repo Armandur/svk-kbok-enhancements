@@ -62,6 +62,7 @@ Skriptet döper i stället om dem:
 ```
 2026-06-20 - Dopblankett - Ejtillhorig, Testfall.pdf
 2024-09-01 - Vigselblankett - Larsson-Blomqvist.pdf
+2026-05-24 - Konfirmationsblankett-gemensam - Torsdagsgruppen.pdf
 Upptagandebevis - Ejtillhorig, Testfall.pdf
 ```
 
@@ -69,6 +70,14 @@ Vigsel och välsignelse gäller två personer, och där tas bara efternamnen
 med. Bevisen får inget datum - de gäller en händelse som redan är
 registrerad, till skillnad från blanketterna som är underlag inför en
 handling.
+
+Gruppblanketten heter `Konfirmationsblankett-gemensam` för att skilja den
+från den enskilda: den listar hela urvalet med en avbockningskolumn, den
+enskilda gäller en person. Den hämtas från **Skapa konfirmation**, en vy
+som varken visar gruppnamnet eller har några personuppgifter att läsa -
+URL:en bär bara ett GUID. Namnet plockas därför upp i gruppvyn på vägen
+dit, som är enda sättet att nå formuläret, och sparas i `sessionStorage`
+över sidbytet. Saknas det blir filnamnet bara datum och typ.
 
 Namnet byggs av tilltalsnamn (annars förnamn) och efternamn, lästa ur
 handlingspostens egna sektioner - inte ur personuppgiftsraden högst upp,
