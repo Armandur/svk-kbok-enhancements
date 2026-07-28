@@ -98,7 +98,7 @@ vad webbläsaren själv använder - det avgör vilka som går att återinföra.
 | --- | --- |
 | `Ctrl + Ä` | Ändra (öppna posten för redigering) |
 | `Ctrl + Ö` | Töm alla fält |
-| `Ctrl + M` | Ministerialboksperson |
+| `Ctrl + M` | Ministerialboksperson - vad det gjorde är oklart, se TASK-509 |
 | `Ctrl + Y` | Pålysning |
 | `Ctrl + B` | Bekräfta verifikat |
 | `F8` | Byt församling |
