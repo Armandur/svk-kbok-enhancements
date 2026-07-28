@@ -94,6 +94,20 @@ namnet genom att patcha `HTMLAnchorElement.prototype.click` och skriva om
 attributet i klicket, innan originalanropet släpps igenom. Ingen
 `Content-Disposition` och inget `GM_download` behövs.
 
+Bevisen ligger i personaktens Rapporter-meny, som har 29 poster mot
+handlingspostens fem. Bara de som står i listan ovan döps om - övriga
+rapporter, som Medlemsbevis och Registerutdrag, lämnas som de är.
+
+Verifierat genom injektion: Dop, Konfirmation, Vigsel och Begravning samt
+bevisen i Utbildningsmiljön, Välsignelse och gruppblanketten i testmiljön (som är
+enda miljön med en välsignelsepost och en konfirmationsgrupp med
+innehåll). Dopposten saknade personakt och hade tom topprad - namnet lästes
+då ur sektionen, som avsett.
+
+Ännu inte sett i skarpt läge: `/Efternamn/` för ett barn utan förnamn, och
+Utträdesbeviset som visas i en dialog efter genomfört utträde i stället
+för via Rapporter-menyn.
+
 ### Genvägar
 
 | Tangent | Gör | I gamla Kbok |
