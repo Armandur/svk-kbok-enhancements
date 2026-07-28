@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.8
+// @version      0.9
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.8';
+    const VERSION = '0.9';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -308,12 +308,39 @@
 
     const KOMPLETT_PNR = /^(\d{8}|\d{6})-?\d{4}$/;
 
+    /* Att ta första bästa knapp i föräldrakedjan träffar fel i flera vyer.
+     *
+     * Värst: MUI lägger en namnlös kryssknapp inuti fältet så fort det har ett
+     * värde, alltså precis när auto-hämtningen ska gå igång. Den låg närmare
+     * fältet än Hämta-knappen och klickades i stället - vilket rensade fältet
+     * utan att hämta någon. Det syntes på Inträde, där personnumret försvann
+     * och inget namn kom fram.
+     *
+     * Dessutom: startsidan har "Sök" närmast fältet, som navigerar iväg, och
+     * en öppnad handling har "Hämta uppgifter igen från folkbokföringen", som
+     * skriver över redigerade uppgifter. Ingen av dem ska klickas automatiskt.
+     *
+     * Kvar att klicka: knappen med texten Hämta, och relationsfältens namnlösa
+     * hämtikon.
+     */
+
+    function arHamtaKnapp(knapp) {
+        const text = (knapp.innerText || '').trim();
+        const etikett = (knapp.getAttribute('aria-label') || '').trim();
+        if (text === 'Hämta') return true;
+        if (text || etikett) return false;
+        const ikon = knapp.querySelector('svg');
+        return !ikon || ikon.getAttribute('data-testid') !== 'ClearIcon';
+    }
+
     function hittaHamtaKnapp(falt) {
         let el = falt;
         for (let i = 0; i < 5 && el; i++) {
             el = el.parentElement;
             if (!el) break;
-            const knapp = el.querySelector('button');
+            // Leta vidare uppåt förbi knappar som inte hämtar - kryssknappen
+            // sitter närmast fältet och hade annars stoppat sökningen.
+            const knapp = [...el.querySelectorAll('button')].find(arHamtaKnapp);
             if (knapp) return knapp;
         }
         return null;
@@ -322,19 +349,35 @@
     function arRelationsfalt(falt) {
         const id = (falt.id || '').toLowerCase();
         if (!/persnr|personnummer/.test(id)) return false;
+        // Sökfältet ska inte söka av sig självt medan man skriver.
         if (id === 'searchpersonnummer') return false;
-        if (id.startsWith('huvudperson')) return false;
         return true;
     }
 
     function kopplaAutoHamta(falt) {
         if (falt.dataset.svkKbokKopplad) return;
         falt.dataset.svkKbokKopplad = '1';
-        falt.addEventListener('change', () => {
+        // Lyssnar på input, inte change: change fyrar när fältet tappar fokus,
+        // vilket är precis vad ett eget klick på Hämta gör. Skriptets klick
+        // blev då ett andra klick mitt i appens hämtning, och fältet
+        // rensades utan att någon person hämtades.
+        falt.addEventListener('input', () => {
             if (!installningar.autoHamta) return;
-            if (!KOMPLETT_PNR.test((falt.value || '').trim())) return;
-            const knapp = hittaHamtaKnapp(falt);
-            if (knapp && !knapp.disabled) knapp.click();
+            const varde = (falt.value || '').trim();
+            if (!KOMPLETT_PNR.test(varde)) return;
+            // En hämtning per inskrivet nummer - annars utlöser varje
+            // efterföljande tangenttryck en ny.
+            if (falt.dataset.svkKbokHamtat === varde) return;
+            falt.dataset.svkKbokHamtat = varde;
+            // Kort fördröjning: appen läser sitt eget tillstånd, inte
+            // fältets värde, och hinner inte uppdatera det inom samma tick.
+            // Väntan ger också ett eget klick på Hämta tid att inaktivera
+            // knappen, så skriptet inte klickar en andra gång.
+            setTimeout(() => {
+                if ((falt.value || '').trim() !== varde) return;
+                const knapp = hittaHamtaKnapp(falt);
+                if (knapp && !knapp.disabled) knapp.click();
+            }, 250);
         });
     }
 
@@ -521,6 +564,7 @@
     const BEVIS = ['Upptagandebevis', 'Utträdesbevis'];
     const GRUPPBLANKETT = 'Konfirmationsblankett_för_verksamhetsgrupp';
     const GRUPPNYCKEL = 'svk-kbok-gruppnamn';
+    const GRUPPKALLA = 'svk-kbok-gruppkalla';
 
     function sektionMed(rubrik) {
         const rad = [...document.querySelectorAll('main *')].find(
@@ -590,7 +634,45 @@
         // Personakten saknar sektionsrubrik - där står namnet i raden högst
         // upp. Den läses sist: på en handlingspost utan personakt är raden
         // tom, och då ska sektionen ovan ha fått svara först.
-        return personnamnUr(document.querySelector('main'));
+        return personnamnUr(document.querySelector('main')) || ihagkommetNamn();
+    }
+
+    /* Utträdesvyn visar namnet som löpande text - "Örjan Persson" följt av
+     * "Tilltalsnamn: Örjan" - utan de fältetiketter resten av appen använder.
+     * Att dela en sådan sträng i förnamn och efternamn går inte att göra rätt:
+     * "Björn Erik Larsson" kan vara två förnamn eller ett dubbelt efternamn.
+     *
+     * Vyn nås bara via personakten, där namnet står i egna fält. Namnet tas
+     * därför med dit, tillsammans med personnumret så att en kvarglömd post
+     * inte kan sätta fel namn på någon annans bevis.
+     */
+
+    const PERSONNYCKEL = 'svk-kbok-person';
+
+    function synligtPersonnummer() {
+        const rot = document.querySelector('main');
+        if (!rot) return null;
+        const traff = (rot.innerText || '').match(/\b\d{8}-\d{4}\b/);
+        return traff ? traff[0] : null;
+    }
+
+    function kommIhagPersonnamn() {
+        if (!/^\/personakt\/\d+$/.test(location.pathname)) return;
+        const namn = personnamnUr(document.querySelector('main'));
+        const pnr = synligtPersonnummer();
+        if (namn && pnr) {
+            sessionStorage.setItem(PERSONNYCKEL, JSON.stringify({ pnr, namn }));
+        }
+    }
+
+    function ihagkommetNamn() {
+        try {
+            const sparat = JSON.parse(sessionStorage.getItem(PERSONNYCKEL) || 'null');
+            if (!sparat) return null;
+            return sparat.pnr === synligtPersonnummer() ? sparat.namn : null;
+        } catch (e) {
+            return null;
+        }
     }
 
     function handlingsdatum() {
@@ -609,13 +691,19 @@
 
     function kommIhagGruppnamn() {
         if (!/^\/konfirmationsgrupper\/[^/]+$/.test(location.pathname)) return;
+        // Gruppvyns DataGrid muterar vid varje scroll, och innerText nedan
+        // tvingar fram en omritning. Läs bara en gång per grupp.
+        if (sessionStorage.getItem(GRUPPKALLA) === location.pathname) return;
         const rot = document.querySelector('main');
         if (!rot) return;
         // Gruppnamnet står utan etikett, på raden ovanför Grupptyp.
         const rader = (rot.innerText || '').split('\n')
             .map((s) => s.trim()).filter(Boolean);
         const i = rader.indexOf('Grupptyp');
-        if (i > 0) sessionStorage.setItem(GRUPPNYCKEL, rader[i - 1]);
+        if (i > 0) {
+            sessionStorage.setItem(GRUPPNYCKEL, rader[i - 1]);
+            sessionStorage.setItem(GRUPPKALLA, location.pathname);
+        }
     }
 
     function gruppfilnamn() {
@@ -945,7 +1033,10 @@
             });
         }
         stallInDatumTabb();
-        if (installningar.blankettnamn) kommIhagGruppnamn();
+        if (installningar.blankettnamn) {
+            kommIhagGruppnamn();
+            kommIhagPersonnamn();
+        }
         tomPalysningsdatum();
         fokuseraBekrafta();
     }

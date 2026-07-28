@@ -36,7 +36,7 @@ utan att man behöver vänta på nästa automatiska kontroll.
 | Funktion | Beskrivning | Standard |
 | --- | --- | --- |
 | Öppna i ny flik | Länkikon ↗ i varje rad i träfflistorna. Vanligt klick, mittenklick och högerklickmenyns Öppna i ny flik fungerar alla, eftersom ikonen är en riktig länk. Mittenklick var som helst på raden gör samma sak. | På |
-| Auto-hämta relationsperson | Klickar den namnlösa Hämta-ikonen åt dig när ett komplett personnummer skrivits i ett relationspersonfält. | På |
+| Auto-hämta person | Klickar Hämta åt dig så fort ett komplett personnummer skrivits eller klistrats in i ett personnummerfält - relationspersoner och Inträde. Se nedan. | På |
 | Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. | På |
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
 | D för dagens datum | `D` i ett tomt datumfält fyller i dagens datum, som i desktopklienten. Formatet läses ur fältets placeholder - dödsdatum vill ha ÅÅÅÅMMDD, övriga ÅÅÅÅ-MM-DD. | På |
@@ -50,6 +50,23 @@ slutregistrering och går inte att ångra, så en fokuserad knapp plus ett
 reflexmässigt Enter vore en obehaglig kombination. Att dialogen saknar
 tangentfokus över huvud taget är fångat som en möjlig avvikelse i
 kbok-web TASK-510.
+
+### Om auto-hämtningen
+
+Gäller alla personnummerfält med en hämtningsknapp: relationspersonfälten
+i handlingarna och personnummerfältet på Inträde. Hämtningen sker när
+numret blir komplett, oavsett om det skrivits eller klistrats in.
+
+Två knappar klickas aldrig automatiskt, trots att de sitter närmast
+fältet i sina vyer: **Sök** på startsidan, som navigerar iväg, och
+**Hämta uppgifter igen från folkbokföringen** på en öppnad handling, som
+skriver över redigerade uppgifter.
+
+Inte heller MUI:s kryssknapp, som läggs inuti fältet så fort det har ett
+värde - alltså precis när hämtningen ska gå igång. Att den låg närmare
+fältet än Hämta gjorde att den klickades i stället, vilket rensade
+personnumret utan att hämta någon. Det syntes tydligast på Inträde, där
+fältet tömdes och inget namn kom fram (rättat i 0.9).
 
 ### Om filnamnen på blanketter
 
