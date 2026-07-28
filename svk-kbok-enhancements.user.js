@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.2
-// @description  Öppna personakt i ny flik, auto-hämta relationsperson, hoppa över datumväljaren vid tabb. Inställningar via kugghjulet i sidhuvudet.
+// @version      0.3
+// @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
 // @match        https://testmiljön/*
@@ -40,6 +40,13 @@
         mittenklick: true,
         autoHamta: true,
         hoppaOverDatumvaljare: true,
+        markerbartPersonnummer: true,
+        // Av som standard: att bekräfta ett verifikat är slutregistrering
+        // och går inte att ångra. En fokuserad knapp plus ett reflexmässigt
+        // Enter är en obehaglig kombination, så den som vill ha tillbaka
+        // desktopklientens flöde slår på det medvetet.
+        fokusBekraftaVerifikat: false,
+        genvagarPa: true,
     };
 
     const ETIKETTER = {
@@ -47,7 +54,97 @@
         mittenklick: 'Mittenklick på en rad öppnar personakten i ny flik',
         autoHamta: 'Hämta relationspersonens namn automatiskt när personnumret är komplett',
         hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
+        markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
+        fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar (irreversibelt)',
+        genvagarPa: 'Tangentbordsgenvägar',
     };
+
+    /* ---------- Tangentbordsgenvägar ----------
+     *
+     * Desktopklientens kortkommandon, flyttade till tangenter som
+     * webbläsaren inte redan använder. Ctrl+W (skapa verifikat) hade
+     * stängt fliken; funktionen ligger därför på Ctrl+Ö, som i gamla Kbok
+     * var "Töm alla fält".
+     */
+
+    const KOMMANDON = {
+        skapaVerifikat: {
+            etikett: 'Skapa verifikat',
+            standard: 'Ctrl+Ö',
+            gammal: 'Ctrl+W i gamla Kbok - kan inte användas, stänger fliken',
+            kor: () => klickaKnappMedText('Skapa verifikat'),
+        },
+        bytForsamling: {
+            etikett: 'Byt församling',
+            standard: 'F8',
+            gammal: 'F8 i gamla Kbok',
+            kor: bytForsamling,
+        },
+        uttrade: {
+            etikett: 'Utträde',
+            standard: 'Ctrl+U',
+            gammal: 'Ctrl+U i gamla Kbok - blockerar webbläsarens Visa källkod',
+            kor: () => klickaKnappMedText('Utträde'),
+        },
+    };
+
+    function beskrivTangent(e) {
+        const delar = [];
+        if (e.ctrlKey) delar.push('Ctrl');
+        if (e.altKey) delar.push('Alt');
+        if (e.shiftKey) delar.push('Shift');
+        if (e.metaKey) delar.push('Meta');
+        let tangent = e.key;
+        if (['Control', 'Alt', 'Shift', 'Meta'].includes(tangent)) return null;
+        if (tangent === ' ') tangent = 'Space';
+        if (tangent.length === 1) tangent = tangent.toUpperCase();
+        delar.push(tangent);
+        return delar.join('+');
+    }
+
+    function klickaKnappMedText(text) {
+        const knapp = [...document.querySelectorAll('button')].find(
+            (b) => (b.innerText || '').trim() === text && !b.disabled);
+        if (knapp) {
+            knapp.click();
+            return true;
+        }
+        return false;
+    }
+
+    function bytForsamling() {
+        // Ligger i menyn under avataren längst till höger i sidhuvudet.
+        const banner = document.querySelector('header, [role="banner"]');
+        if (!banner) return false;
+        const knappar = [...banner.querySelectorAll('button')];
+        const avatar = knappar[knappar.length - 1];
+        if (!avatar) return false;
+        avatar.click();
+        setTimeout(() => {
+            const post = [...document.querySelectorAll('span, li, div')].find(
+                (el) => (el.textContent || '').trim() === 'Byt församling');
+            if (post) post.click();
+        }, 350);
+        return true;
+    }
+
+    function hanteraGenvag(e) {
+        if (!installningar.genvagarPa) return;
+        // Låt formulärfält vara i fred, utom vid kombinationer med Ctrl/Alt.
+        const mal = e.target;
+        const iFalt = mal && /^(INPUT|TEXTAREA|SELECT)$/.test(mal.tagName);
+        if (iFalt && !e.ctrlKey && !e.altKey && !e.metaKey) return;
+
+        const tryckt = beskrivTangent(e);
+        if (!tryckt) return;
+        for (const [nyckel, kmd] of Object.entries(KOMMANDON)) {
+            const bunden = (installningar.genvagar || {})[nyckel] || kmd.standard;
+            if (bunden && bunden === tryckt) {
+                if (kmd.kor()) e.preventDefault();
+                return;
+            }
+        }
+    }
 
     function lasInstallningar() {
         try {
@@ -220,8 +317,85 @@
             });
             const text = document.createElement('span');
             text.textContent = ETIKETTER[nyckel];
+            if (nyckel === 'fokusBekraftaVerifikat') {
+                text.style.color = '#7d0037';
+            }
             rad.appendChild(kryss);
             rad.appendChild(text);
+            ruta.appendChild(rad);
+        });
+
+        /* Genvägar med inspelning. Inget bibliotek behövs - keydown bär
+         * redan tangent och modifierare, och att spela in en kombination är
+         * att läsa nästa keydown och beskriva den. */
+        const genvRubrik = document.createElement('h3');
+        genvRubrik.textContent = 'Genvägar';
+        genvRubrik.style.cssText = 'font-size:.95rem;margin:1.3rem 0 .2rem';
+        ruta.appendChild(genvRubrik);
+
+        const genvHjalp = document.createElement('p');
+        genvHjalp.textContent = 'Klicka på en tangentkombination och tryck den nya du vill använda.';
+        genvHjalp.style.cssText = 'margin:0 0 .6rem;color:#6b6862;font-size:.85rem';
+        ruta.appendChild(genvHjalp);
+
+        Object.entries(KOMMANDON).forEach(([nyckel, kmd]) => {
+            const rad = document.createElement('div');
+            rad.style.cssText = 'display:flex;gap:.7rem;align-items:center;margin:.45rem 0';
+
+            const namn = document.createElement('span');
+            namn.textContent = kmd.etikett;
+            namn.title = kmd.gammal || '';
+            namn.style.cssText = 'flex:1';
+
+            const knapp = document.createElement('button');
+            knapp.type = 'button';
+            const nuvarande = () => (installningar.genvagar || {})[nyckel] || kmd.standard;
+            knapp.textContent = nuvarande();
+            knapp.style.cssText = 'font-family:ui-monospace,Menlo,monospace;font-size:.85rem;'
+                + 'padding:.3rem .7rem;border:1px solid #c9c4bb;border-radius:6px;'
+                + 'background:#fff;cursor:pointer;min-width:6.5rem';
+
+            let spelarIn = false;
+            const avsluta = () => {
+                spelarIn = false;
+                knapp.textContent = nuvarande();
+                knapp.style.borderColor = '#c9c4bb';
+                document.removeEventListener('keydown', fanga, true);
+            };
+            function fanga(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (e.key === 'Escape') return avsluta();
+                const beskrivning = beskrivTangent(e);
+                if (!beskrivning) return;
+                installningar.genvagar = { ...(installningar.genvagar || {}), [nyckel]: beskrivning };
+                sparaInstallningar();
+                avsluta();
+            }
+            knapp.addEventListener('click', () => {
+                if (spelarIn) return avsluta();
+                spelarIn = true;
+                knapp.textContent = 'tryck…';
+                knapp.style.borderColor = '#7d0037';
+                document.addEventListener('keydown', fanga, true);
+            });
+
+            const ater = document.createElement('button');
+            ater.type = 'button';
+            ater.textContent = '↺';
+            ater.title = `Återställ till ${kmd.standard}`;
+            ater.style.cssText = 'border:none;background:none;cursor:pointer;font-size:15px;opacity:.5';
+            ater.addEventListener('click', () => {
+                const g = { ...(installningar.genvagar || {}) };
+                delete g[nyckel];
+                installningar.genvagar = g;
+                sparaInstallningar();
+                knapp.textContent = nuvarande();
+            });
+
+            rad.appendChild(namn);
+            rad.appendChild(knapp);
+            rad.appendChild(ater);
             ruta.appendChild(rad);
         });
 
@@ -264,15 +438,59 @@
 
     /* ---------- Kör om vid varje DOM-ändring ---------- */
 
+    /* ---------- Markerbart personnummer ----------
+     *
+     * MUI DataGrid fångar klick på hela raden, så ett försök att markera
+     * ett personnummer med musen öppnar personakten i stället. Cellen har
+     * data-field="PERSNR" - klickhändelser stoppas där, så texten går att
+     * dra över och kopiera. Dubbelklick för att öppna posten fungerar
+     * fortfarande överallt utom i just den cellen.
+     */
+
+    function gorPersonnummerMarkerbart(rad) {
+        const cell = rad.querySelector('[data-field="PERSNR"]');
+        if (!cell || cell.dataset.svkKbokMarkerbar) return;
+        cell.dataset.svkKbokMarkerbar = '1';
+        cell.style.userSelect = 'text';
+        cell.style.cursor = 'text';
+        cell.title = 'Personnumret går att markera och kopiera';
+        ['mousedown', 'click', 'dblclick'].forEach((h) =>
+            cell.addEventListener(h, (e) => e.stopPropagation()));
+    }
+
+    /* ---------- Fokus på Bekräfta verifikat ----------
+     *
+     * Verifikat-dialogen öppnas utan att någon knapp har fokus - kontrollerat
+     * via document.activeElement, som är dialogens container. Enter gör
+     * därför ingenting, till skillnad från enkla OK-dialoger där OK-knappen
+     * fokuseras automatiskt. I desktopklienten kunde man bekräfta direkt med
+     * Enter efter att ha stämplat.
+     */
+
+    function fokuseraBekrafta() {
+        if (!installningar.fokusBekraftaVerifikat) return;
+        const dialog = document.querySelector('[role="dialog"]');
+        if (!dialog || dialog.dataset.svkKbokFokus) return;
+        const knapp = [...dialog.querySelectorAll('button')].find(
+            (b) => (b.innerText || '').trim() === 'Bekräfta verifikat' && !b.disabled);
+        if (!knapp) return;
+        dialog.dataset.svkKbokFokus = '1';
+        knapp.focus();
+    }
+
     function uppdatera() {
         laggTillKugghjul();
         if (installningar.nyflikLank) document.querySelectorAll(RAD).forEach(laggTillLank);
+        if (installningar.markerbartPersonnummer) {
+            document.querySelectorAll(RAD).forEach(gorPersonnummerMarkerbart);
+        }
         if (installningar.autoHamta) {
             document.querySelectorAll('input').forEach((f) => {
                 if (arRelationsfalt(f)) kopplaAutoHamta(f);
             });
         }
         stallInDatumTabb();
+        fokuseraBekrafta();
     }
 
     let vantar = false;
@@ -284,6 +502,7 @@
 
     document.addEventListener('mousedown', hanteraMittenklick, true);
     document.addEventListener('auxclick', hanteraMittenklick, true);
+    document.addEventListener('keydown', hanteraGenvag, true);
     uppdatera();
 
     console.log('svk-kbok-enhancements laddat');

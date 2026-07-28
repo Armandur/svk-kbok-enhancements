@@ -16,11 +16,33 @@ filer som slutar på `.user.js` och visar sin egen installationsdialog.
 
 ## Vad skriptet gör
 
-| Funktion | Beskrivning |
-| --- | --- |
-| Öppna i ny flik | Länkikon ↗ i varje rad i träfflistorna. Vanligt klick, mittenklick och högerklickmenyns Öppna i ny flik fungerar alla, eftersom ikonen är en riktig länk. Mittenklick var som helst på raden gör samma sak. |
-| Auto-hämta relationsperson | Klickar den namnlösa Hämta-ikonen åt dig när ett komplett personnummer skrivits i ett relationspersonfält. |
-| Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. |
+| Funktion | Beskrivning | Standard |
+| --- | --- | --- |
+| Öppna i ny flik | Länkikon ↗ i varje rad i träfflistorna. Vanligt klick, mittenklick och högerklickmenyns Öppna i ny flik fungerar alla, eftersom ikonen är en riktig länk. Mittenklick var som helst på raden gör samma sak. | På |
+| Auto-hämta relationsperson | Klickar den namnlösa Hämta-ikonen åt dig när ett komplett personnummer skrivits i ett relationspersonfält. | På |
+| Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. | På |
+| Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
+| Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
+| Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
+
+Fokusinställningen är avstängd med flit: att bekräfta ett verifikat är
+slutregistrering och går inte att ångra, så en fokuserad knapp plus ett
+reflexmässigt Enter vore en obehaglig kombination. Att dialogen saknar
+tangentfokus över huvud taget är fångat som en möjlig avvikelse i
+kbok-web TASK-510.
+
+### Genvägar
+
+| Tangent | Gör | I gamla Kbok |
+| --- | --- | --- |
+| `Ctrl + Ö` | Skapa verifikat | `Ctrl + W`, som i webbläsaren stänger fliken |
+| `Ctrl + U` | Utträde | `Ctrl + U` - blockerar webbläsarens Visa källkod |
+| `F8` | Byt församling | `F8` |
+
+Testat att alla tre går att fånga i webbläsaren, inklusive `Ctrl + U`.
+Klicka på en tangentkombination i inställningarna och tryck den nya du
+vill ha - inspelningen läser nästa tangenttryck. Återställningspilen tar
+tillbaka standardvärdet.
 
 Inställningarna nås via **kugghjulet i sidhuvudet** och sparas per
 webbläsare i `localStorage`. Varje funktion går att stänga av var för sig.
@@ -88,58 +110,103 @@ Samma sak gäller klockikonen vid tidsfälten.
 
 ### 5. Snabbkommandon från desktopklienten
 
-Desktopklienten hade ett fyrtiotal kortkommandon, listade i gamla
-Kbok-hjälpen avsnitt 12.7. Webben har inga. Nedan är de genomgångna mot
-vad webbläsaren själv använder - det avgör vilka som går att återinföra.
+Desktopklienten hade ett fyrtiotal kortkommandon. Webben har inga.
+
+#### Hela listan som den stod i gamla Kbok-hjälpen
+
+Avsnitt 12.7, återgiven ordagrant. Två genvägar stod **utanför** tabellen
+och är märkta med fotnot - de hade missats vid en snabb genomläsning.
+`Ctrl + F` och `Ctrl + pilarna` står två gånger i originalet, med olika
+betydelser; det är inte ett fel i återgivningen här.
+
+| Kommando | Funktion |
+| --- | --- |
+| `Ctrl + K` | Starta sökning |
+| `Ctrl + N` | Ny |
+| `Ctrl + Ä` | Ändra |
+| `Ctrl + O` | OK (utför) |
+| `Ctrl + S` | Spara |
+| `Ctrl + P` | Skriv ut |
+| `Ctrl + D` | Skriver ut skärmens innehåll direkt |
+| `Ctrl + Delete` | Ta bort |
+| `Ctrl + Home` | Första detaljbild |
+| `Ctrl + Vänsterpil` | Föregående detaljbild |
+| `Ctrl + Högerpil` | Nästa detaljbild |
+| `Ctrl + End` | Sista detaljbild |
+| `Ctrl + Vänsterpil` | Föregående resultat (stora sökresultat) |
+| `Ctrl + Högerpil` | Nästa resultat (stora sökresultat) |
+| `Ctrl + F` | Visa alla (stora sökresultat) |
+| `Ctrl + W` | Visa verifikat |
+| `Ctrl + B` | Bekräfta verifikat |
+| `Ctrl + F` | Sök |
+| `Ctrl + Ö` | Töm alla fält |
+| `Ctrl + Y` | Pålysning |
+| `Ctrl + I` | Inträde |
+| `Ctrl + U` | Utträde |
+| `Ctrl + C` | Kopiera |
+| `Ctrl + V` | Klistra in |
+| `Ctrl + M` | Ministerialboksperson |
+| `Ctrl + A` | Markera alla rader i en lista |
+| `Ctrl + T` | Byt funktionstyp |
+| `Ctrl + L` | Låser Kbok och visar inloggningsbilden |
+| `Ctrl + Tab`, `Ctrl + F6` | Bläddra mellan fönster i programmet |
+| `Ctrl + R` | Skapa konfirmation |
+| `Enter` | Utför olika händelser |
+| `F1` | Hjälp, kontextberoende (Windowsklient) |
+| `F5` | Uppdatera |
+| `F8` | Byt församling |
+| `F10` | Aktivera menyraden |
+| `Alt + Nedåtpil` | Öppna rullgardinsmenyer och kalender |
+| `Alt + F4` | Avsluta |
+| `Ctrl + F4` | Stäng fönster |
+| `Alt + Home` | Till Startsidan |
+| (saknas) | Avancerad sökning |
+| `D` eller `d` | Dagens datum när markören står i ett datumfält |
+| (saknas) | Export av rapport |
+| `F3` * | Senaste personer |
+| `Ctrl + Z` * | Ångra i inmatningsfält |
+
+\* Står inte i kortkommandotabellen. `F3` nämns i avsnittet om Senaste
+personer, `Ctrl + Z` i avsnittet om kopiering mellan fält.
+
+Hjälpen noterar också två undantag: kortkommandon fungerar inte i
+textfältet för lokalt informationsverifikat, och `Ctrl + P` fungerar inte
+när en rapport visas i förhandsgranskningsläge.
+
+Och om Enter, som generellt kommando: *"ENTER kan användas i stället för
+[OK] samt för att öppna markerad rad i en träfflista. Även i dialogrutor
+kan ENTER ersätta OK-knappen eller annan funktion som är framhävd."*
+
+#### Vad som går att återinföra i webben
 
 **Lediga - ingen konflikt med webbläsaren**
 
-| Kommando | Funktion i gamla Kbok |
-| --- | --- |
-| `Ctrl + Ä` | Ändra (öppna posten för redigering) |
-| `Ctrl + Ö` | Töm alla fält |
-| `Ctrl + M` | Ministerialboksperson - vad det gjorde är oklart, se TASK-509 |
-| `Ctrl + Y` | Pålysning |
-| `Ctrl + B` | Bekräfta verifikat |
-| `F8` | Byt församling |
-| `D` i ett datumfält | Fyller i dagens datum |
-| `Enter` | Öppnar markerad rad i träfflista |
-
-`D` i datumfält och `Enter` på markerad rad är de billigaste att införa
-och de som sannolikt används oftast. `Ctrl + Ä` och `Ctrl + Ö` ligger på
-svenska tangenter som ingen webbläsare rör.
+`Ctrl + Ä`, `Ctrl + Ö`, `Ctrl + M`, `Ctrl + Y`, `Ctrl + B`, `F2`, `F3`,
+`F8`, `F9`, samt `D` i datumfält och `Enter` på markerad rad.
 
 **Kräver att webbläsarens egen funktion blockeras**
 
-| Kommando | Funktion | Webbläsaren gör annars |
-| --- | --- | --- |
-| `Ctrl + S` | Spara | Spara sidan |
-| `Ctrl + N` | Ny | Nytt fönster |
-| `Ctrl + K` | Starta sökning | Fokus till sökfältet |
+`Ctrl + S` (spara sidan) är det mest värdefulla i listan och det enda där
+det är värt att ta över tangenten. `Ctrl + N` och `Ctrl + K` är tveksamma.
 
-`Ctrl + S` är det mest värdefulla i hela listan och det enda där det är
-värt att ta över tangenten. Övriga två är tveksamma.
+**Bör inte återinföras på sin gamla tangent**
 
-**Bör inte återinföras**
-
-`Ctrl + W` (visa verifikat) stänger fliken, `Ctrl + T` (byt funktionstyp)
-öppnar ny flik, `Ctrl + R` (skapa konfirmation) laddar om sidan och
-`Ctrl + L` (lås applikationen) hoppar till adressfältet. Att kapa dem
-skulle ge en användare som tror sig göra något annat en obehaglig
-överraskning. `Ctrl + U`, `Ctrl + I` och `Ctrl + D` krockar med källkod,
-utvecklarverktyg respektive bokmärken.
+`Ctrl + W` stänger fliken, `Ctrl + T` öppnar ny flik, `Ctrl + R` laddar om
+sidan och `Ctrl + L` hoppar till adressfältet. `Ctrl + U`, `Ctrl + I` och
+`Ctrl + D` krockar med källkod, utvecklarverktyg respektive bokmärken.
+Funktionerna kan däremot flyttas till lediga tangenter - `Ctrl + W`
+(skapa verifikat) ligger nu på `Ctrl + Ö`.
 
 **Inte längre tillämpliga**
 
-`F1` (hjälp) är märkt Windowsklient redan i gamla hjälpen. `F10`
-(aktivera menyraden) förutsätter en menyrad som webben inte har.
-`Ctrl + Home/End` och `Ctrl + pilar` bläddrade mellan detaljbilder, ett
-navigeringsmönster webben inte använder. `Ctrl + C`, `Ctrl + V`, `F5`,
-`Alt + F4` och `Ctrl + Tab` gör redan rätt sak av sig själva.
+`F1` är märkt Windowsklient redan i gamla hjälpen. `F10` förutsätter en
+menyrad webben inte har. `Ctrl + Home/End` och `Ctrl + pilarna` bläddrade
+mellan detaljbilder, ett navigeringsmönster webben inte använder.
+`Ctrl + C`, `Ctrl + V`, `Ctrl + Z`, `F5`, `Alt + F4` och `Ctrl + Tab` gör
+redan rätt sak av sig själva.
 
 Vad som faktiskt användes i praktiken är fortfarande okänt - listan säger
-vad som fanns, inte vad folk tryckte på. Värt att fråga någon som arbetat
-länge i desktopklienten innan något byggs.
+vad som fanns, inte vad folk tryckte på.
 
 ## Ej utrett
 
