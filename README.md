@@ -22,6 +22,7 @@ filer som slutar på `.user.js` och visar sin egen installationsdialog.
 | Auto-hämta relationsperson | Klickar den namnlösa Hämta-ikonen åt dig när ett komplett personnummer skrivits i ett relationspersonfält. | På |
 | Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. | På |
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
+| D för dagens datum | `D` i ett tomt datumfält fyller i dagens datum, som i desktopklienten. Formatet läses ur fältets placeholder - dödsdatum vill ha ÅÅÅÅMMDD, övriga ÅÅÅÅ-MM-DD. | På |
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
 
@@ -55,12 +56,14 @@ Verifierat att det bara gäller den miljön: samma klick i testmiljön öppnar r
 personakt direkt. Antagligen fungerar testmiljön och produktion som testmiljön, men det är
 inte kontrollerat.
 
-Inställningarna nås via **kugghjulet i sidhuvudet** och sparas per
-webbläsare i `localStorage`. Varje funktion går att stänga av var för sig.
+Inställningarna nås via **✚ Kbok Plus** i användarmenyn under avataren,
+tillsammans med Byt församling och Inställningar. Posten klonas från Kboks
+egen Inställningar-post, så den ärver appens formatering i stället för att
+härma den. Menyn byggs om vid varje öppning, så posten läggs till på nytt
+av samma MutationObserver som sköter resten.
 
-Avataremenyn hade varit en naturligare plats för kugghjulet, men Kbok
-bygger om den menyn varje gång den öppnas och en injicerad post försvinner
-då direkt.
+Inställningarna sparas per webbläsare i `localStorage`. Varje funktion går
+att stänga av var för sig.
 
 ## Kartlagda fällor
 

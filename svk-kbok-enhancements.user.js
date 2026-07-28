@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.3
+// @version      0.4
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -34,6 +34,12 @@
     const NYCKEL = 'svk-kbok-enhancements';
     const LANK_KLASS = 'svk-kbok-nyflik';
     const RAD = '[role="row"][data-id]';
+    const KOLUMNBREDD = 34;
+    const MENY_KLASS = 'svk-kbok-menypost';
+    const PRODUKTNAMN = 'Kbok Plus';
+    // Kboks egna färger, avlästa ur computed style i appen.
+    const ACCENT = '#7d0037';
+    const ACCENT_HOVER = '#570026';
 
     const STANDARD = {
         nyflikLank: true,
@@ -41,6 +47,7 @@
         autoHamta: true,
         hoppaOverDatumvaljare: true,
         markerbartPersonnummer: true,
+        dagensDatum: true,
         // Av som standard: att bekräfta ett verifikat är slutregistrering
         // och går inte att ångra. En fokuserad knapp plus ett reflexmässigt
         // Enter är en obehaglig kombination, så den som vill ha tillbaka
@@ -55,6 +62,7 @@
         autoHamta: 'Hämta relationspersonens namn automatiskt när personnumret är komplett',
         hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
         markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
+        dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar (irreversibelt)',
         genvagarPa: 'Tangentbordsgenvägar',
     };
@@ -170,30 +178,54 @@
         if (rad.querySelector('.' + LANK_KLASS)) return;
         const id = rad.getAttribute('data-id');
         if (!id) return;
-        const cell = rad.querySelector('[role="gridcell"]');
-        if (!cell) return;
+        const forsta = rad.querySelector('[role="gridcell"]');
+        if (!forsta) return;
+
+        // Egen cell i stället för att tränga in ikonen i kryssrutekolumnen,
+        // där den skars av. Griden formaterar celler efter role och inline
+        // width, så en klonad struktur räcker - vi rör inte gridens egen
+        // kolumnmodell.
+        const cell = document.createElement('div');
+        cell.className = LANK_KLASS + ' MuiDataGrid-cell';
+        cell.setAttribute('role', 'gridcell');
+        cell.style.cssText = `width:${KOLUMNBREDD}px;min-width:${KOLUMNBREDD}px;`
+            + `max-width:${KOLUMNBREDD}px;display:flex;align-items:center;`
+            + 'justify-content:center;padding:0';
 
         const a = document.createElement('a');
-        a.className = LANK_KLASS;
         a.href = personaktUrl(id);
         a.target = '_blank';
         a.rel = 'noopener';
         a.title = 'Öppna personakten i ny flik';
         a.textContent = '↗';
-        a.style.cssText = 'margin-left:4px;text-decoration:none;font-size:13px;'
-            + 'line-height:1;opacity:0.45;cursor:pointer;color:inherit;padding:2px';
+        a.style.cssText = 'text-decoration:none;font-size:14px;line-height:1;'
+            + 'opacity:.45;cursor:pointer;color:inherit;padding:3px 4px';
         a.addEventListener('mouseenter', () => { a.style.opacity = '1'; });
-        a.addEventListener('mouseleave', () => { a.style.opacity = '0.45'; });
+        a.addEventListener('mouseleave', () => { a.style.opacity = '.45'; });
         // Griden lyssnar på klick i raden för att markera och öppna - hindra
         // att länkklicket också räknas som ett radklick.
         ['click', 'mousedown', 'dblclick'].forEach((h) =>
             a.addEventListener(h, (e) => e.stopPropagation()));
 
         cell.appendChild(a);
+        forsta.parentElement.insertBefore(cell, forsta);
+    }
+
+    function laggTillKolumnrubrik() {
+        const rubrikrad = document.querySelector('[role="columnheader"]');
+        if (!rubrikrad || !rubrikrad.parentElement) return;
+        const rad = rubrikrad.parentElement;
+        if (rad.querySelector('.' + LANK_KLASS)) return;
+        const cell = document.createElement('div');
+        cell.className = LANK_KLASS + ' MuiDataGrid-columnHeader';
+        cell.setAttribute('role', 'columnheader');
+        cell.style.cssText = `width:${KOLUMNBREDD}px;min-width:${KOLUMNBREDD}px;`
+            + `max-width:${KOLUMNBREDD}px;padding:0`;
+        rad.insertBefore(cell, rad.firstChild);
     }
 
     function taBortLankar() {
-        document.querySelectorAll('.' + LANK_KLASS).forEach((a) => a.remove());
+        document.querySelectorAll('.' + LANK_KLASS).forEach((el) => el.remove());
     }
 
     /* ---------- Mittenklick var som helst på raden ----------
@@ -266,6 +298,75 @@
         });
     }
 
+    /* ---------- D fyller i dagens datum ----------
+     *
+     * Fanns i desktopklienten: "D eller d - Dagens datum när markören står
+     * i ett datumfält". Gäller alla fält som tar ett datum, inte bara
+     * handlingsdatum - även Utträdesdatum, dödsdatum och pålysningsdatum.
+     *
+     * Fälten skiljer sig i format: de flesta vill ha ÅÅÅÅ-MM-DD, men
+     * dödsdatum tar ÅÅÅÅMMDD utan bindestreck. Formatet läses därför ur
+     * fältets placeholder i stället för att antas.
+     */
+
+    function arDatumfalt(falt) {
+        if (falt.tagName !== 'INPUT') return false;
+        const ph = falt.placeholder || '';
+        const id = falt.id || '';
+        if (/ÅÅÅÅ/.test(ph)) return !/NNNN/.test(ph); // personnummerfält har NNNN
+        return /datum/i.test(id) && !/persnr/i.test(id);
+    }
+
+    function dagensDatumFor(falt) {
+        const nu = new Date();
+        const p = (n) => String(n).padStart(2, '0');
+        const ar = nu.getFullYear();
+        const man = p(nu.getMonth() + 1);
+        const dag = p(nu.getDate());
+        const ph = falt.placeholder || '';
+        // Utan bindestreck om placeholdern saknar dem, t.ex. dödsdatumets
+        // ÅÅÅÅMMDD.
+        return ph.includes('-') || !ph ? `${ar}-${man}-${dag}` : `${ar}${man}${dag}`;
+    }
+
+    function skrivDagensDatum(falt) {
+        const varde = dagensDatumFor(falt);
+
+        // MUI:s DateField har en egen mask och bryr sig inte om ett värde
+        // som sätts via prototypens setter - fältet stod kvar på ÅÅÅÅ-MM-DD.
+        // execCommand skriver som en användare gör, så masken hinner
+        // formatera, och React ser en riktig input-händelse.
+        falt.focus();
+        falt.setSelectionRange(0, (falt.value || '').length);
+        if (document.execCommand('insertText', false, varde)) return;
+
+        // Fallback för fält utan mask, och för webbläsare som slutat stödja
+        // execCommand.
+        const setter = Object.getOwnPropertyDescriptor(
+            window.HTMLInputElement.prototype, 'value').set;
+        setter.call(falt, varde);
+        falt.dispatchEvent(new Event('input', { bubbles: true }));
+        falt.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function hanteraDagensDatum(e) {
+        if (!installningar.dagensDatum) return;
+        if (e.key !== 'd' && e.key !== 'D') return;
+        if (e.ctrlKey || e.altKey || e.metaKey) return;
+        const falt = e.target;
+        if (!arDatumfalt(falt)) return;
+        // Bokstaven hör aldrig hemma i ett datum, så den blockeras alltid -
+        // annars hamnade ett "d" i fältet när det redan var ifyllt.
+        e.preventDefault();
+
+        // Fyll bara i tomt fält, annars skrivs ett påbörjat datum över.
+        // MUI:s DateField sätter värdet till sin egen mask (ÅÅÅÅ-MM-DD) så
+        // fort fältet får fokus, så ett fält som ser tomt ut har ett värde -
+        // därför räknas "tomt" som "innehåller ingen siffra".
+        if (/\d/.test(falt.value || '')) return;
+        skrivDagensDatum(falt);
+    }
+
     /* ---------- Hoppa över kalenderknappen vid tabb ---------- */
 
     function stallInDatumTabb() {
@@ -306,7 +407,7 @@
             + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
         const rubrik = document.createElement('h2');
-        rubrik.textContent = 'Kbok-tillägg';
+        rubrik.textContent = PRODUKTNAMN;
         rubrik.style.cssText = 'margin:0 0 .2rem;font-size:1.1rem';
         ruta.appendChild(rubrik);
 
@@ -321,7 +422,8 @@
             const kryss = document.createElement('input');
             kryss.type = 'checkbox';
             kryss.checked = !!installningar[nyckel];
-            kryss.style.cssText = 'margin-top:.25rem;flex:none';
+            kryss.style.cssText = `margin-top:.25rem;flex:none;accent-color:${ACCENT};`
+                + 'width:16px;height:16px;cursor:pointer';
             kryss.addEventListener('change', () => {
                 installningar[nyckel] = kryss.checked;
                 sparaInstallningar();
@@ -331,7 +433,7 @@
             const text = document.createElement('span');
             text.textContent = ETIKETTER[nyckel];
             if (nyckel === 'fokusBekraftaVerifikat') {
-                text.style.color = '#7d0037';
+                text.style.color = ACCENT;
             }
             rad.appendChild(kryss);
             rad.appendChild(text);
@@ -364,15 +466,16 @@
             knapp.type = 'button';
             const nuvarande = () => (installningar.genvagar || {})[nyckel] || kmd.standard;
             knapp.textContent = nuvarande();
-            knapp.style.cssText = 'font-family:ui-monospace,Menlo,monospace;font-size:.85rem;'
-                + 'padding:.3rem .7rem;border:1px solid #c9c4bb;border-radius:6px;'
-                + 'background:#fff;cursor:pointer;min-width:6.5rem';
+            knapp.style.cssText = 'font-family:ui-monospace,Menlo,monospace;font-size:.8rem;'
+                + `padding:.35rem .8rem;border:1px solid ${ACCENT};border-radius:999px;`
+                + `background:#fff;color:${ACCENT};cursor:pointer;min-width:6.5rem;font-weight:600`;
 
             let spelarIn = false;
             const avsluta = () => {
                 spelarIn = false;
                 knapp.textContent = nuvarande();
-                knapp.style.borderColor = '#c9c4bb';
+                knapp.style.borderColor = ACCENT;
+                knapp.style.background = '#fff';
                 document.removeEventListener('keydown', fanga, true);
             };
             function fanga(e) {
@@ -389,7 +492,8 @@
                 if (spelarIn) return avsluta();
                 spelarIn = true;
                 knapp.textContent = 'tryck…';
-                knapp.style.borderColor = '#7d0037';
+                knapp.style.borderColor = ACCENT;
+                knapp.style.background = '#fbeaea';
                 document.addEventListener('keydown', fanga, true);
             });
 
@@ -414,8 +518,10 @@
 
         const stang = document.createElement('button');
         stang.textContent = 'Stäng';
-        stang.style.cssText = 'margin-top:1.2rem;background:#7d0037;color:#fff;border:none;'
-            + 'border-radius:999px;padding:.55rem 1.3rem;cursor:pointer;font-weight:600';
+        stang.style.cssText = `margin-top:1.3rem;background:${ACCENT};color:#fff;border:none;`
+            + 'border-radius:999px;padding:.55rem 1.5rem;cursor:pointer;font-weight:600;font-size:.9rem';
+        stang.addEventListener('mouseenter', () => { stang.style.background = ACCENT_HOVER; });
+        stang.addEventListener('mouseleave', () => { stang.style.background = ACCENT; });
         stang.addEventListener('click', () => overlay.remove());
         ruta.appendChild(stang);
 
@@ -424,29 +530,59 @@
         document.body.appendChild(overlay);
     }
 
-    function laggTillKugghjul() {
-        const banner = document.querySelector('header, [role="banner"]');
-        if (!banner || banner.querySelector('#svk-kbok-kugge')) return;
-        const knapp = document.createElement('button');
-        knapp.id = 'svk-kbok-kugge';
-        knapp.type = 'button';
-        knapp.title = 'Inställningar för Kbok-tillägg';
-        knapp.textContent = '⚙';
-        knapp.style.cssText = 'background:none;border:none;cursor:pointer;font-size:19px;'
-            + 'opacity:.55;padding:6px 8px;color:inherit;line-height:1';
-        knapp.addEventListener('mouseenter', () => { knapp.style.opacity = '1'; });
-        knapp.addEventListener('mouseleave', () => { knapp.style.opacity = '.55'; });
-        knapp.addEventListener('click', (e) => {
+    /* ---------- Menypost i användarmenyn ----------
+     *
+     * Avatarmenyn är en NAV.MuiList-root med posterna Byt församling,
+     * Inställningar och Logga ut. Posten klonas från Inställningar, så den
+     * ärver appens egen formatering i stället för att härma den.
+     *
+     * Menyn byggs om varje gång den öppnas, så posten måste läggas till på
+     * nytt vid varje öppning - det sköter MutationObserver.
+     */
+
+    function laggTillMenypost() {
+        const nav = document.querySelector('nav.MuiList-root, .MuiList-root');
+        if (!nav || nav.querySelector('.' + MENY_KLASS)) return;
+
+        const poster = [...nav.children];
+        const forlaga = poster.find((el) => (el.innerText || '').trim() === 'Inställningar');
+        if (!forlaga) return;
+
+        const post = forlaga.cloneNode(true);
+        post.classList.add(MENY_KLASS);
+
+        // Byt ikonen mot ett plustecken - posten är ett tillägg, inte en
+        // av appens egna funktioner.
+        const ikon = post.querySelector('.MuiListItemIcon-root');
+        if (ikon) {
+            ikon.innerHTML = '';
+            const tecken = document.createElement('span');
+            tecken.textContent = '✚';
+            tecken.style.cssText = 'font-size:17px;line-height:1;opacity:.75';
+            ikon.appendChild(tecken);
+        }
+        const text = post.querySelector('.MuiListItemText-primary')
+            || post.querySelector('.MuiTypography-root');
+        if (text) text.textContent = PRODUKTNAMN;
+
+        // Klonen bär med sig förlagans lyssnare i vissa webbläsare - byt ut
+        // noden mot en ren kopia av sig själv innan vår egen kopplas på.
+        const ren = post.cloneNode(true);
+        ren.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
-            if (document.getElementById('svk-kbok-panel')) return;
-            byggPanel();
+            stangMenyn();
+            if (!document.getElementById('svk-kbok-panel')) byggPanel();
         });
 
-        // Före den första av Kboks egna ikoner, så den inte hamnar mitt i
-        // deras grupp.
-        const forsta = banner.querySelector('button');
-        if (forsta && forsta.parentElement) forsta.parentElement.insertBefore(knapp, forsta);
-        else banner.appendChild(knapp);
+        forlaga.insertAdjacentElement('afterend', ren);
+    }
+
+    function stangMenyn() {
+        // Menyn ligger i en MUI-popover; Escape stänger den utan att välja.
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        const bakgrund = document.querySelector('.MuiBackdrop-root');
+        if (bakgrund) bakgrund.click();
     }
 
     /* ---------- Markerbart personnummer ----------
@@ -499,8 +635,11 @@
     /* ---------- Kör om vid varje DOM-ändring ---------- */
 
     function uppdatera() {
-        laggTillKugghjul();
-        if (installningar.nyflikLank) document.querySelectorAll(RAD).forEach(laggTillLank);
+        laggTillMenypost();
+        if (installningar.nyflikLank) {
+            laggTillKolumnrubrik();
+            document.querySelectorAll(RAD).forEach(laggTillLank);
+        }
         document.querySelectorAll(RAD).forEach(gorPersonnummerMarkerbart);
         if (installningar.autoHamta) {
             document.querySelectorAll('input').forEach((f) => {
@@ -521,6 +660,7 @@
     document.addEventListener('mousedown', hindraAutoscroll, true);
     document.addEventListener('auxclick', oppnaViaMittenklick, true);
     document.addEventListener('keydown', hanteraGenvag, true);
+    document.addEventListener('keydown', hanteraDagensDatum, true);
     uppdatera();
 
     console.log('svk-kbok-enhancements laddat');
