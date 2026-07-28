@@ -34,7 +34,7 @@ Klart när: blanketterna får det önskade namnet, med båda specialfallen hante
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Tomt pålysningsdatum triggar valideringsfel - går det att undvika?
+## [P3][done] [svk-kbok-enhancements] Tomt pålysningsdatum triggar valideringsfel - går det att undvika?
 
 Rasmus 2026-07-28. Följdproblem till TASK-511.
 
