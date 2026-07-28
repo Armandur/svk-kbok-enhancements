@@ -1,5 +1,37 @@
 # Backlog Export
 
+## [P3][todo] [svk-kbok-enhancements] Tomt pålysningsdatum triggar valideringsfel - går det att undvika?
+
+Rasmus 2026-07-28. Följdproblem till TASK-511.
+
+PROBLEMET
+
+Inställningen tomPalysningsdatum tömmer fältet Pålysningsdatum, som Kbok annars förifyller med nästa söndag. Men formuläret validerar fältet som obligatoriskt, så ett tomt fält markeras som fel - antagligen direkt vid tömningen, innan användaren hunnit skriva något.
+
+Resultatet blir ett formulär som ser trasigt ut från början, vilket är sämre än det förifyllda datumet man ville bli av med.
+
+ATT UNDERSÖKA
+
+Sker valideringen vid blur, vid submit eller direkt när värdet ändras? Det avgör vad som går att göra.
+
+Möjliga vägar, i ordning efter hur mycket de bråkar med appen:
+
+1. Töm fältet utan att skicka de events som utlöser validering. Nuvarande kod skickar input och change via prototypens value-setter, vilket React uppfattar som en användarändring. Kanske räcker det att sätta value direkt utan events - men då kan Reacts interna state fortfarande innehålla det gamla datumet, och det förifyllda värdet sparas ändå.
+
+2. Töm fältet och rensa felmarkeringen efteråt. MUI visar fel via klasserna Mui-error på fältet och en FormHelperText under. Att ta bort dem döljer symptomet men rör inte formulärets interna giltighet - Spara kan fortfarande vägra.
+
+3. Låt fältet vara ifyllt men markera texten, så att första tangenttryckningen skriver över. Det ger samma praktiska effekt - man skriver sitt datum direkt - utan att formuläret hamnar i felläge. Troligen den minst bråkiga lösningen, men ändrar inställningens innebörd från 'töm' till 'markera'.
+
+Om ingen väg fungerar rent är alternativet att ta bort inställningen igen och notera varför.
+
+Klart när: antingen fungerar tömningen utan valideringsfel, eller så är inställningen ersatt av något som ger samma nytta, eller borttagen med motivering.
+
+- ID: `01KYNBFCFM70VE0TSJT46HEVKC`
+- Type: task
+- Actor: ai:claude-code
+
+---
+
 ## [P3][done] [svk-kbok-enhancements] Automatisk uppdateringskontroll av userscriptet
 
 Rasmus 2026-07-28: skriptet borde hålla koll på nya versioner och helst kunna uppdateras med en knapp.
