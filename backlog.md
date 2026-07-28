@@ -30,7 +30,36 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Byt namn på utskrivna blanketter till datum, handlingstyp och namn
+## [P3][todo] [svk-kbok-enhancements] Inställning: visa blanketten i webbläsaren i stället för att ladda ner den direkt
+
+Rasmus 2026-07-29, under arbetet med TASK-514.
+
+ÖNSKEMÅLET
+
+Kbok laddar ner blanketten direkt när man väljer den i Rapporter-menyn. Ett alternativ vore att öppna PDF:en i webbläsarens egen visare i stället, så att man kan läsa den först och sedan välja - skriva ut, eller spara med valfri plats.
+
+DET GÅR TROLIGEN, MEN MED EN AVVÄGNING
+
+PDF:en byggs klientsidan och ligger på en blob-URL i länkens href. Skriptet patchar redan HTMLAnchorElement.prototype.click (TASK-514), så samma krok kan i stället öppna href i en ny flik och avbryta nedladdningen.
+
+Haken: filnamnet. Ett download-attribut är det enda som styr namnet. Öppnar man blob-URL:en direkt visar Chrome PDF:en, men Spara som från visaren föreslår blob-URL:ens GUID - alltså går hela filnamnsarbetet i TASK-514 förlorat i just den vägen. Utskrift påverkas inte.
+
+Vägar att undersöka:
+1. Öppna blob-URL:en i ny flik. Enklast, men GUID-namn vid Spara som.
+2. Bygga en egen visningssida som bäddar in PDF:en och erbjuder en nedladdningslänk med rätt download-attribut. Behåller filnamnet men är betydligt mer kod, och en injicerad vy mitt i Kbok är påträngande.
+3. Kontrollera om webbläsarens inställning Fråga var varje fil ska sparas räcker för Rasmus behov av att välja plats - då behövs ingen kod alls för den delen.
+
+Att kontrollera först: vad Chrome faktiskt föreslår som filnamn när en blob-URL öppnas i visaren och man klickar Spara. Om namnet ärvs från något annat än GUID:et faller haken bort.
+
+Klart när: antingen finns inställningen och filnamnet överlever, eller så är frågan avfärdad med motiveringen.
+
+- ID: `01KYNDJHZNF6XDMZSYR9VWMX3E`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
+## [P3][doing] [svk-kbok-enhancements] Byt namn på utskrivna blanketter till datum, handlingstyp och namn
 
 Rasmus 2026-07-28. Gäller blanketterna för dop, konfirmation, vigsel, välsignelse och begravning som skrivs ut eller sparas.
 
