@@ -44,6 +44,17 @@ Klicka på en tangentkombination i inställningarna och tryck den nya du
 vill ha - inspelningen läser nästa tangenttryck. Återställningspilen tar
 tillbaka standardvärdet.
 
+### Ny flik fungerar inte i Utbildningsmiljön
+
+`kbok-utbildning.svenskakyrkan.se` skickar varje ny flik till sin
+miljöväljare, `/utv_selectDb`, i stället för till adressen som öppnades.
+Det gäller både länkikonen och mittenklicket, och beror inte på skriptet -
+miljön kräver ett databasval per flik.
+
+Verifierat att det bara gäller den miljön: samma klick i testmiljön öppnar rätt
+personakt direkt. Antagligen fungerar testmiljön och produktion som testmiljön, men det är
+inte kontrollerat.
+
 Inställningarna nås via **kugghjulet i sidhuvudet** och sparas per
 webbläsare i `localStorage`. Varje funktion går att stänga av var för sig.
 

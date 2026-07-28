@@ -196,16 +196,29 @@
         document.querySelectorAll('.' + LANK_KLASS).forEach((a) => a.remove());
     }
 
-    /* ---------- Mittenklick var som helst på raden ---------- */
+    /* ---------- Mittenklick var som helst på raden ----------
+     *
+     * Två händelser, olika uppgifter. mousedown hindrar bara webbläsarens
+     * autoscroll; det är auxclick som öppnar fliken. Att låta båda öppna
+     * gav två flikar per klick - och när de öppnades samtidigt tappade
+     * appen dessutom sessionen och båda landade på miljöväljaren.
+     */
 
-    function hanteraMittenklick(e) {
-        if (!installningar.mittenklick || e.button !== 1) return;
+    function radUnder(e) {
+        if (!installningar.mittenklick || e.button !== 1) return null;
         const rad = e.target.closest(RAD);
+        return rad && rad.getAttribute('data-id') ? rad : null;
+    }
+
+    function hindraAutoscroll(e) {
+        if (radUnder(e)) e.preventDefault();
+    }
+
+    function oppnaViaMittenklick(e) {
+        const rad = radUnder(e);
         if (!rad) return;
-        const id = rad.getAttribute('data-id');
-        if (!id) return;
         e.preventDefault();
-        window.open(personaktUrl(id), '_blank', 'noopener');
+        window.open(personaktUrl(rad.getAttribute('data-id')), '_blank', 'noopener');
     }
 
     /* ---------- Auto-hämta relationspersoner ----------
@@ -436,8 +449,6 @@
         else banner.appendChild(knapp);
     }
 
-    /* ---------- Kör om vid varje DOM-ändring ---------- */
-
     /* ---------- Markerbart personnummer ----------
      *
      * MUI DataGrid fångar klick på hela raden, så ett försök att markera
@@ -449,13 +460,20 @@
 
     function gorPersonnummerMarkerbart(rad) {
         const cell = rad.querySelector('[data-field="PERSNR"]');
-        if (!cell || cell.dataset.svkKbokMarkerbar) return;
+        if (!cell) return;
+        const pa = installningar.markerbartPersonnummer;
+        cell.style.userSelect = pa ? 'text' : '';
+        cell.style.cursor = pa ? 'text' : '';
+        cell.title = pa ? 'Personnumret går att markera och kopiera' : '';
+        if (cell.dataset.svkKbokMarkerbar) return;
         cell.dataset.svkKbokMarkerbar = '1';
-        cell.style.userSelect = 'text';
-        cell.style.cursor = 'text';
-        cell.title = 'Personnumret går att markera och kopiera';
+        // Lyssnaren sitter kvar men frågar efter inställningen vid varje
+        // klick. Att koppla bort den hade krävt namngivna funktioner per
+        // cell, och cellerna byts ut hela tiden av gridens virtualisering.
         ['mousedown', 'click', 'dblclick'].forEach((h) =>
-            cell.addEventListener(h, (e) => e.stopPropagation()));
+            cell.addEventListener(h, (e) => {
+                if (installningar.markerbartPersonnummer) e.stopPropagation();
+            }));
     }
 
     /* ---------- Fokus på Bekräfta verifikat ----------
@@ -478,12 +496,12 @@
         knapp.focus();
     }
 
+    /* ---------- Kör om vid varje DOM-ändring ---------- */
+
     function uppdatera() {
         laggTillKugghjul();
         if (installningar.nyflikLank) document.querySelectorAll(RAD).forEach(laggTillLank);
-        if (installningar.markerbartPersonnummer) {
-            document.querySelectorAll(RAD).forEach(gorPersonnummerMarkerbart);
-        }
+        document.querySelectorAll(RAD).forEach(gorPersonnummerMarkerbart);
         if (installningar.autoHamta) {
             document.querySelectorAll('input').forEach((f) => {
                 if (arRelationsfalt(f)) kopplaAutoHamta(f);
@@ -500,8 +518,8 @@
         requestAnimationFrame(() => { vantar = false; uppdatera(); });
     }).observe(document.body, { childList: true, subtree: true });
 
-    document.addEventListener('mousedown', hanteraMittenklick, true);
-    document.addEventListener('auxclick', hanteraMittenklick, true);
+    document.addEventListener('mousedown', hindraAutoscroll, true);
+    document.addEventListener('auxclick', oppnaViaMittenklick, true);
     document.addEventListener('keydown', hanteraGenvag, true);
     uppdatera();
 
