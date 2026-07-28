@@ -1,0 +1,11 @@
+Servar svk-kbok-enhancements.user.js på port 8003
+127.0.0.1 "GET / HTTP/1.1" 200 -
+127.0.0.1 "GET /svk-kbok-enhancements.user.js HTTP/1.1" 200 -
+127.0.0.1 "GET /svk-kbok-enhancements.user.js HTTP/1.1" 200 -
+127.0.0.1 "GET / HTTP/1.1" 200 -
+127.0.0.1 "GET / HTTP/1.1" 200 -
+127.0.0.1 "GET / HTTP/1.1" 200 -
+127.0.0.1 "GET / HTTP/1.1" 200 -
+100.101.127.115 "GET / HTTP/1.1" 200 -
+100.101.127.115 code 404, message Not Found
+100.101.127.115 "GET /favicon.ico HTTP/1.1" 404 -
