@@ -1,5 +1,35 @@
 # Backlog Export
 
+## [P2][todo] [svk-kbok-enhancements] Gör adressen obligatorisk även i övriga kyrkliga handlingar, som stop-gap
+
+Rasmus 2026-07-29. Kandidaten som redan står som Kartlagd fälla 3 i README, nu uttryckligen önskad som funktion i skriptet.
+
+PROBLEMET
+
+Kbok stoppar verifikatet om adressen saknas i Dop, men släpper igenom Konfirmation, Vigsel, Välsignelse och Begravning - trots att postadress och folkbokföringsadress ska registreras för varje kyrklig handling enligt SvKB 2009:9, 3 kap.
+
+VAD SKRIPTET SKA GÖRA
+
+Utvidga samma kontroll till de övriga fyra handlingarna. Stop-gap tills Kbok eventuellt får det inbyggt - avstämningsfrågan till Kyrkokansliet ligger som kbok-web TASK-491, och blir svaret att kontrollen ska finnas överallt kan skriptets version tas bort igen.
+
+ATT TÄNKA PÅ
+
+Adress och Adress forts ligger sida vid sida och är lätta att förväxla. Det är Adress som kontrolleras.
+
+Vigsel och Välsignelse har två personer med var sin adress under Person 1 och Person 2 - båda måste kontrolleras. Sektionsläsaren från TASK-514 (sektionMed/sektionsfalt) hanterar redan den uppdelningen och går att återanvända.
+
+Öppen fråga för utformningen: ska skriptet blockera Spara eller bara varna? Att blockera är effektivast men bråkar mest med appen, och en felaktig blockering vore värre än en missad adress. En varning som går att klicka förbi är troligen rätt avvägning - avgörs vid bygget.
+
+Inställning i panelen, och rimligen på som standard eftersom regelverket kräver adressen.
+
+Klart när: en saknad adress uppmärksammas vid Spara i alla fem handlingarna, inställningen finns, och beteendet är verifierat i Utbildningsmiljön.
+
+- ID: `01KYNE9002D5Q0EAHPGNARX6TA`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
 ## [P2][todo] [svk-kbok-enhancements] Publicera repot på GitHub och testa skriptet i riktig Tampermonkey
 
 Två saker som återstår innan skriptet kan sägas fungera på riktigt. Dokumenterat 2026-07-29 inför sessionsslut.
