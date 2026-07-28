@@ -562,14 +562,13 @@
         return varde ? rensaFilnamnsdel(varde) : null;
     }
 
-    function personnamnI(rubrik) {
-        const sektion = sektionMed(rubrik);
-        if (!sektion) return null;
+    function personnamnUr(rot) {
+        if (!rot) return null;
         // Tilltalsnamnet är det personen faktiskt kallas; förnamnsfältet kan
         // rymma flera namn.
         const delar = [
-            sektionsfalt(sektion, 'Efternamn'),
-            sektionsfalt(sektion, 'Tilltalsnamn') || sektionsfalt(sektion, 'Förnamn'),
+            sektionsfalt(rot, 'Efternamn'),
+            sektionsfalt(rot, 'Tilltalsnamn') || sektionsfalt(rot, 'Förnamn'),
         ].filter(Boolean).map(rensaFilnamnsdel);
         return delar.length ? delar.join(', ') : null;
     }
@@ -584,7 +583,12 @@
             const andra = efternamnI('Person 2');
             return andra ? `${forsta}-${andra}` : forsta;
         }
-        return personnamnI('Personuppgifter');
+        const enskild = personnamnUr(sektionMed('Personuppgifter'));
+        if (enskild) return enskild;
+        // Personakten saknar sektionsrubrik - där står namnet i raden högst
+        // upp. Den läses sist: på en handlingspost utan personakt är raden
+        // tom, och då ska sektionen ovan ha fått svara först.
+        return personnamnUr(document.querySelector('main'));
     }
 
     function handlingsdatum() {
