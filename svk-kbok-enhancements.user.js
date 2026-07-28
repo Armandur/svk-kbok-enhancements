@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.6
+// @version      0.7
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.6';
+    const VERSION = '0.7';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -430,14 +430,45 @@
         if (!installningar.tomPalysningsdatum) return;
         if (!/\/palysning\//.test(location.pathname)) return;
         const falt = faltForEtikett('Pålysningsdatum');
-        if (!falt || falt.dataset.svkKbokTomt) return;
-        if (!(falt.value || '').trim()) return;
-        falt.dataset.svkKbokTomt = '1';
-        const setter = Object.getOwnPropertyDescriptor(
-            window.HTMLInputElement.prototype, 'value').set;
-        setter.call(falt, '');
-        falt.dispatchEvent(new Event('input', { bubbles: true }));
-        falt.dispatchEvent(new Event('change', { bubbles: true }));
+        if (!falt) return;
+
+        if (!falt.dataset.svkKbokTomt) {
+            if (!(falt.value || '').trim()) return;
+            falt.dataset.svkKbokTomt = '1';
+            // Tömningen görs med events så att appens eget tillstånd följer
+            // med - annars ser fältet tomt ut medan det förifyllda datumet
+            // ligger kvar internt och sparas i tysthet.
+            const setter = Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype, 'value').set;
+            setter.call(falt, '');
+            falt.dispatchEvent(new Event('input', { bubbles: true }));
+            falt.dispatchEvent(new Event('change', { bubbles: true }));
+            // Så fort användaren rör fältet ska valideringen bete sig
+            // normalt igen.
+            const slappFri = () => { falt.dataset.svkKbokRord = '1'; };
+            falt.addEventListener('input', slappFri, { once: true });
+            falt.addEventListener('blur', slappFri, { once: true });
+        }
+
+        // Tömningen utlöser "Pålysningsdatum måste anges" direkt, innan
+        // användaren hunnit skriva något. Felet döljs tills fältet rörts -
+        // då får appen visa det som vanligt, inklusive när Spara vägrar.
+        if (falt.dataset.svkKbokRord) return;
+        doljFelFor(falt);
+    }
+
+    function doljFelFor(falt) {
+        const grupp = falt.closest('.MuiFormControl-root, .MuiTextField-root');
+        if (!grupp) return;
+        grupp.querySelectorAll('.Mui-error').forEach((el) => {
+            el.classList.remove('Mui-error');
+            el.dataset.svkKbokDoltFel = '1';
+        });
+        const hjalp = grupp.querySelector('.MuiFormHelperText-root');
+        if (hjalp && /måste anges/i.test(hjalp.textContent || '')) {
+            hjalp.dataset.svkKbokDoltFel = '1';
+            hjalp.style.visibility = 'hidden';
+        }
     }
 
     /* ---------- Hoppa över kalenderknappen vid tabb ---------- */

@@ -1,6 +1,40 @@
 # Backlog Export
 
-## [P3][todo] [svk-kbok-enhancements] Tomt pålysningsdatum triggar valideringsfel - går det att undvika?
+## [P3][todo] [svk-kbok-enhancements] Byt namn på utskrivna blanketter till datum, handlingstyp och namn
+
+Rasmus 2026-07-28. Gäller blanketterna för dop, konfirmation, vigsel, välsignelse och begravning som skrivs ut eller sparas.
+
+ÖNSKAT FILNAMN
+
+  Handlingsdatum - Dopblankett - Efternamn, Förnamn.pdf
+
+Handlingstypen varierar: Dopblankett, Konfirmationsblankett, Vigselblankett, Välsignelseblankett, Begravningsblankett.
+
+Vid vigsel och välsignelse gäller två personer, och då ska bägge efternamnen med: Efternamn-Efternamn.
+
+SPECIALFALL SOM MÅSTE HANTERAS
+
+1. Handlingsdatum saknas. Filnamnet ska fungera ändå - antagligen genom att hoppa över den delen och börja med handlingstypen.
+
+2. Barn utan förnamn vid dop. Kbok skriver då efternamnet inom snedstreck, /Efternamn/. Snedstreck går inte att ha i ett filnamn på något operativsystem, så det måste bytas - Rasmus förslag är -Efternamn- i stället.
+
+Värt att kontrollera om samma notation dyker upp i andra fall än dop.
+
+ATT UNDERSÖKA FÖRST
+
+Hur blanketten faktiskt levereras. Konfirmationsblanketten för en grupp laddades ner som Konfirmationsblankett_for_verksamhetsgrupp.pdf via en blob-URL, vilket betyder att filnamnet sätts av appen i ett download-attribut eller via Content-Disposition. Är det ett download-attribut på en länk går namnet att skriva om i DOM:en innan klicket. Kommer namnet från servern via Content-Disposition krävs i stället att skriptet fångar nedladdningen och sparar om den, vilket är betydligt mer omständligt och kan kräva @grant GM_download.
+
+De enskilda handlingarnas blanketter kan levereras på ett annat sätt än gruppblanketten - kontrollera båda.
+
+Klart när: blanketterna får det önskade namnet, med båda specialfallen hanterade.
+
+- ID: `01KYNBRQ16KEAG34MQA2WMWC8X`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
+## [P3][doing] [svk-kbok-enhancements] Tomt pålysningsdatum triggar valideringsfel - går det att undvika?
 
 Rasmus 2026-07-28. Följdproblem till TASK-511.
 

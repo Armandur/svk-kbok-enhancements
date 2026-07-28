@@ -40,7 +40,7 @@ utan att man behöver vänta på nästa automatiska kontroll.
 | Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. | På |
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
 | D för dagens datum | `D` i ett tomt datumfält fyller i dagens datum, som i desktopklienten. Formatet läses ur fältets placeholder - dödsdatum vill ha ÅÅÅÅMMDD, övriga ÅÅÅÅ-MM-DD. | På |
-| Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. | **Av** |
+| Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. Valideringsfelet döljs tills fältet rörts, se nedan. | **Av** |
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
 
@@ -63,6 +63,21 @@ Testat att alla tre går att fånga i webbläsaren, inklusive `Ctrl + U`.
 Klicka på en tangentkombination i inställningarna och tryck den nya du
 vill ha - inspelningen läser nästa tangenttryck. Återställningspilen tar
 tillbaka standardvärdet.
+
+### Om valideringen vid tomt pålysningsdatum
+
+Att tömma fältet utlöser "Pålysningsdatum måste anges" omedelbart, innan
+användaren hunnit skriva något - formuläret ser trasigt ut från start.
+
+Skriptet döljer därför felet **tills fältet rörts**. Så fort man skriver i
+det eller lämnar det beter sig valideringen som vanligt igen, inklusive när
+Spara vägrar. Tömningen görs med riktiga input- och change-händelser så att
+appens eget tillstånd följer med - annars hade fältet sett tomt ut medan
+det förifyllda datumet låg kvar internt och sparats i tysthet.
+
+Verifierat i tre steg: vid öppning är fältet tomt och felet dolt, efter
+egen inmatning finns inget fel alls, och rensar användaren själv fältet
+visas felet som det ska.
 
 ### Ny flik fungerar inte i Utbildningsmiljön
 
