@@ -1,6 +1,6 @@
 # Backlog Export
 
-## [P3][todo] [svk-kbok-enhancements] Automatisk uppdateringskontroll av userscriptet
+## [P3][done] [svk-kbok-enhancements] Automatisk uppdateringskontroll av userscriptet
 
 Rasmus 2026-07-28: skriptet borde hålla koll på nya versioner och helst kunna uppdateras med en knapp.
 
@@ -30,7 +30,7 @@ Klart när: versionsnumret räknas upp konsekvent, updateURL och downloadURL pek
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Inställning: fyll inte i nästa söndag som pålysningsdatum automatiskt
+## [P3][done] [svk-kbok-enhancements] Inställning: fyll inte i nästa söndag som pålysningsdatum automatiskt
 
 Rasmus 2026-07-28: fanns som en faktisk funktion i desktopklienten - man kunde stänga av att datumet förifylldes.
 
