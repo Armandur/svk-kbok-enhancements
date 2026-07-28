@@ -40,6 +40,7 @@ utan att man behöver vänta på nästa automatiska kontroll.
 | Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. | På |
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
 | D för dagens datum | `D` i ett tomt datumfält fyller i dagens datum, som i desktopklienten. Formatet läses ur fältets placeholder - dödsdatum vill ha ÅÅÅÅMMDD, övriga ÅÅÅÅ-MM-DD. | På |
+| Filnamn på blanketter | Döper nedladdade blanketter och bevis efter handlingsdatum, typ och namn i stället för bara typen. Se nedan. | På |
 | Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. Valideringsfelet döljs tills fältet rörts, se nedan. | **Av** |
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
@@ -49,6 +50,40 @@ slutregistrering och går inte att ångra, så en fokuserad knapp plus ett
 reflexmässigt Enter vore en obehaglig kombination. Att dialogen saknar
 tangentfokus över huvud taget är fångat som en möjlig avvikelse i
 kbok-web TASK-510.
+
+### Om filnamnen på blanketter
+
+Kbok döper varje nedladdad blankett till handlingstypen rakt av -
+`Dopblankett.pdf`, `Upptagandebevis.pdf`. Sparar man flera går de inte
+att skilja åt, och webbläsaren räknar upp dem som `(1)`, `(2)`.
+
+Skriptet döper i stället om dem:
+
+```
+2026-06-20 - Dopblankett - Ejtillhorig, Testfall.pdf
+2024-09-01 - Vigselblankett - Larsson-Blomqvist.pdf
+Upptagandebevis - Ejtillhorig, Testfall.pdf
+```
+
+Vigsel och välsignelse gäller två personer, och där tas bara efternamnen
+med. Bevisen får inget datum - de gäller en händelse som redan är
+registrerad, till skillnad från blanketterna som är underlag inför en
+handling.
+
+Namnet byggs av tilltalsnamn (annars förnamn) och efternamn, lästa ur
+handlingspostens egna sektioner - inte ur personuppgiftsraden högst upp,
+som är tom för poster utan personakt. Saknas handlingsdatum utgår den
+delen. Ett barn utan förnamn får efternamnet skrivet som `/Efternamn/` i
+Kbok, och snedstreck byts mot bindestreck eftersom de inte går att ha i
+ett filnamn.
+
+Går inget namn att bygga lämnas Kboks eget filnamn i fred.
+
+PDF:en byggs i webbläsaren och laddas ner från en blob-URL: appen skapar
+ett `<a download>`, klickar det och tar bort det direkt. Skriptet fångar
+namnet genom att patcha `HTMLAnchorElement.prototype.click` och skriva om
+attributet i klicket, innan originalanropet släpps igenom. Ingen
+`Content-Disposition` och inget `GM_download` behövs.
 
 ### Genvägar
 

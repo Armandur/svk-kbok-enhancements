@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.7
+// @version      0.8
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.7';
+    const VERSION = '0.8';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -57,6 +57,7 @@
         hoppaOverDatumvaljare: true,
         markerbartPersonnummer: true,
         dagensDatum: true,
+        blankettnamn: true,
         // Av som standard: förifyllningen är Kboks avsedda beteende, och
         // nästa söndag är rätt gissning i de flesta fall.
         tomPalysningsdatum: false,
@@ -75,6 +76,7 @@
         hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
         markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
+        blankettnamn: 'Döp om nedladdade blanketter och bevis till handlingsdatum, typ och namn',
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar (irreversibelt)',
         genvagarPa: 'Tangentbordsgenvägar',
@@ -492,6 +494,140 @@
         });
     }
 
+    /* ---------- Filnamn på nedladdade blanketter ----------
+     *
+     * Kbok döper blanketterna till handlingstypen rakt av - Dopblankett.pdf,
+     * Upptagandebevis.pdf. Utan datum och person går sparade blanketter inte
+     * att skilja åt, och webbläsaren räknar i stället upp dem som (1), (2).
+     *
+     * PDF:en byggs i webbläsaren, inte på servern: appen skapar ett
+     * <a download> mot en blob-URL, klickar det och tar bort det direkt, så
+     * det finns inget element kvar att skriva om i DOM:en. Namnet går
+     * däremot att fånga genom att patcha HTMLAnchorElement.prototype.click -
+     * attributet skrivs om i klicket, innan originalanropet släpps igenom.
+     *
+     * Uppgifterna läses ur handlingspostens egna sektioner, inte ur
+     * personuppgiftsraden högst upp: raden är tom för poster utan personakt,
+     * sektionen är det aldrig. En platt skrapning av hela sidan fungerar
+     * inte heller - den blandar in vårdnadshavare, relationspersoner och
+     * hindersprövningsdatum.
+     */
+
+    // Handlingsdatumet hör till blanketterna, som är underlag inför en
+    // handling. Bevisen gäller en händelse som redan är registrerad och får
+    // därför bara typ och namn.
+    const BLANKETTER = ['Dopblankett', 'Konfirmationsblankett', 'Vigselblankett',
+        'Välsignelseblankett', 'Begravningsblankett'];
+    const BEVIS = ['Upptagandebevis', 'Utträdesbevis'];
+
+    function sektionMed(rubrik) {
+        const rad = [...document.querySelectorAll('main *')].find(
+            (el) => el.children.length === 0
+                && (el.textContent || '').trim() === rubrik);
+        if (!rad) return null;
+        // Rubriken sitter några nivåer in i sektionen. Gå uppåt tills en
+        // förälder rymmer mer än en handfull fält - då är sektionen med i sin
+        // helhet, men inte hela sidan.
+        let el = rad;
+        for (let i = 0; i < 6 && el.parentElement; i++) {
+            el = el.parentElement;
+            if (el.querySelectorAll('p,span,div').length > 6) break;
+        }
+        return el;
+    }
+
+    function sektionsfalt(rot, etikett) {
+        if (!rot) return null;
+        const trad = [...rot.querySelectorAll('*')].find(
+            (x) => x.children.length === 0
+                && (x.textContent || '').trim() === etikett);
+        if (!trad || !trad.parentElement) return null;
+        const rader = (trad.parentElement.innerText || '').split('\n')
+            .map((s) => s.trim()).filter(Boolean);
+        const i = rader.indexOf(etikett);
+        const varde = i >= 0 && rader[i + 1] ? rader[i + 1] : null;
+        // Ett tomt fält visas som bindestreck.
+        return varde && varde !== '-' ? varde : null;
+    }
+
+    // Snedstrecken kommer från Kbok självt: ett barn utan förnamn får
+    // efternamnet skrivet som /Efternamn/, och snedstreck går inte att ha i
+    // ett filnamn. Övriga tecken tas med av samma skäl.
+    function rensaFilnamnsdel(varde) {
+        return varde.replace(/[/\\:*?"<>|]/g, '-').trim();
+    }
+
+    function efternamnI(rubrik) {
+        const varde = sektionsfalt(sektionMed(rubrik), 'Efternamn');
+        return varde ? rensaFilnamnsdel(varde) : null;
+    }
+
+    function personnamnI(rubrik) {
+        const sektion = sektionMed(rubrik);
+        if (!sektion) return null;
+        // Tilltalsnamnet är det personen faktiskt kallas; förnamnsfältet kan
+        // rymma flera namn.
+        const delar = [
+            sektionsfalt(sektion, 'Efternamn'),
+            sektionsfalt(sektion, 'Tilltalsnamn') || sektionsfalt(sektion, 'Förnamn'),
+        ].filter(Boolean).map(rensaFilnamnsdel);
+        return delar.length ? delar.join(', ') : null;
+    }
+
+    function handlingensNamndel() {
+        // Vigsel och välsignelse gäller två personer och har sektionerna
+        // Person 1/Person 2 i stället för Personuppgifter. Där tas bara
+        // efternamnen med - båda ska synas, och med förnamnen blir filnamnet
+        // ohanterligt långt.
+        const forsta = efternamnI('Person 1');
+        if (forsta) {
+            const andra = efternamnI('Person 2');
+            return andra ? `${forsta}-${andra}` : forsta;
+        }
+        return personnamnI('Personuppgifter');
+    }
+
+    function handlingsdatum() {
+        const varde = sektionsfalt(sektionMed('Datum och tid'), 'Datum');
+        // Fältet innehåller bara datumet, men ett medföljande klockslag hade
+        // gett ett kolon som Windows inte tillåter i filnamn.
+        const traff = varde && varde.match(/\d{4}-\d{2}-\d{2}/);
+        return traff ? traff[0] : null;
+    }
+
+    function byggFilnamn(ursprung) {
+        const typ = ursprung.replace(/\.pdf$/i, '');
+        const arBlankett = BLANKETTER.indexOf(typ) >= 0;
+        if (!arBlankett && BEVIS.indexOf(typ) < 0) return null;
+        const namn = handlingensNamndel();
+        if (!namn) return null;
+        const delar = [];
+        if (arBlankett) {
+            const datum = handlingsdatum();
+            if (datum) delar.push(datum);
+        }
+        delar.push(typ, namn);
+        return `${delar.join(' - ')}.pdf`;
+    }
+
+    function dopOmNedladdningar() {
+        const original = HTMLAnchorElement.prototype.click;
+        HTMLAnchorElement.prototype.click = function () {
+            try {
+                const ursprung = this.getAttribute('download');
+                if (ursprung && installningar.blankettnamn) {
+                    const nytt = byggFilnamn(ursprung);
+                    // Går inget namn att bygga lämnas Kboks eget i fred - ett
+                    // igenkännbart filnamn är bättre än ett stympat.
+                    if (nytt) this.setAttribute('download', nytt);
+                }
+            } catch (e) {
+                console.warn('svk-kbok-enhancements: kunde inte byta filnamn', e);
+            }
+            return original.apply(this, arguments);
+        };
+    }
+
     /* ---------- Inställningspanel ----------
      *
      * Sitter som ett kugghjul i sidhuvudet, bredvid Kboks egna ikoner.
@@ -779,6 +915,10 @@
         vantar = true;
         requestAnimationFrame(() => { vantar = false; uppdatera(); });
     }).observe(document.body, { childList: true, subtree: true });
+
+    // Patchen läggs på en gång, inte i uppdatera() - den körs vid varje
+    // DOM-ändring och hade staplat lager på lager av omslutande funktioner.
+    dopOmNedladdningar();
 
     document.addEventListener('mousedown', hindraAutoscroll, true);
     document.addEventListener('auxclick', oppnaViaMittenklick, true);
