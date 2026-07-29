@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.27
+// @version      0.28
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -33,13 +33,23 @@
 (function () {
     'use strict';
 
+    /* Kör bara en gång per sida. Tampermonkey och Greasemonkey plockar båda
+     * upp .user.js-filer, så skriptet kan vara aktivt i två tillägg samtidigt.
+     * Prototyppatcharna tål det - de är idempotenta - men lyssnarna på
+     * document gör det inte: två instanser ger två keydown-lyssnare på samma
+     * tangenttryckning. Ctrl+B är den enda genvägen som gör något
+     * oåterkalleligt, och ett dubbelt klick på Bekräfta verifikat är den
+     * värsta tänkbara följden av en dubblering. */
+    if (window.__svkKbokEnhancements) return;
+    window.__svkKbokEnhancements = true;
+
     const NYCKEL = 'svk-kbok-enhancements';
     const LANK_KLASS = 'svk-kbok-nyflik';
     const RAD = '[role="row"][data-id]';
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.27';
+    const VERSION = '0.28';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -523,6 +533,12 @@
         if (!/persnr|personnummer/.test(id)) return false;
         // Sökfältet ska inte söka av sig självt medan man skriver.
         if (id === 'searchpersonnummer') return false;
+        // Huvudpersonens fält har knappen "Hämta uppgifter igen från
+        // folkbokföringen", som skriver över redigerade uppgifter.
+        // arHamtaKnapp sållar bort den på etiketten, men avsikten hör hemma
+        // här också - annars beror skyddet på att ett annat lager råkar
+        // fånga just den knappen.
+        if (/^huvudperson/.test(id)) return false;
         return true;
     }
 
@@ -1041,9 +1057,20 @@
 
     function kommIhagPersonnamn() {
         if (!/^\/personakt\/\d+$/.test(location.pathname)) return;
-        const namn = personnamnUr(document.querySelector('main'));
+        // Läsningen nedan gör flera fulla genomsökningar av main och tvingar
+        // fram omritningar via innerText. uppdatera() körs vid varje
+        // DOM-ändring, så utan den här spärren skulle samma namn läsas om vid
+        // varje hovring och menyöppning. Samma mönster som kommIhagGruppnamn.
         const pnr = synligtPersonnummer();
-        if (namn && pnr) {
+        if (!pnr) return;
+        try {
+            const sparat = JSON.parse(sessionStorage.getItem(PERSONNYCKEL) || 'null');
+            if (sparat && sparat.pnr === pnr) return;
+        } catch (e) {
+            // Trasigt värde: skriv över det nedan.
+        }
+        const namn = personnamnUr(document.querySelector('main'));
+        if (namn) {
             sessionStorage.setItem(PERSONNYCKEL, JSON.stringify({ pnr, namn }));
         }
     }
@@ -1893,27 +1920,46 @@
 
     /* ---------- Kör om vid varje DOM-ändring ---------- */
 
-    function uppdatera() {
-        laggTillMenypost();
-        if (installningar.nyflikLank) {
-            laggTillKolumnrubrik();
-            document.querySelectorAll(RAD).forEach(laggTillLank);
+    /* Varje steg körs för sig. Utan det skulle ett undantag i en funktion
+     * avbryta alla som står efter i listan - och eftersom uppdatera() körs vid
+     * varje DOM-ändring skulle avbrottet upprepas för resten av sidbesöket,
+     * tyst för den som inte har konsolen öppen. */
+    function sakert(namn, gor) {
+        try {
+            gor();
+        } catch (e) {
+            console.warn(`svk-kbok-enhancements: ${namn} misslyckades`, e);
         }
-        document.querySelectorAll(RAD).forEach(gorPersonnummerMarkerbart);
-        if (installningar.autoHamta) {
-            document.querySelectorAll('input').forEach((f) => {
-                if (arRelationsfalt(f)) kopplaAutoHamta(f);
+    }
+
+    function uppdatera() {
+        sakert('menyposten', laggTillMenypost);
+        // En query, inte två - listan används av båda stegen nedan.
+        const rader = [...document.querySelectorAll(RAD)];
+        if (installningar.nyflikLank) {
+            sakert('länkikonen', () => {
+                laggTillKolumnrubrik();
+                rader.forEach(laggTillLank);
             });
         }
-        stallInDatumTabb();
-        fokuseraDatumfalt();
-        if (installningar.blankettnamn) {
-            kommIhagGruppnamn();
-            kommIhagPersonnamn();
+        sakert('markerbart personnummer',
+            () => rader.forEach(gorPersonnummerMarkerbart));
+        if (installningar.autoHamta) {
+            sakert('auto-hämtning', () => {
+                document.querySelectorAll('input').forEach((f) => {
+                    if (arRelationsfalt(f)) kopplaAutoHamta(f);
+                });
+            });
         }
-        hanteraMiljoval();
-        tomPalysningsdatum();
-        fokuseraBekrafta();
+        sakert('datumtabb', stallInDatumTabb);
+        sakert('fokus i datumfältet', fokuseraDatumfalt);
+        if (installningar.blankettnamn) {
+            sakert('gruppnamnet', kommIhagGruppnamn);
+            sakert('personnamnet', kommIhagPersonnamn);
+        }
+        sakert('miljövalet', hanteraMiljoval);
+        sakert('pålysningsdatum', tomPalysningsdatum);
+        sakert('fokus på Bekräfta', fokuseraBekrafta);
     }
 
     /* Patcharna läggs på omedelbart, före appen hunnit köra något. Skriptet
