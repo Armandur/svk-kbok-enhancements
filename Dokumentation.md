@@ -618,8 +618,8 @@ kan ENTER ersätta OK-knappen eller annan funktion som är framhävd."*
 
 **Lediga - ingen konflikt med webbläsaren**
 
-`Ctrl + Ä`, `Ctrl + Ö`, `Ctrl + M`, `Ctrl + Y`, `Ctrl + B`, `F2`, `F3`,
-`F8`, `F9`, samt `D` i datumfält och `Enter` på markerad rad.
+`Ctrl + Ä`, `Ctrl + Ö`, `Ctrl + Y`, `Ctrl + B`, `F2`, `F3`, `F8`, `F9`,
+samt `D` i datumfält och `Enter` på markerad rad.
 
 **Kräver att webbläsarens egen funktion blockeras**
 
@@ -636,6 +636,12 @@ Funktionerna kan däremot flyttas till lediga tangenter - `Ctrl + W`
 (skapa verifikat) ligger nu på `Ctrl + Ö`.
 
 **Inte längre tillämpliga**
+
+`Ctrl + M` Ministerialboksperson hörde till systemet som fanns *före* den
+Kbok som lanserades 2003. Raden i hjälpen är alltså ett arv från en
+funktion som redan var borta när hjälpen skrevs, vilket förklarar varför
+ordet förekommer en enda gång i 3868 rader utan att någonstans beskrivas.
+Den ska inte återinföras.
 
 `F1` är märkt Windowsklient redan i gamla hjälpen. `F10` förutsätter en
 menyrad webben inte har. `Ctrl + Home/End` och `Ctrl + pilarna` bläddrade

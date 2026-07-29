@@ -94,6 +94,58 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Döp om fler rapporter än bevisen - börja med Medlemsbevis
+
+Rasmus 2026-07-30, förslag 5 i genomgången.
+
+LÄGET I DAG
+
+Personaktens Rapporter-meny har 29 poster. Bara blanketterna och de fyra bevisen (Upptagandebevis, Utträdesbevis, med och utan adress) döps om. Övriga, som Medlemsbevis och Registerutdrag, laddas ner med Kboks eget namn - alltså Medlemsbevis.pdf, och nästa blir Medlemsbevis (1).pdf.
+
+RASMUS FÖRSLAG TILL NAMNFORM
+
+  2026-07-30 - Medlemsbevis - Efternamn, Förnamn.pdf
+
+Datumet är dagen beviset togs ut, inte ett handlingsdatum - ett medlemsbevis gäller läget just då. Det skiljer det från blanketterna, som får handlingsdatum, och från in- och utträdesbevisen, som får händelsedatum när det finns.
+
+OMFATTNING
+
+Börja med Medlemsbevis. Vilka av de övriga 29 rapporterna som är värda samma behandling får undersökas senare - några är listor och urval utan en enskild person att namnge, och de ska lämnas i fred.
+
+Klart när: Medlemsbevis laddas ner med uttagsdatum, typ och namn, verifierat i Utbildningsmiljön, och Dokumentation.md säger vilka rapporter som döps om och varför datumet betyder olika saker för olika typer.
+
+- ID: `01KYQYF3V7XR5GTH3B409213AW`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Kolla om pålysningar kan öppnas i ny flik som personakter och ministerialböcker
+
+Rasmus 2026-07-30, förslag 3 i genomgången av vad mer tillägget kan göra.
+
+LÄGET I DAG
+
+Länkikonen läggs på där griden har kolumnen PERSNR (Sök personer) eller där Ministerialbokens API-svar SearchMinisterialbok ger ett personid per rad. Pålysningsboken använder gemena data-field som Ministerialboken men har ingen sådan ihopparning, så dess rader får ingen ikon.
+
+DOMÄNFÖRUTSÄTTNING FRÅN RASMUS
+
+Pålysningar registreras INTE på en personakt - de är en egen listning. Länkmålet kan alltså inte byggas som en personakt-URL med en handlingsvy på slutet, som Ministerialbokens gör. Vad en pålysning öppnas som måste tas reda på först.
+
+ATT UTREDA
+
+1. Vad appens eget dubbelklick på en pålysningsrad öppnar - vilken adress, och bär den ett id som går att bygga en länk av.
+2. Vad Pålysningsbokens sökanrop returnerar per rad, och om det finns ett id där som räcker.
+3. Om det fristående pålysningsformuläret och pålysningar knutna till en handling beter sig olika.
+
+Klart när: det är avgjort om en länkikon i Pålysningsboken går att bygga, och i så fall vad den ska peka på. Går det inte, skriv in varför i Dokumentation.md bland de listor som inte får ikon.
+
+- ID: `01KYQYEMG6WP9XPZMZ4YM2PAFZ`
+- Type: spike
+- Actor: ai:claude-code
+
+---
+
 ## [P3][done] [svk-kbok-enhancements] Länk till GitHub-repot någonstans i Kbok Plus-panelen
 
 Rasmus 2026-07-29: panelen visar version och Sök efter uppdatering längst ned, men ingenstans var tillägget kommer ifrån. Den som vill läsa vad det gör, se changeloggen i sin helhet eller anmäla något har ingen väg dit.
@@ -531,6 +583,37 @@ Klart när: någon som arbetat i desktopklienten har sagt vad kommandot gjorde, 
 
 - ID: `01KYN8RA579S8PKK3MMJ9N6XYC`
 - Type: task
+- Actor: ai:claude-code
+
+---
+
+## [P4][todo] [svk-kbok-enhancements] Få inställningsfliken att sluta skrolla på en laptopskärm
+
+Rasmus 2026-07-30, förslag 6 i genomgången.
+
+LÄGET EFTER FLIKUPPDELNINGEN (0.38)
+
+Mätt i Utbildningsmiljön vid tre viewporthöjder:
+
+  inställningsfliken  1044 px innehåll - skrollar under cirka 1100 px skärmhöjd
+  genvägsfliken        598 px innehåll - skrollar aldrig
+
+Flikuppdelningen tog panelen från cirka 1500 till 1044, men inställningsfliken skrollar alltså fortfarande på en vanlig laptopskärm.
+
+IDÉ
+
+Hopfällbara grupper (Träfflistor, Formulär, Blanketter och rapporter, Utbildningsmiljön, Tillägget, Går inte att ångra). Fällda som standard, eller alla utom den man senast rörde.
+
+AVVÄGNINGEN SOM AVGÖR
+
+Det gömmer inställningar bakom ett klick. Panelen öppnas sällan, och den som öppnar den letar oftast efter en specifik brytare - då är en rubriklista snabbare att överblicka än en skrollad kolumn. Men den som öppnar den för att se VAD som finns får svårare.
+
+Alternativ som inte gömmer något: korta etiketterna så raderna slutar radbrytas (två av dem tar två rader i dag), eller minska radavståndet mellan kryssrutorna.
+
+Klart när: inställningsfliken går att se i sin helhet på 900 px skärmhöjd utan att någon inställning blivit svårare att hitta. Verifiera med mätning av scrollHeight mot clientHeight vid 900 px, inte bara på syn.
+
+- ID: `01KYQYFNNXVJBWMZ52GZ7J95ZC`
+- Type: improvement
 - Actor: ai:claude-code
 
 ---
