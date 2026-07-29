@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.35
+// @version      0.36
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.35';
+    const VERSION = '0.36';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1744,27 +1744,45 @@
         return false;
     }
 
-    function hamtaSenasteVersion() {
+    /* Svaret cachas ett dygn så att inte varje sidladdning blir ett anrop.
+     * Panelen öppnas sällan och tvingar därför alltid en färsk kontroll -
+     * annars kan en nyss utgiven version se ut att inte finnas, vilket den
+     * gjorde när cachen hunnit fyllas strax före en utgivning.
+     */
+    function hamtaSenasteVersion(tvinga) {
         let sparat = null;
         try {
             sparat = JSON.parse(localStorage.getItem(UPPDATERINGSNYCKEL) || 'null');
         } catch (e) {
             sparat = null;
         }
-        // Ett anrop per sidladdning vore för ofta.
-        if (sparat && Date.now() - sparat.tid < DYGN) {
+        if (!tvinga && sparat && Date.now() - sparat.tid < DYGN) {
+            console.log(`svk-kbok-enhancements: senaste kända version `
+                + `${sparat.version}, kontrollerad ${new Date(sparat.tid).toLocaleString('sv')}`);
             return Promise.resolve(sparat.version);
         }
         return fetch(INSTALLATIONSURL, { cache: 'no-store' })
             .then((svar) => svar.text())
             .then((text) => {
                 const traff = text.match(/@version\s+([\d.]+)/);
-                if (!traff) return null;
+                if (!traff) {
+                    console.warn('svk-kbok-enhancements: hittade inget '
+                        + 'versionsnummer i den hämtade filen');
+                    return null;
+                }
                 localStorage.setItem(UPPDATERINGSNYCKEL,
                     JSON.stringify({ version: traff[1], tid: Date.now() }));
+                console.log(`svk-kbok-enhancements: kör ${VERSION}, `
+                    + `senaste är ${traff[1]}`);
                 return traff[1];
             })
-            .catch(() => null);
+            .catch((e) => {
+                // Utan den här raden är ett blockerat anrop omöjligt att
+                // skilja från att ingen ny version finns.
+                console.warn('svk-kbok-enhancements: kunde inte hämta '
+                    + 'versionsnumret', e);
+                return null;
+            });
     }
 
     // Läses av menyposten, som byggs om av appen och inte kan vänta på ett
@@ -1983,7 +2001,12 @@
         const fot = document.createElement('div');
         fot.style.cssText = 'display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap';
 
+        /* Dygnsspärren sätts när rutan avfärdas, inte när den visas. Sätts
+         * den vid visningen försvinner rutan i ett dygn så fort sidan laddas
+         * om, även om användaren inte hunnit läsa den. Nu återkommer den vid
+         * varje sidladdning tills man faktiskt tagit ställning. */
         function stang() {
+            localStorage.setItem(VISADNYCKEL, String(Date.now()));
             overlay.remove();
             document.removeEventListener('keydown', viaEscape, true);
         }
@@ -2027,7 +2050,6 @@
             if (!senaste || !arNyare(senaste, VERSION)) return;
             const visad = Number(localStorage.getItem(VISADNYCKEL) || 0);
             if (Date.now() - visad < DYGN) return;
-            localStorage.setItem(VISADNYCKEL, String(Date.now()));
             byggUppdateringsruta(senaste);
         });
     }
@@ -2216,6 +2238,18 @@
         ruta.appendChild(fot);
 
         if (installningar.kollaUppdatering) {
+            // Panelen öppnas sällan, så den frågar alltid GitHub på nytt i
+            // stället för att lita på dygnscachen.
+            hamtaSenasteVersion(true).then((senaste) => {
+                senasteVersion = senaste;
+                if (!senaste || !arNyare(senaste, VERSION)) return;
+                ver.textContent = `Version ${VERSION} - ${senaste} finns`;
+                ver.style.color = ACCENT;
+                ver.style.fontWeight = '600';
+                uppdatera_lank.textContent = `Uppdatera till ${senaste}`;
+                laggTillMenypost();
+            });
+
             const visa = document.createElement('a');
             visa.href = '#';
             visa.textContent = 'Visa ändringar';

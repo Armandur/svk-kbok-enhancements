@@ -32,8 +32,16 @@ faktiskt räknas upp vid varje ändring.
 Finns en nyare version säger skriptet till med en ruta, en gång per dygn.
 Den har tre val: **Uppdatera**, som öppnar skriptet så att tillägget visar sin
 egen dialog, **Visa ändringar**, som öppnar changeloggen i en egen ruta ovanpå, och
-**Senare**, som skjuter upp till nästa dygn i stället för till nästa
-sidladdning.
+**Senare**, som skjuter upp till nästa dygn.
+
+Rutan återkommer vid varje sidladdning tills man tagit ställning - att bara
+ladda om räknas inte som att ha sett den. Dygnsspärren börjar när man
+avfärdar rutan, inte när den visas.
+
+Versionsnumret cachas ett dygn så att inte varje sidladdning blir ett anrop.
+Panelen öppnas sällan och frågar därför alltid på nytt; annars kan en nyss
+utgiven version se ut att inte finnas, om cachen hunnit fyllas strax före
+utgivningen. Vad kontrollen kom fram till loggas i konsolen.
 
 Changeloggen renderas som markdown - rubriker, listor, fetstil, kod och
 länkar. Filen är repots egen och använder bara en handfull element, så en
