@@ -1,5 +1,39 @@
 # Backlog Export
 
+## [P2][todo] [svk-kbok-enhancements] Auto-hämta utlöses inte när personnumret skrivs för hand
+
+Rasmus 2026-07-29, efter att kryssknappsbuggen rättats i 0.9.
+
+SYMPTOM
+
+Auto-hämtningen går igång vid inklistring men inte när numret skrivs in tecken för tecken.
+
+VAD SOM ÄR VERIFIERAT
+
+Inklistring fungerar - mätt i Utbildningsmiljön på Inträde: fältet behåller numret och personen hämtas. Testerna använde Playwrights fill(), som sätter hela värdet på en gång, alltså samma sak som en inklistring. Handskrivning testades med type(delay=25) FÖRE kryssknappsfixen och kördes aldrig om efteråt - den vägen är alltså obevisad, och Rasmus rapport pekar på att den inte fungerar.
+
+TROLIGA ORSAKER ATT UNDERSÖKA
+
+1. Fördröjningen. Klicket ligger i en setTimeout på 250 ms med kontrollen att faltets värde fortfarande är detsamma. Den som skriver klart och fortsätter röra fältet - eller vars sista tangenttryck kommer strax efter - får värdet ändrat innan timern löper ut, och klicket avbryts med flit. Vid inklistring uppstår aldrig den kapplöpningen.
+
+2. Mellanlägen i regexen. KOMPLETT_PNR är /^(\\d{8}|\\d{6})-?\\d{4}$/. Skrivs numret utan bindestreck passerar 12 siffror som en träff, men om fältet formaterar om värdet medan man skriver kan matchningen ske i ett läge där appens eget tillstånd ännu inte hunnit med.
+
+3. svkKbokHamtat-spärren. Den lagrar det senast hämtade värdet och hindrar en ny hämtning för samma nummer. Träffar regexen ett mellanläge som sedan blir det slutliga numret, är spärren redan satt och den riktiga hämtningen uteblir.
+
+Punkt 3 är den troligaste: den är helt osynlig utåt och ger precis det här symptomet.
+
+ATT GÖRA
+
+Kör diagnostiken i Utbildningsmiljön med type(delay=...) mot Inträde och ett relationsfält, logga varje input-event med värde, regexträff, spärrvärde och om klicket faktiskt utfördes. Det avgör mellan de tre.
+
+Klart när: hämtningen går igång både vid inklistring och vid handskrivning, verifierat på Inträde och ett vårdnadshavarefält.
+
+- ID: `01KYPB61EN3WZ4Y3TN7FKBEHGZ`
+- Type: bug
+- Actor: ai:claude-code
+
+---
+
 ## [P2][todo] [svk-kbok-enhancements] Gör adressen obligatorisk även i övriga kyrkliga handlingar, som stop-gap
 
 Rasmus 2026-07-29. Kandidaten som redan står som Kartlagd fälla 3 i README, nu uttryckligen önskad som funktion i skriptet.
@@ -56,6 +90,44 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 - ID: `01KYNCHTA80GCT91Z0JGH6VJEY`
 - Type: task
+- Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Inställning: fyll ut tiosiffrigt personnummer till tolv siffror automatiskt
+
+Rasmus 2026-07-29: skriver man bara tio siffror ska tillägget kunna fylla ut numret automatiskt.
+
+ÖNSKEMÅLET
+
+9007092399 -> 199007092399. Sparar fyra tangenttryck per personnummer, och tio siffror är det man har i huvudet.
+
+FRÅGA SOM MÅSTE AVGÖRAS FÖRST
+
+Rasmus skrev '19', men det stämmer inte generellt. Kbok registrerar dop av barn födda på 2000-talet varje dag - 0501012389 ska bli 200501012389, inte 190501012389. Ett hårdkodat 19 skulle alltså slå fel på precis den grupp som är vanligast i dopboken.
+
+Tre vägar:
+
+1. Härled seklet ur årtalet: är YY större än innevarande tvåsiffriga år blir det 19, annars 20. Rätt i normalfallet men fel för den som fyllt hundra - och hundraåringar förekommer i begravningsboken.
+
+2. Låt plustecknet avgöra. Folkbokföringen skriver + i stället för bindestreck när personen fyllt 100. Finns det tecknet är seklet entydigt; saknas det gäller regel 1. Kontrollera om Kboks fält alls tar emot plustecken.
+
+3. Fråga alltid när det är tvetydigt. Säkrast men äter upp vinsten med funktionen.
+
+Rasmus avgör vilken. Väg 2 är den som är både korrekt och tyst i normalfallet.
+
+ATT TÄNKA PÅ VID BYGGET
+
+Utfyllnaden måste ske innan auto-hämtningen (TASK-521) läser fältet, annars hämtas fel person eller ingen alls. Värdet ska skrivas på Reacts sätt - prototypens value-setter plus input-händelse - samma mönster som skrivDagensDatum använder, annars ser fältet ifyllt ut medan appens tillstånd är tomt.
+
+Fältet kan formatera om värdet självt. Kontrollera vad som händer när tolv siffror skrivs in i ett fält vars placeholder är ÅÅÅÅMMDD-NNNN.
+
+Inställning i panelen, rimligen på som standard om seklet kan härledas säkert - annars av.
+
+Klart när: tio siffror blir tolv med rätt sekel, beslutet om sekelregeln är nedskrivet med motivering, och beteendet är verifierat i Utbildningsmiljön för en person född på 1900-talet och en född på 2000-talet.
+
+- ID: `01KYPB70QDFSYFQS42VFAMQA5M`
+- Type: feature
 - Actor: ai:claude-code
 
 ---
