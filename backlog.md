@@ -60,6 +60,32 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Ctrl+B som genväg för Bekräfta verifikat
+
+Rasmus 2026-07-29.
+
+VAD SOM SKA BYGGAS
+
+En femte post i KOMMANDON, med samma mönster som de befintliga: kor: () => klickaKnappMedText('Bekräfta verifikat'), standard Ctrl+B. Genvägen blir därmed ominspelningsbar i panelen som de andra.
+
+Ctrl+B är ledigt i webbläsaren i praktiken - Chrome använder det inte, Firefox öppnar bokmärkesfältet men släpper igenom preventDefault. Kontrollera vid bygget att fångsten fungerar, som gjordes för Ctrl+U.
+
+VIKTIGT: DEN HÄR ÄR INTE SOM DE ANDRA
+
+Att bekräfta ett verifikat är slutregistrering och går inte att ångra. De befintliga genvägarna gör saker som går att backa - spara, öppna ett formulär, byta församling. Den här gör det inte.
+
+Av samma skäl är inställningen fokusBekraftaVerifikat av som standard: en fokuserad knapp plus ett reflexmässigt Enter bedömdes som en obehaglig kombination. En genväg har samma karaktär, fast med en tangentkombination som är svårare att trycka av misstag.
+
+Att väga vid bygget: ska genvägen vara på som standard, eller följa fokusinställningen och vara medvetet påslagen? Ska den kräva en bekräftelse, eller vore det att bygga bort själva poängen? Rasmus avgör - men beslutet ska skrivas ned med motiveringen, som för fokusinställningen.
+
+Klart när: genvägen finns, går att spela om, står i README:s genvägstabell med samma varning som fokusinställningen har, och beteendet är verifierat i Utbildningsmiljön.
+
+- ID: `01KYPACJXMW85QW9CHNW86VH67`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
 ## [P3][todo] [svk-kbok-enhancements] Visa xlsx-rapporter inline i samma ruta som PDF-blanketterna
 
 Rasmus 2026-07-29, följdfråga till TASK-516: går det att visa xlsx-filer i rutan på samma sätt som PDF:erna?
