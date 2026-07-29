@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.20
+// @version      0.21
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.20';
+    const VERSION = '0.21';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -730,6 +730,20 @@
     const BLANKETTER = ['Dopblankett', 'Konfirmationsblankett', 'Vigselblankett',
         'Välsignelseblankett', 'Begravningsblankett'];
     const BEVIS = ['Upptagandebevis', 'Utträdesbevis'];
+
+    /* Bevisen finns i två varianter, med och utan adress, och Kbok döper
+     * filerna därefter - Upptagandebevis_med_adress.pdf. Varianten säger
+     * inget om vad beviset gäller, bara hur det är utformat, så båda får
+     * grundnamnet. Kboks egen term behålls: Upptagandebevis, inte
+     * Inträdesbevis.
+     *
+     * Suffixet matchas både med mellanslag och understreck, eftersom
+     * menyposten och filnamnet skrivs olika.
+     */
+    function bevisnamn(typ) {
+        const utan = typ.replace(/[_ ]med[_ ]adress$/i, '');
+        return BEVIS.indexOf(utan) >= 0 ? utan : null;
+    }
     const GRUPPBLANKETT = 'Konfirmationsblankett_för_verksamhetsgrupp';
     const GRUPPNYCKEL = 'svk-kbok-gruppnamn';
     const GRUPPKALLA = 'svk-kbok-gruppkalla';
@@ -928,7 +942,8 @@
         const typ = ursprung.replace(/\.pdf$/i, '');
         if (typ === GRUPPBLANKETT) return gruppfilnamn();
         const arBlankett = BLANKETTER.indexOf(typ) >= 0;
-        if (!arBlankett && BEVIS.indexOf(typ) < 0) return null;
+        const bevis = arBlankett ? null : bevisnamn(typ);
+        if (!arBlankett && !bevis) return null;
         const namn = handlingensNamndel();
         if (!namn) return null;
         const delar = [];
@@ -942,7 +957,7 @@
             const handelse = handelsedatum();
             if (handelse) delar.push(handelse);
         }
-        delar.push(typ, namn);
+        delar.push(arBlankett ? typ : bevis, namn);
         return `${delar.join(' - ')}.pdf`;
     }
 

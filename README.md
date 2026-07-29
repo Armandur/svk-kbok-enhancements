@@ -250,6 +250,18 @@ Bevisen ligger i personaktens Rapporter-meny, som har 29 poster mot
 handlingspostens fem. Bara de som står i listan ovan döps om - övriga
 rapporter, som Medlemsbevis och Registerutdrag, lämnas som de är.
 
+Bevisen finns i två varianter, med och utan adress. Varianten säger inget
+om vad beviset gäller, bara hur det är utformat, så båda får grundnamnet:
+
+```
+Upptagandebevis             ->  Upptagandebevis - Persson, Emil.pdf
+Upptagandebevis med adress  ->  Upptagandebevis - Persson, Emil.pdf
+Utträdesbevis               ->  Utträdesbevis - Persson, Emil.pdf
+Utträdesbevis med adress    ->  Utträdesbevis - Persson, Emil.pdf
+```
+
+Kboks egen term behålls - `Upptagandebevis`, inte Inträdesbevis.
+
 Verifierat genom injektion: Dop, Konfirmation, Vigsel och Begravning samt
 bevisen i Utbildningsmiljön, Välsignelse och gruppblanketten i testmiljön (som är
 enda miljön med en välsignelsepost och en konfirmationsgrupp med
