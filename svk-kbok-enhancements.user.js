@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.22
+// @version      0.23
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.22';
+    const VERSION = '0.23';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -58,6 +58,7 @@
         markerbartPersonnummer: true,
         dagensDatum: true,
         fokusDatum: true,
+        kravAdress: true,
         blankettnamn: true,
         minnsMiljo: true,
         // Av som standard: Kbok laddar ner direkt, och den som vill ha
@@ -82,6 +83,7 @@
         markerbartPersonnummer: 'Personnumret går att markera utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
         fokusDatum: 'Sätt fokus i datumfältet vid in- och utträde',
+        kravAdress: 'Stoppa Skapa verifikat när adressen saknas - Kbok kräver den bara i dop',
         blankettnamn: 'Döp om till handlingsdatum, typ och namn',
         minnsMiljo: 'Kom ihåg miljövalet, så det inte behöver göras om i varje ny flik',
         visaBlankett: 'Visa i en ruta med Skriv ut och Ladda ner i stället för att ladda ner direkt',
@@ -99,7 +101,7 @@
           nycklar: ['nyflikLank', 'mittenklick', 'markerbartPersonnummer'] },
         { rubrik: 'Formulär',
           nycklar: ['autoHamta', 'hoppaOverDatumvaljare', 'dagensDatum',
-              'fokusDatum', 'tomPalysningsdatum'] },
+              'fokusDatum', 'kravAdress', 'tomPalysningsdatum'] },
         { rubrik: 'Blanketter och rapporter',
           nycklar: ['blankettnamn', 'visaBlankett'] },
         { rubrik: 'Utbildningsmiljön',
@@ -684,6 +686,80 @@
             hjalp.dataset.svkKbokDoltFel = '1';
             hjalp.style.visibility = 'hidden';
         }
+    }
+
+    /* ---------- Adressen obligatorisk i alla kyrkliga handlingar ----------
+     *
+     * Kbok stoppar verifikatet om adressen saknas i Dop, men släpper igenom
+     * Konfirmation, Vigsel, Välsignelse och Begravning - trots att postadress
+     * och folkbokföringsadress ska registreras för varje kyrklig handling
+     * enligt SvKB 2009:9, 3 kap.
+     *
+     * Kontrollen sitter på Skapa verifikat, inte på Spara. Det speglar hur
+     * dopet redan fungerar: den preliminära posten får skapas, men verifikatet
+     * stoppas tills adressen finns. Att blockera Spara hade hindrat själva
+     * registreringen, vilket är ett större ingrepp än Kbok själv gör.
+     *
+     * Adressen visas som en sektion med rubriken "Adress vid <handling>" i
+     * ett h6, följd av gatuadress och postort. Saknas adressen står rubriken
+     * ensam - det är hela signalen, och den är entydig:
+     *
+     *   med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
+     *   utan:        ['Adress vid dop']
+     *
+     * Dop undantas: där gör Kbok redan kontrollen, och två varningar om samma
+     * sak vore bara förvirrande.
+     *
+     * Att kontrollen sitter på Skapa verifikat gör också att den aldrig kan
+     * träffa personakten, som inte har någon sådan knapp.
+     */
+
+    const ADRESSFEL = 'svk-kbok-adressfel';
+
+    function adressektioner() {
+        const rot = document.querySelector('main');
+        if (!rot) return [];
+        return [...rot.querySelectorAll('*')].filter(
+            (el) => el.children.length === 0
+                && /^Adress vid /.test((el.textContent || '').trim()));
+    }
+
+    function saknadeAdresser() {
+        return adressektioner().filter((rubrik) => {
+            // Dopet sköts av Kbok självt.
+            if (/^Adress vid dop$/i.test((rubrik.textContent || '').trim())) return false;
+            let box = rubrik;
+            for (let i = 0; i < 4 && box.parentElement; i++) box = box.parentElement;
+            const rader = (box.innerText || '').split('\n')
+                .map((s) => s.trim()).filter(Boolean);
+            // Bara rubriken kvar betyder att ingen adress är registrerad.
+            return rader.length <= 1;
+        });
+    }
+
+    function visaAdressfel(rubrik) {
+        if (rubrik.parentElement
+            && rubrik.parentElement.querySelector('.' + ADRESSFEL)) return;
+        const rad = document.createElement('p');
+        rad.className = ADRESSFEL;
+        rad.textContent = 'Adress saknas. Postadress och folkbokföringsadress ska '
+            + 'registreras för varje kyrklig handling (SvKB 2009:9, 3 kap.).';
+        rad.style.cssText = `color:${ACCENT};font-size:.8rem;line-height:1.4;`
+            + 'margin:.3rem 0 0;font-weight:600';
+        rubrik.insertAdjacentElement('afterend', rad);
+    }
+
+    function kravAdressVidVerifikat(e) {
+        if (!installningar.kravAdress) return;
+        const knapp = e.target.closest && e.target.closest('button');
+        if (!knapp || (knapp.innerText || '').trim() !== 'Skapa verifikat') return;
+        const saknade = saknadeAdresser();
+        if (!saknade.length) return;
+        // Stoppas i capture-fasen, innan appens egen hanterare hinner köra.
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        saknade.forEach(visaAdressfel);
+        saknade[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
 
     /* ---------- Fokus i datumfältet vid in- och utträde ----------
@@ -1648,6 +1724,7 @@
             requestAnimationFrame(() => { vantar = false; uppdatera(); });
         }).observe(document.body, { childList: true, subtree: true });
 
+        document.addEventListener('click', kravAdressVidVerifikat, true);
         document.addEventListener('mousedown', hindraAutoscroll, true);
         document.addEventListener('auxclick', oppnaViaMittenklick, true);
         document.addEventListener('keydown', hanteraGenvag, true);

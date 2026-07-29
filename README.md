@@ -43,6 +43,7 @@ utan att man behöver vänta på nästa automatiska kontroll.
 | Filnamn på blanketter | Döper nedladdade blanketter och bevis efter handlingsdatum, typ och namn i stället för bara typen. Se nedan. | På |
 | Minns miljövalet | Fyller i senast valda miljön i Utbildningsmiljön, så den inte behöver väljas om i varje ny flik. Se nedan. | På |
 | Visa blanketten i stället | Visar PDF:en i en ruta med Skriv ut och Ladda ner, i stället för att ladda ner den direkt. Se nedan. | **Av** |
+| Adress krävs för verifikat | Stoppar **Skapa verifikat** när adressen saknas i konfirmation, vigsel, välsignelse eller begravning. Se nedan. | På |
 | Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. Valideringsfelet döljs tills fältet rörts, se nedan. | **Av** |
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
@@ -173,6 +174,34 @@ hjälptext följer med.
 Verifierat att länken pekar dit appens eget dubbelklick går, i både
 Ministerialboken och Sök personer. Startsidans tre verifikatflikar får
 ingen ikon alls - där finns inget personakt-id att bygga av.
+
+### Om adresskravet
+
+Kbok stoppar verifikatet om adressen saknas i **Dop**, men släpper igenom
+Konfirmation, Vigsel, Välsignelse och Begravning - trots att postadress och
+folkbokföringsadress ska registreras för varje kyrklig handling enligt
+SvKB 2009:9, 3 kap.
+
+Skriptet stoppar **Skapa verifikat** i de fyra övriga. Den preliminära
+posten får skapas som vanligt; det är verifikatet som hålls tillbaka. Det
+speglar hur dopet redan fungerar - att blockera Spara hade hindrat själva
+registreringen, vilket är ett större ingrepp än Kbok själv gör.
+
+Adressen visas som en sektion med rubriken `Adress vid <handling>` i ett
+`h6`, följd av gatuadress och postort. Saknas adressen står rubriken ensam,
+och det är hela signalen:
+
+```
+med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
+utan:        ['Adress vid dop']
+```
+
+Dop undantas - där gör Kbok redan kontrollen, och två varningar om samma sak
+vore bara förvirrande. Att kontrollen sitter på Skapa verifikat gör dessutom
+att den aldrig kan träffa personakten, som inte har någon sådan knapp.
+
+Går adressen av något skäl inte att fylla i får inställningen stängas av;
+skriptet kan inte veta om det finns ett giltigt skäl att lämna den tom.
 
 ### Om fokus i datumfältet
 
