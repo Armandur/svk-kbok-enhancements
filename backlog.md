@@ -94,7 +94,7 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Sätt fokus i datumfältet när in- eller utträdesformuläret är klart
+## [P3][doing] [svk-kbok-enhancements] Sätt fokus i datumfältet när in- eller utträdesformuläret är klart
 
 Rasmus 2026-07-29.
 
