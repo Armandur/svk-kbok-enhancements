@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.36
+// @version      0.37
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.36';
+    const VERSION = '0.37';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1861,6 +1861,8 @@
         const yta = document.createElement('div');
         let lista = null;
         let forstaRubrikPasserad = false;
+        let nyttAvsnitt = false;
+        let nagotNytt = false;
 
         vikBlock(md).forEach(({ text }) => {
             const rubrik = text.match(/^(#{1,4})\s+(.*)$/);
@@ -1878,6 +1880,20 @@
                 h.style.cssText = rubrik[1].length <= 2
                     ? `font-size:1rem;margin:1.2rem 0 .3rem;color:${ACCENT}`
                     : 'font-size:.92rem;margin:.9rem 0 .2rem';
+                // En versionsrubrik nyare än den körande gäller något
+                // användaren ännu inte har. Har man hoppat över flera
+                // versioner är det annars svårt att se var ens egen slutar.
+                const version = rubrik[2].trim().match(/^\d+(\.\d+)*$/);
+                nyttAvsnitt = !!version && arNyare(version[0], VERSION);
+                if (nyttAvsnitt) {
+                    nagotNytt = true;
+                    const markering = document.createElement('span');
+                    markering.textContent = ' nytt';
+                    markering.style.cssText = `background:${ACCENT};color:#fff;`
+                        + 'font-size:.65rem;padding:.1rem .4rem;border-radius:999px;'
+                        + 'margin-left:.4rem;vertical-align:middle;font-weight:600';
+                    h.appendChild(markering);
+                }
                 yta.appendChild(h);
                 return;
             }
@@ -1900,6 +1916,12 @@
             markeraInline(text, stycke);
             yta.appendChild(stycke);
         });
+        if (nagotNytt) {
+            const notis = document.createElement('p');
+            notis.textContent = `Märkta avsnitt är nyare än din version (${VERSION}).`;
+            notis.style.cssText = 'margin:0 0 .8rem;color:#6b6862;font-size:.85rem';
+            yta.insertBefore(notis, yta.firstChild);
+        }
         return yta;
     }
 

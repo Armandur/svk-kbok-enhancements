@@ -43,6 +43,10 @@ Panelen öppnas sällan och frågar därför alltid på nytt; annars kan en nyss
 utgiven version se ut att inte finnas, om cachen hunnit fyllas strax före
 utgivningen. Vad kontrollen kom fram till loggas i konsolen.
 
+I changeloggen märks de versioner som är nyare än den man kör, med en notis
+högst upp om vad märkningen betyder. Har man hoppat över flera versioner är
+det annars svårt att se var ens egen slutar.
+
 Changeloggen renderas som markdown - rubriker, listor, fetstil, kod och
 länkar. Filen är repots egen och använder bara en handfull element, så en
 fullständig parser vore överdrift, men innehållet byggs som DOM-noder och
