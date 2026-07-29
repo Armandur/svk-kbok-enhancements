@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.9
+// @version      0.10
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.9';
+    const VERSION = '0.10';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -58,6 +58,9 @@
         markerbartPersonnummer: true,
         dagensDatum: true,
         blankettnamn: true,
+        // Av som standard: Kbok laddar ner direkt, och den som vill ha
+        // desktopklientens läge-först slår på det medvetet.
+        visaBlankett: false,
         // Av som standard: förifyllningen är Kboks avsedda beteende, och
         // nästa söndag är rätt gissning i de flesta fall.
         tomPalysningsdatum: false,
@@ -77,6 +80,7 @@
         markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
         blankettnamn: 'Döp om nedladdade blanketter och bevis till handlingsdatum, typ och namn',
+        visaBlankett: 'Visa blanketten i en ruta med Skriv ut och Ladda ner i stället för att ladda ner den direkt',
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar (irreversibelt)',
         genvagarPa: 'Tangentbordsgenvägar',
@@ -738,8 +742,131 @@
         return `${delar.join(' - ')}.pdf`;
     }
 
+    /* ---------- Visa blanketten i stället för att ladda ner den ----------
+     *
+     * Kbok laddar ner blanketten direkt när den väljs i Rapporter-menyn. Den
+     * som bara vill läsa eller skriva ut får då en fil att städa bort efteråt.
+     *
+     * Rutan visar PDF:en ovanpå Kbok med tre val: skriva ut, ladda ner eller
+     * stänga. Att i stället öppna blob-URL:en i en ny flik hade varit mindre
+     * kod, men webbläsarens Spara som föreslår då blob-URL:ens GUID som
+     * filnamn - och hela filnamnsbygget ovan hade varit bortkastat.
+     */
+
+    // Sparas innan patchen läggs på, så rutans egen nedladdning inte går
+    // genom den och byter namn en gång till.
+    const ORIGINALKLICK = HTMLAnchorElement.prototype.click;
+
+    function laddaNer(url, filnamn) {
+        const lank = document.createElement('a');
+        lank.href = url;
+        lank.download = filnamn;
+        document.body.appendChild(lank);
+        ORIGINALKLICK.call(lank);
+        lank.remove();
+    }
+
+    function byggBlankettruta(url, filnamn) {
+        const overlay = document.createElement('div');
+        overlay.id = 'svk-kbok-blankett';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);'
+            + 'display:flex;align-items:center;justify-content:center;padding:min(2rem,4vw)';
+
+        const ruta = document.createElement('div');
+        ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
+            + 'width:min(60rem,100%);height:100%;display:flex;flex-direction:column;'
+            + 'box-shadow:0 8px 32px rgba(0,0,0,.25);overflow:hidden;'
+            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+
+        const huvud = document.createElement('div');
+        huvud.style.cssText = 'display:flex;align-items:center;padding:.9rem 1.2rem;'
+            + 'border-bottom:1px solid #e5e2dc';
+        const namn = document.createElement('span');
+        namn.textContent = filnamn;
+        namn.style.cssText = 'flex:1;font-weight:600;overflow:hidden;'
+            + 'text-overflow:ellipsis;white-space:nowrap';
+        huvud.appendChild(namn);
+        ruta.appendChild(huvud);
+
+        const ram = document.createElement('iframe');
+        // toolbar=0 döljer webbläsarens egen verktygsrad i PDF-visaren. Dess
+        // nedladdningsknapp föreslår blob-URL:ens GUID som filnamn, alltså
+        // precis den fälla rutan finns till för att undvika. Zoom fungerar
+        // ändå med Ctrl och scrollhjulet.
+        ram.src = `${url}#toolbar=0&navpanes=0`;
+        ram.style.cssText = 'flex:1;width:100%;border:0';
+        ruta.appendChild(ram);
+
+        const fot = document.createElement('div');
+        fot.style.cssText = 'display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;'
+            + 'padding:.9rem 1.2rem;border-top:1px solid #e5e2dc';
+
+        function stang() {
+            overlay.remove();
+            document.removeEventListener('keydown', viaEscape, true);
+            // Blobben är skriptets egen kopia, ingen annan använder den.
+            URL.revokeObjectURL(url);
+        }
+
+        function viaEscape(e) {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                stang();
+            }
+        }
+
+        [
+            ['Skriv ut', true, () => {
+                try {
+                    ram.contentWindow.focus();
+                    ram.contentWindow.print();
+                } catch (e) {
+                    console.warn('svk-kbok-enhancements: kunde inte skriva ut', e);
+                }
+            }],
+            ['Ladda ner', true, () => laddaNer(url, filnamn)],
+            ['Stäng', false, stang],
+        ].forEach(([text, primar, gor]) => {
+            const knapp = document.createElement('button');
+            knapp.type = 'button';
+            knapp.textContent = text;
+            knapp.style.cssText = 'padding:.45rem 1.1rem;border-radius:6px;cursor:pointer;'
+                + 'font:inherit;font-weight:600;white-space:nowrap;'
+                + (primar
+                    ? `background:${ACCENT};color:#fff;border:1px solid ${ACCENT}`
+                    : `background:#fff;color:${ACCENT};border:1px solid ${ACCENT}`);
+            if (primar) {
+                knapp.addEventListener('mouseenter', () => { knapp.style.background = ACCENT_HOVER; });
+                knapp.addEventListener('mouseleave', () => { knapp.style.background = ACCENT; });
+            }
+            knapp.addEventListener('click', gor);
+            fot.appendChild(knapp);
+        });
+
+        ruta.appendChild(fot);
+        overlay.appendChild(ruta);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) stang();
+        });
+        document.addEventListener('keydown', viaEscape, true);
+        document.body.appendChild(overlay);
+    }
+
+    function visaBlankett(url, filnamn) {
+        // Egen kopia av blobben: appen tar bort länken direkt efter klicket
+        // och kan återkalla sin blob-URL, och då hade ramen visat en tom sida.
+        fetch(url)
+            .then((svar) => svar.blob())
+            .then((blob) => byggBlankettruta(URL.createObjectURL(blob), filnamn))
+            .catch((e) => {
+                // Går blobben inte att läsa är en nedladdning bättre än
+                // ingenting - annars hade klicket bara försvunnit.
+                console.warn('svk-kbok-enhancements: kunde inte visa blanketten', e);
+                laddaNer(url, filnamn);
+            });
+    }
+
     function dopOmNedladdningar() {
-        const original = HTMLAnchorElement.prototype.click;
         HTMLAnchorElement.prototype.click = function () {
             try {
                 const ursprung = this.getAttribute('download');
@@ -749,10 +876,16 @@
                     // igenkännbart filnamn är bättre än ett stympat.
                     if (nytt) this.setAttribute('download', nytt);
                 }
+                if (ursprung && installningar.visaBlankett && this.href) {
+                    visaBlankett(this.href, this.getAttribute('download') || ursprung);
+                    // Nedladdningen hoppas över - rutan har en egen knapp för
+                    // den som ändå vill spara filen.
+                    return undefined;
+                }
             } catch (e) {
                 console.warn('svk-kbok-enhancements: kunde inte byta filnamn', e);
             }
-            return original.apply(this, arguments);
+            return ORIGINALKLICK.apply(this, arguments);
         };
     }
 

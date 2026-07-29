@@ -41,6 +41,7 @@ utan att man behöver vänta på nästa automatiska kontroll.
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
 | D för dagens datum | `D` i ett tomt datumfält fyller i dagens datum, som i desktopklienten. Formatet läses ur fältets placeholder - dödsdatum vill ha ÅÅÅÅMMDD, övriga ÅÅÅÅ-MM-DD. | På |
 | Filnamn på blanketter | Döper nedladdade blanketter och bevis efter handlingsdatum, typ och namn i stället för bara typen. Se nedan. | På |
+| Visa blanketten i stället | Visar PDF:en i en ruta med Skriv ut och Ladda ner, i stället för att ladda ner den direkt. Se nedan. | **Av** |
 | Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. Valideringsfelet döljs tills fältet rörts, se nedan. | **Av** |
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
@@ -135,6 +136,27 @@ sträng går inte att dela i förnamn och efternamn med säkerhet. Namnet tas
 därför med från personakten, som är enda vägen in i utträdet, tillsammans
 med personnumret så att en kvarglömd post inte kan sätta fel namn på
 någon annans bevis.
+
+### Om visningsrutan
+
+Kbok laddar ner blanketten direkt när den väljs i Rapporter-menyn. Den
+som bara vill läsa eller skriva ut får då en fil att städa bort efteråt.
+
+Med inställningen på visas PDF:en i stället i en ruta ovanpå Kbok, med
+tre val: **Skriv ut**, **Ladda ner** och **Stäng**. Escape och klick
+utanför stänger också.
+
+Att i stället öppna blob-URL:en i en ny flik hade varit mindre kod, men
+webbläsarens Spara som föreslår då blob-URL:ens GUID som filnamn - alltså
+precis det filnamnsbytet ovan finns till för att undvika. Av samma skäl
+döljs webbläsarens egen verktygsrad i PDF-visaren med `#toolbar=0`; dess
+nedladdningsknapp har samma problem. Zoom fungerar ändå med Ctrl och
+scrollhjulet.
+
+Rutan hämtar en egen kopia av blobben med `fetch` innan den visas. Appen
+tar bort länken direkt efter klicket och kan återkalla sin blob-URL, och
+då hade ramen visat en tom sida. Går blobben inte att läsa laddas filen
+ner som vanligt i stället - ett klick ska aldrig bara försvinna.
 
 ### Genvägar
 
