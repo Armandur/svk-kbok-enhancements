@@ -387,7 +387,20 @@ ner som vanligt i stället - ett klick ska aldrig bara försvinna.
 | `Ctrl + Ö` | Skapa verifikat | `Ctrl + W`, som i webbläsaren stänger fliken |
 | `Ctrl + U` | Utträde | `Ctrl + U` - blockerar webbläsarens Visa källkod |
 | `F8` | Byt församling | `F8` |
+| `F9` | Blankett för handlingen man står i | Fanns inte |
 | `Ctrl + B` | **Bekräfta verifikat** - slutregistrering, går inte att ångra | Fanns inte |
+
+`F9` hämtar blanketten för den handling man står i, utan att gå via
+Rapporter-menyn. Den valda fliken bär handlingens namn med `bok` på slutet -
+Dopbok, Vigselbok, Begravningsbok - och blanketten heter samma sak med
+`blankett` i stället. Det gör att vigsel och välsignelse går att skilja åt
+trots att de delar URL: fliken heter `Vigselbok` respektive
+`Välsignelsebok`.
+
+Blanketten hämtas genom att öppna menyn och klicka posten, alltså samma väg
+som för hand - filnamnsbytet och visningsrutan gäller därför utan att
+genvägen behöver känna till dem. Står man på Personakt-fliken händer
+ingenting; den har ingen blankett.
 
 `Ctrl + B` är den enda genvägen som gör något oåterkalleligt. De övriga går
 att backa - ett verifikat kan avvisas, ett formulär stängas - men en

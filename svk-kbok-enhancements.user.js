@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.28
+// @version      0.29
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.28';
+    const VERSION = '0.29';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -151,6 +151,12 @@
             gammal: 'Ctrl+U i gamla Kbok - blockerar webbläsarens Visa källkod',
             kor: () => klickaKnappMedText('Utträde'),
         },
+        blankett: {
+            etikett: 'Blankett för handlingen',
+            standard: 'F9',
+            gammal: 'Fanns inte i gamla Kbok',
+            kor: hamtaAktuellBlankett,
+        },
         // Den enda genvägen som gör något oåterkalleligt. De övriga går att
         // backa - ett verifikat kan avvisas, ett formulär stängas - men en
         // bekräftelse är slutregistrering. Markeras därför i panelen.
@@ -162,6 +168,44 @@
             kor: () => klickaKnappMedText('Bekräfta verifikat'),
         },
     };
+
+    /* Blanketten för den handling man står i.
+     *
+     * Den valda fliken bär handlingens namn med "bok" på slutet - Dopbok,
+     * Vigselbok, Begravningsbok - och blanketten heter samma sak med
+     * "blankett" i stället. Det gör att vigsel och välsignelse går att skilja
+     * åt, trots att de delar URL: fliken heter Vigselbok respektive
+     * Välsignelsebok.
+     *
+     * Blanketten hämtas genom att öppna Rapporter-menyn och klicka posten,
+     * alltså samma väg som för hand. Filnamnsbytet och visningsrutan gäller
+     * därför utan att den här funktionen behöver veta om dem.
+     */
+
+    function aktuellBlankett() {
+        const vald = [...document.querySelectorAll('[role="tab"]')].find(
+            (t) => t.getAttribute('aria-selected') === 'true');
+        const namn = vald ? (vald.innerText || '').trim() : '';
+        // Personakt-fliken slutar inte på "bok" och har ingen blankett.
+        return /bok$/.test(namn) ? `${namn.replace(/bok$/, '')}blankett` : null;
+    }
+
+    function hamtaAktuellBlankett() {
+        const blankett = aktuellBlankett();
+        if (!blankett) return false;
+        if (!klickaKnappMedText('Rapporter')) return false;
+        vantaPa(() => [...document.querySelectorAll('[role="menuitem"]')].find(
+            (m) => (m.innerText || '').trim() === blankett))
+            .then((post) => post.click())
+            .catch(() => {
+                // Blanketten finns inte i menyn - stäng den i stället för att
+                // lämna den öppen över sidan.
+                document.dispatchEvent(new KeyboardEvent('keydown',
+                    { key: 'Escape', bubbles: true }));
+                console.warn(`svk-kbok-enhancements: hittade inte ${blankett}`);
+            });
+        return true;
+    }
 
     function beskrivTangent(e) {
         const delar = [];
