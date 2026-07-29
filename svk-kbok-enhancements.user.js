@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.17
+// @version      0.18
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.17';
+    const VERSION = '0.18';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -120,6 +120,16 @@
             standard: 'Ctrl+U',
             gammal: 'Ctrl+U i gamla Kbok - blockerar webbläsarens Visa källkod',
             kor: () => klickaKnappMedText('Utträde'),
+        },
+        // Den enda genvägen som gör något oåterkalleligt. De övriga går att
+        // backa - ett verifikat kan avvisas, ett formulär stängas - men en
+        // bekräftelse är slutregistrering. Markeras därför i panelen.
+        bekraftaVerifikat: {
+            etikett: 'Bekräfta verifikat',
+            standard: 'Ctrl+B',
+            gammal: 'Fanns inte i gamla Kbok',
+            varning: true,
+            kor: () => klickaKnappMedText('Bekräfta verifikat'),
         },
     };
 
@@ -1257,6 +1267,7 @@
             namn.textContent = kmd.etikett;
             namn.title = kmd.gammal || '';
             namn.style.cssText = 'flex:1';
+            if (kmd.varning) namn.style.color = ACCENT;
 
             const knapp = document.createElement('button');
             knapp.type = 'button';

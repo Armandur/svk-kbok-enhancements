@@ -281,8 +281,20 @@ ner som vanligt i stället - ett klick ska aldrig bara försvinna.
 | `Ctrl + Ö` | Skapa verifikat | `Ctrl + W`, som i webbläsaren stänger fliken |
 | `Ctrl + U` | Utträde | `Ctrl + U` - blockerar webbläsarens Visa källkod |
 | `F8` | Byt församling | `F8` |
+| `Ctrl + B` | **Bekräfta verifikat** - slutregistrering, går inte att ångra | Fanns inte |
 
-Testat att alla tre går att fånga i webbläsaren, inklusive `Ctrl + U`.
+`Ctrl + B` är den enda genvägen som gör något oåterkalleligt. De övriga går
+att backa - ett verifikat kan avvisas, ett formulär stängas - men en
+bekräftelse är slutregistrering. Den är därför markerad i panelen, på samma
+sätt som fokusinställningen.
+
+Den fungerar för alla verifikat som går att bekräfta, inte bara utträden:
+knappen heter "Bekräfta verifikat" överallt där den finns. Verifierat på
+dopregistrering och beslutsunderlag; verifikattyper som bara ska läsas
+(dödsfall, anteckning pga relation, meddelande om närmast anhörig) har
+ingen sådan knapp och påverkas därför inte.
+
+Testat att alla går att fånga i webbläsaren, inklusive `Ctrl + U`.
 Klicka på en tangentkombination i inställningarna och tryck den nya du
 vill ha - inspelningen läser nästa tangenttryck. Återställningspilen tar
 tillbaka standardvärdet.
