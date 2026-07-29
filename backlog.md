@@ -60,7 +60,7 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Inställning: visa blanketten i webbläsaren i stället för att ladda ner den direkt
+## [P3][doing] [svk-kbok-enhancements] Inställning: visa blanketten i webbläsaren i stället för att ladda ner den direkt
 
 Rasmus 2026-07-29, under arbetet med TASK-514.
 
