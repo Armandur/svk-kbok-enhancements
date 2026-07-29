@@ -1,175 +1,155 @@
 # Ändringar
 
-Nyast först. Versionsnumret är det som står i `@version` och som Tampermonkey
-jämför mot.
+Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
+byggt framgår av commit-historiken.
 
 ## 0.37
 
-- Changeloggen märker ut vilka versioner som är nyare än den man kör, så det
-  syns var ens egen slutar när man hoppat över flera.
+- Ändringslistan märker ut vad som är nytt sedan din version.
 
 ## 0.36
 
-- Uppdateringsrutan återkommer vid varje sidladdning tills man tagit
-  ställning. Tidigare försvann den i ett dygn så fort sidan laddades om, även
-  om man inte hunnit läsa den.
-- Panelen frågar alltid GitHub på nytt i stället för att lita på dygnscachen.
-  En nyss utgiven version kunde annars se ut att inte finnas.
-- Versionskontrollen loggar vad den kom fram till. Utan det gick ett blockerat
-  anrop inte att skilja från att ingen ny version fanns.
+- Uppdateringsrutan står kvar tills du tagit ställning. Tidigare försvann den
+  i ett dygn så fort sidan laddades om, även om du inte hunnit läsa den.
+- Panelen visar alltid det senaste versionsnumret.
 
 ## 0.35
 
-- Panelens Stäng-knapp ligger på egen rad, högerställd.
+- Stäng-knappen i panelen ligger inte längre i vägen för länken ovanför.
 
 ## 0.34
 
-- **Ändringarna visas i en egen ruta** ovanpå den som öppnade den, med riktig
-  markdown-rendering i stället för förformaterad text.
+- Ändringarna öppnas i en egen ruta och visas med rubriker och listor i
+  stället för rå text.
 
 ## 0.33
 
-- **En ruta säger till när en ny version finns**, en gång per dygn, med val
-  att uppdatera, läsa ändringarna eller vänta.
+- **Tillägget säger till när en ny version finns**, en gång per dag. Du kan
+  uppdatera, läsa vad som ändrats, eller vänta.
 
 ## 0.32
 
-- Panelen visar när en nyare version finns och kan hämta changeloggen.
-  Versionsnumret läses från GitHub, som skickar CORS-huvuden.
+- Panelen visar om det finns en nyare version än den du kör.
 
 ## 0.31
 
-- Rutans knappar har fått hover och fokusring, och fokus börjar på **Skriv
-  ut** när en blankett visas. Rutan är nu en riktig modal: fokus hålls kvar
-  inne i den, i stället för att MUI tar tillbaka det till Rapporter-knappen.
+- Knapparna i blankettrutan reagerar på muspekaren, och Skriv ut är förvald
+  så att Enter räcker.
 
 ## 0.30
 
-- Knapparna i visningsrutan bygger på ett eget stilblad i stället för
-  inline-stilar. Hover och fokusring går inte att uttrycka inline.
+- Tydligare knappar i blankettrutan.
 
 ## 0.29
 
-- **F9 hämtar blanketten för den handling man står i**, utan att gå via
-  Rapporter-menyn. Vilken blankett det gäller läses ur den valda fliken, som
-  bär handlingens namn med `bok` på slutet. Det skiljer också vigsel från
-  välsignelse, som delar URL.
+- **F9 hämtar blanketten för den handling du står i**, utan att gå via
+  Rapporter-menyn. Rätt blankett väljs efter vilken flik du är på, så vigsel
+  och välsignelse hålls isär.
 
 ## 0.28
 
-- Fyra fynd från kodgranskningen åtgärdade: spärr mot dubbel laddning av
-  skriptet, felhantering runt varje steg i uppdateringscykeln, spärr mot
-  onödig omläsning av personnamnet, och explicit uteslutning av
-  huvudpersonens fält i auto-hämtningen. Se `CODE-REVIEWS.md`.
+- Rättningar efter en genomgång av koden. Inget syns utåt.
 
 ## 0.27
 
-- **Kalkylblad visas som tabell i rutan.** Rapporter-popupen kan leverera
-  samma rapport som xlsx i stället för PDF. Formatet packas upp med
-  `DecompressionStream` - ingen extern modul.
+- **Kalkylblad visas som tabell i rutan**, precis som blanketterna. Rapporter
+  går att växla mellan PDF och kalkylblad högst upp i menyn.
 
 ## 0.26
 
-- Kalkylblad laddas ner i stället för att visas i en iframe, som webbläsaren
-  inte kan rendera. Utan det tappade filen sitt namn och fick blob-URL:ens
-  GUID.
+- Kalkylblad behåller sitt filnamn när de laddas ner.
 
 ## 0.25
 
-- Adresskontrollen räknar inte längre postnummerraden som adress. Tar man
-  bort gatuadressen står postnummer och ort kvar, och sektionen såg ifylld ut.
+- Adresskontrollen missade när gatuadressen tagits bort men postnumret stod
+  kvar.
 
 ## 0.24
 
-- Vigseln spärras också när adressen saknas. Adressboxen söktes fyra nivåer
-  upp, men så djupt ligger den bara i begravning och dop.
-- Varningen visas som en ruta med Kboks egen ordalydelse, i stället för text
-  vid fältet.
+- Adresskontrollen gäller nu även vigsel och välsignelse.
+- Varningen visas som en ruta med samma text som Kbok själv använder i dop.
 
 ## 0.23
 
-- **Adress krävs innan verifikat skapas** i konfirmation, vigsel, välsignelse
-  och begravning. Kbok kontrollerar bara i dop, trots att adressen ska
-  registreras för varje kyrklig handling enligt SvKB 2009:9, 3 kap. Den
-  preliminära posten får skapas som vanligt.
+- **Adressen måste vara ifylld innan verifikat skapas** i konfirmation,
+  vigsel, välsignelse och begravning. Kbok kräver det bara i dop, trots att
+  adressen ska registreras för varje kyrklig handling. Den preliminära posten
+  får sparas som vanligt.
 
 ## 0.22
 
-- **Fokus hamnar i datumfältet** vid in- och utträde, så snart fältet finns.
+- **Markören hamnar i datumfältet** vid in- och utträde, så du kan skriva
+  datumet direkt.
 
 ## 0.21
 
-- Adressvarianten av bevisen får samma filnamn som grundvarianten.
+- Bevisen med adress får samma filnamn som de utan.
 
 ## 0.20
 
-- Namn och händelsedatum läses ur verifikatet när personakten saknas, till
-  exempel när ett verifikat bekräftas senare via Aktuella på startsidan.
+- Bevis får rätt namn även när verifikatet bekräftas senare, via Aktuella på
+  startsidan.
 
 ## 0.19
 
-- Inställningspanelen grupperad efter var inställningarna märks, med egen
-  scroll och en egen sektion för det som inte går att ångra.
+- Inställningarna grupperade efter var de märks, med det som inte går att
+  ångra för sig.
 
 ## 0.18
 
-- **Ctrl+B bekräftar verifikat.** Den enda genvägen som gör något
-  oåterkalleligt, och markerad som sådan i panelen.
+- **Ctrl+B bekräftar verifikat.** Den enda genvägen som gör något du inte kan
+  ångra, och märkt som sådan.
 
 ## 0.17
 
-- Man landar rätt även vid F5 på en undersida. Spärren mot rundgång låg kvar
-  för hela fliken och gjorde att man alltid hamnade på startsidan.
+- Du landar rätt även när du laddar om en undersida.
 
 ## 0.16
 
-- Länkikonen öppnar **ministerialboksposten**, inte bara personakten -
-  samma vy som appens eget dubbelklick.
+- Länkikonen i Ministerialboken öppnar ministerialboksposten, inte bara
+  personakten.
 
 ## 0.15
 
-- Patcharna körs vid `document-start` och bara mot ministerialbokens sökning.
-  Kom de efter appens första anrop var uppslaget tomt.
+- Länkikonen fungerar direkt, utan att du behöver söka om först.
 
 ## 0.14
 
-- Personaktens id slås upp ur API-svaret i Ministerialboken. Radens `data-id`
-  är blankettnumret där, så länken pekade på en personakt som inte fanns.
+- Länkikonen i Ministerialboken pekade på fel sida och gör det inte längre.
 
 ## 0.13
 
-- Efter miljövalet landar man på sidan man klickade, inte på startsidan.
+- Efter miljövalet landar du på sidan du klickade, inte på startsidan.
 
 ## 0.12
 
-- **Miljövalet i Utbildningsmiljön kommer ihåg.** Valet ligger i
-  serversessionen och nollställs av varje sidladdning, för alla öppna flikar.
+- **Miljövalet i Utbildningsmiljön kommer ihåg sig.** Det behöver inte göras
+  om i varje ny flik.
 
 ## 0.11
 
-- Länkikonen läggs bara på listor som gäller personer. Startsidans
-  verifikatlistor fick den trots att deras `data-id` inte är en personakt.
-- Pilen ersatt med Material Designs `open_in_new`.
+- Länkikonen visas bara i listor där den leder någonstans. Startsidans
+  verifikatlistor fick den i onödan.
+- Tydligare ikon.
 
 ## 0.10
 
-- **Blanketten kan visas i en ruta** med Skriv ut och Ladda ner, i stället
-  för att laddas ner direkt.
+- **Blanketten kan visas i en ruta** med Skriv ut och Ladda ner, i stället för
+  att laddas ner direkt.
 
 ## 0.9
 
-- Auto-hämtningen rensade personnumret i stället för att hämta. MUI lägger en
-  namnlös kryssknapp i fältet så fort det har ett värde, och den klickades i
-  stället för Hämta. Fungerar nu även på Inträde.
+- Auto-hämtningen rensade personnumret i stället för att hämta personen.
+  Fungerar nu även på Inträde.
 
 ## 0.8
 
-- **Nedladdade blanketter och bevis döps om** till handlingsdatum, typ och
-  namn, i stället för bara typen.
+- **Nedladdade blanketter och bevis får datum, typ och namn i filnamnet** i
+  stället för bara typen.
 
 ## 0.7 och tidigare
 
-Första versionerna: länkikon och mittenklick som öppnar personakten i ny
-flik, auto-hämtning av relationspersoner, tabb förbi datumväljaren,
-markerbart personnummer, `D` för dagens datum, tomt pålysningsdatum,
-tangentbordsgenvägar med inspelning, och inställningspanelen.
+Länkikon och mittenklick som öppnar personakten i ny flik, auto-hämtning av
+relationspersoner, tabb förbi kalenderknappen, markerbart personnummer, `D`
+för dagens datum, tomt pålysningsdatum, tangentbordsgenvägar som går att
+spela om, och inställningspanelen.
