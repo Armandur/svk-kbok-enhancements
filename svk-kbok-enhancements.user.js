@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.25
+// @version      0.26
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.25';
+    const VERSION = '0.26';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1275,7 +1275,18 @@
         // och kan återkalla sin blob-URL, och då hade ramen visat en tom sida.
         fetch(url)
             .then((svar) => svar.blob())
-            .then((blob) => byggBlankettruta(URL.createObjectURL(blob), filnamn))
+            .then((blob) => {
+                // Rapporter-popupen har en växel mellan PDF och kalkylblad.
+                // Ett kalkylblad går inte att visa i en iframe - webbläsaren
+                // laddar ner det i stället, och då utan download-attribut, så
+                // filen får blob-URL:ens GUID som namn. Ladda hellre ner den
+                // med rätt namn direkt.
+                if (blob.type !== 'application/pdf') {
+                    laddaNer(URL.createObjectURL(blob), filnamn);
+                    return;
+                }
+                byggBlankettruta(URL.createObjectURL(blob), filnamn);
+            })
             .catch((e) => {
                 // Går blobben inte att läsa är en nedladdning bättre än
                 // ingenting - annars hade klicket bara försvunnit.

@@ -359,6 +359,12 @@ döljs webbläsarens egen verktygsrad i PDF-visaren med `#toolbar=0`; dess
 nedladdningsknapp har samma problem. Zoom fungerar ändå med Ctrl och
 scrollhjulet.
 
+Rapporter-popupen har en växel högst upp mellan **PDF** och **kalkylblad**,
+och den gäller alla rapporter i listan. Ett kalkylblad går inte att visa i en
+iframe - webbläsaren laddar ner det i stället, utan `download`-attribut, så
+filen får blob-URL:ens GUID som namn. Rutan laddar därför ner allt som inte
+är PDF direkt, med rätt filnamn.
+
 Rutan hämtar en egen kopia av blobben med `fetch` innan den visas. Appen
 tar bort länken direkt efter klicket och kan återkalla sin blob-URL, och
 då hade ramen visat en tom sida. Går blobben inte att läsa laddas filen
