@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.32
+// @version      0.33
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.32';
+    const VERSION = '0.33';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1771,6 +1771,107 @@
     // nätverksanrop varje gång.
     let senasteVersion = null;
 
+    const VISADNYCKEL = 'svk-kbok-uppdatering-visad';
+
+    /* En ny version är lätt att missa som en prick i en meny man sällan
+     * öppnar. Rutan visas därför en gång per dygn - klickar man Senare
+     * kommer den tillbaka i morgon, inte vid nästa sidladdning. */
+
+    function byggUppdateringsruta(senaste) {
+        laggTillKnappstil();
+        const overlay = document.createElement('div');
+        overlay.id = 'svk-kbok-uppdatering';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;'
+            + 'background:rgba(0,0,0,.35);display:flex;align-items:center;'
+            + 'justify-content:center;padding:1.5rem';
+
+        const ruta = document.createElement('div');
+        ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
+            + 'padding:1.4rem 1.6rem;max-width:32rem;width:100%;'
+            + 'max-height:calc(100vh - 3rem);overflow-y:auto;'
+            + 'box-shadow:0 8px 32px rgba(0,0,0,.25);'
+            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+
+        const rubrik = document.createElement('h2');
+        rubrik.textContent = `${PRODUKTNAMN} ${senaste} finns`;
+        rubrik.style.cssText = 'margin:0 0 .3rem;font-size:1.1rem';
+        ruta.appendChild(rubrik);
+
+        const ingress = document.createElement('p');
+        ingress.textContent = `Du kör ${VERSION}. Uppdateringen öppnar skriptet, `
+            + 'och tillägget visar sin egen dialog.';
+        ingress.style.cssText = 'margin:0 0 1rem;color:#6b6862;font-size:.9rem';
+        ruta.appendChild(ingress);
+
+        const historik = document.createElement('div');
+        historik.style.cssText = 'margin:0 0 1rem';
+        ruta.appendChild(historik);
+
+        const fot = document.createElement('div');
+        fot.style.cssText = 'display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap';
+
+        function stang() {
+            overlay.remove();
+            document.removeEventListener('keydown', viaEscape, true);
+        }
+        function viaEscape(e) {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                stang();
+            }
+        }
+
+        let forsta = null;
+        [
+            ['Uppdatera', true, () => {
+                window.open(INSTALLATIONSURL, '_blank', 'noopener');
+                stang();
+            }],
+            ['Visa ändringar', false, () => {
+                if (historik.dataset.oppen) return;
+                historik.dataset.oppen = '1';
+                const text = document.createElement('pre');
+                text.textContent = 'Hämtar...';
+                text.style.cssText = 'max-height:16rem;overflow:auto;margin:0;'
+                    + 'padding:.7rem .9rem;background:#f6f4f1;border-radius:6px;'
+                    + 'font:inherit;font-size:.82rem;white-space:pre-wrap';
+                historik.appendChild(text);
+                fetch(CHANGELOG_URL, { cache: 'no-store' })
+                    .then((svar) => svar.text())
+                    .then((md) => { text.textContent = md.replace(/^#+ /gm, ''); })
+                    .catch(() => { text.textContent = 'Kunde inte hämta ändringarna.'; });
+            }],
+            ['Senare', false, stang],
+        ].forEach(([namn, primar, gor], i) => {
+            const knapp = document.createElement('button');
+            knapp.type = 'button';
+            knapp.textContent = namn;
+            knapp.className = KNAPP_KLASS + (primar ? '' : ' svk-kbok-sekundar');
+            knapp.addEventListener('click', gor);
+            fot.appendChild(knapp);
+            if (i === 0) forsta = knapp;
+        });
+
+        ruta.appendChild(fot);
+        overlay.appendChild(ruta);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) stang(); });
+        document.addEventListener('keydown', viaEscape, true);
+        document.body.appendChild(overlay);
+        if (forsta) forsta.focus();
+    }
+
+    function kollaUppdateringVidStart() {
+        if (!installningar.kollaUppdatering) return;
+        hamtaSenasteVersion().then((senaste) => {
+            senasteVersion = senaste;
+            if (!senaste || !arNyare(senaste, VERSION)) return;
+            const visad = Number(localStorage.getItem(VISADNYCKEL) || 0);
+            if (Date.now() - visad < DYGN) return;
+            localStorage.setItem(VISADNYCKEL, String(Date.now()));
+            byggUppdateringsruta(senaste);
+        });
+    }
+
     function finnsNyareVersion() {
         return !!senasteVersion && arNyare(senasteVersion, VERSION);
     }
@@ -2212,6 +2313,8 @@
         document.addEventListener('keydown', hanteraGenvag, true);
         document.addEventListener('keydown', hanteraDagensDatum, true);
         uppdatera();
+        // Efter uppdatera(), så inställningarna hunnit läsas in.
+        sakert('uppdateringskontroll', kollaUppdateringVidStart);
 
         console.log('svk-kbok-enhancements laddat');
     }

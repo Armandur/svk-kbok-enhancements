@@ -29,6 +29,11 @@ Tampermonkey hämtar `@updateURL` med jämna mellanrum, jämför `@version` och
 erbjuder uppdatering när numret höjts. Det kräver bara att versionsnumret
 faktiskt räknas upp vid varje ändring.
 
+Finns en nyare version säger skriptet till med en ruta, en gång per dygn.
+Den har tre val: **Uppdatera**, som öppnar skriptet så att tillägget visar sin
+egen dialog, **Visa ändringar**, som hämtar changeloggen, och **Senare**, som
+skjuter upp till nästa dygn i stället för till nästa sidladdning.
+
 Panelen visar dessutom vilken version som körs, och säger till när en nyare
 finns: versionsraden blir `Version 0.31 - 0.32 finns`, länken byter till
 **Uppdatera till 0.32**, och menyposten får en prick. Under den går
