@@ -84,7 +84,16 @@ olika personakter inte tar varandras) och nås efter miljövalet.
 Den sista navigeringen måste gå via routern med `pushState` plus
 `popstate`, inte via `location.href`: en full sidladdning hade nollställt
 miljövalet igen och gett en rundgång mellan de två sidorna tills sessionen
-dog. Skriptet gör dessutom högst ett försök per flik.
+dog. Spärren mot det bär målet och släpps först när navigeringen bevisligen
+kommit fram - en spärr som låg kvar gällde hela fliken, och då landade ett
+F5 på en undersida alltid på startsidan i stället för tillbaka.
+
+Miljövalet självt går inte att kringgå. Valet görs av anropet
+`UtbSelectDbServer/SwitchEnhetForUser?dataBaseName=Harnosand`, och det går
+att anropa direkt - det svarar `200` - men nästa sidladdning kräver ändå
+omval. Att i stället navigera vidare klientsidan från miljövalssidan
+fungerar inte heller: den ligger utanför appens router. Kvar blir att fylla
+i valet åt användaren, vilket är vad skriptet gör.
 
 Detta är ett plåster, inte en lösning: orsaken sitter i Kbok och är
 rapporterad som kbok-web TASK-520.

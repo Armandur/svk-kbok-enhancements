@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.16
+// @version      0.17
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.16';
+    const VERSION = '0.17';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1045,6 +1045,8 @@
     const MALNYCKEL = 'svk-kbok-onskad-sida';
     const FORSOKNYCKEL = 'svk-kbok-mal-forsokt';
     const MILJOVAL_SIDA = /utv_selectDb/i;
+    // Sidor som aldrig är ett vettigt mål att skickas tillbaka till.
+    const EJ_MAL = /utv_selectDb|login/i;
 
     /* Miljövalet kastar bort adressen man var på väg till: efter valet landar
      * man på startsidan, inte på personakten man klickade.
@@ -1068,22 +1070,32 @@
             return;
         }
         if (mal.origin !== location.origin) return;
-        if (MILJOVAL_SIDA.test(mal.pathname) || mal.pathname === '/') return;
-        // Högst ett försök per flik. Kräver måladressen miljöval igen hamnar
-        // man annars i en rundgång mellan de två sidorna tills sessionen dör.
+        if (EJ_MAL.test(mal.pathname) || mal.pathname === '/') return;
+        // Ett försök i taget. Spärren släpps först när navigeringen bevisligen
+        // kommit fram, så en misslyckad omgång inte kan bli rundgång.
         if (sessionStorage.getItem(FORSOKNYCKEL)) return;
         sessionStorage.setItem(MALNYCKEL, mal.pathname + mal.search);
     }
 
     function gaTillOnskadSida() {
         if (MILJOVAL_SIDA.test(location.pathname)) return;
+        const har = location.pathname + location.search;
         const mal = sessionStorage.getItem(MALNYCKEL);
-        if (!mal) return;
+        if (!mal) {
+            // Framme vid det senast försökta målet: släpp spärren så nästa
+            // sidladdning får ett eget försök. Låg den kvar gällde den hela
+            // fliken, och ett F5 på en undersida landade alltid på startsidan.
+            if (sessionStorage.getItem(FORSOKNYCKEL) === har) {
+                sessionStorage.removeItem(FORSOKNYCKEL);
+            }
+            return;
+        }
         // Tas bort före navigeringen: leder adressen tillbaka till miljövalet
         // ska skriptet inte försöka igen i all evighet.
         sessionStorage.removeItem(MALNYCKEL);
-        sessionStorage.setItem(FORSOKNYCKEL, '1');
-        if (mal === location.pathname + location.search) return;
+        // Spärren bär målet, så den kan släppas när vi ser att vi kommit dit.
+        sessionStorage.setItem(FORSOKNYCKEL, mal);
+        if (mal === har) return;
         // Måste gå via routern, inte location.href: varje FULL sidladdning
         // nollställer miljövalet, så en vanlig navigering hade kastat
         // tillbaka en till miljövalssidan i all oändlighet. pushState plus
