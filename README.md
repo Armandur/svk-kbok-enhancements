@@ -196,6 +196,17 @@ med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
 utan:        ['Adress vid dop']
 ```
 
+Varningen visas som en ruta, inte som text vid fältet, så att de fyra
+handlingarna beter sig som dopet: Kbok stoppar där med **"Kan inte skapa
+verifikat - Adress måste anges"**. Vid vigsel och välsignelse säger rutan
+"för båda personerna" när ingen av dem har adress.
+
+Hur djupt adressen ligger under rubriken varierar: i vigsel sitter den i
+rubrikens egen förälder, i begravning fyra nivåer upp. Sökningen går därför
+uppåt tills den hittar mer än rubriken, men stannar så fort
+personuppgifterna omkring börjar synas - annars skulle de räknas som adress,
+vilket gjorde att vigseln aldrig spärrades i första versionen.
+
 Dop undantas - där gör Kbok redan kontrollen, och två varningar om samma sak
 vore bara förvirrande. Att kontrollen sitter på Skapa verifikat gör dessutom
 att den aldrig kan träffa personakten, som inte har någon sådan knapp.

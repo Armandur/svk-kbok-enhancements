@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.23
+// @version      0.24
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.23';
+    const VERSION = '0.24';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -707,6 +707,12 @@
      *   med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
      *   utan:        ['Adress vid dop']
      *
+     * Hur djupt adressen ligger under rubriken varierar mellan handlingarna:
+     * i vigsel sitter den i rubrikens egen förälder, i begravning fyra
+     * nivåer upp. Sökningen går därför uppåt tills den hittar mer än
+     * rubriken - men stannar så fort personuppgifterna omkring börjar synas,
+     * för då har den gått för långt och skulle räkna dem som adress.
+     *
      * Dop undantas: där gör Kbok redan kontrollen, och två varningar om samma
      * sak vore bara förvirrande.
      *
@@ -724,29 +730,97 @@
                 && /^Adress vid /.test((el.textContent || '').trim()));
     }
 
+    // Rubriker som betyder att vi lämnat adressektionen och är uppe bland
+    // personuppgifterna.
+    const UTANFOR_ADRESS = /^(Personnummer|Person \d+|Personuppgifter|Status|Medlemstyp|Tilltalsnamn)$/;
+
+    function harAdress(rubrik) {
+        let box = rubrik;
+        for (let i = 0; i < 6 && box.parentElement; i++) {
+            box = box.parentElement;
+            const rader = (box.innerText || '').split('\n')
+                .map((s) => s.trim()).filter(Boolean);
+            if (rader.some((r) => UTANFOR_ADRESS.test(r))) return false;
+            // Mer än rubriken betyder att en adress är registrerad.
+            if (rader.length > 1) return true;
+        }
+        return false;
+    }
+
     function saknadeAdresser() {
         return adressektioner().filter((rubrik) => {
             // Dopet sköts av Kbok självt.
             if (/^Adress vid dop$/i.test((rubrik.textContent || '').trim())) return false;
-            let box = rubrik;
-            for (let i = 0; i < 4 && box.parentElement; i++) box = box.parentElement;
-            const rader = (box.innerText || '').split('\n')
-                .map((s) => s.trim()).filter(Boolean);
-            // Bara rubriken kvar betyder att ingen adress är registrerad.
-            return rader.length <= 1;
+            return !harAdress(rubrik);
         });
     }
 
-    function visaAdressfel(rubrik) {
-        if (rubrik.parentElement
-            && rubrik.parentElement.querySelector('.' + ADRESSFEL)) return;
-        const rad = document.createElement('p');
-        rad.className = ADRESSFEL;
-        rad.textContent = 'Adress saknas. Postadress och folkbokföringsadress ska '
-            + 'registreras för varje kyrklig handling (SvKB 2009:9, 3 kap.).';
-        rad.style.cssText = `color:${ACCENT};font-size:.8rem;line-height:1.4;`
-            + 'margin:.3rem 0 0;font-weight:600';
-        rubrik.insertAdjacentElement('afterend', rad);
+    /* Kbok visar samma sak i Dop som en ruta: "Kan inte skapa verifikat -
+     * Adress måste anges". Den återskapas här i stället för en text vid
+     * fältet, så att de fyra övriga handlingarna beter sig som dopet. */
+
+    function visaAdressruta(antal) {
+        if (document.getElementById(ADRESSFEL)) return;
+        const overlay = document.createElement('div');
+        overlay.id = ADRESSFEL;
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;'
+            + 'background:rgba(0,0,0,.35);display:flex;align-items:center;'
+            + 'justify-content:center;padding:1.5rem';
+
+        const ruta = document.createElement('div');
+        ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
+            + 'padding:1.4rem 1.6rem;max-width:26rem;width:100%;'
+            + 'box-shadow:0 8px 32px rgba(0,0,0,.25);'
+            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+
+        const rubrik = document.createElement('h2');
+        rubrik.textContent = 'Kan inte skapa verifikat';
+        rubrik.style.cssText = 'margin:0 0 .6rem;font-size:1.05rem';
+        ruta.appendChild(rubrik);
+
+        const text = document.createElement('p');
+        text.textContent = antal > 1
+            ? 'Adress måste anges för båda personerna.'
+            : 'Adress måste anges.';
+        text.style.cssText = 'margin:0 0 .4rem';
+        ruta.appendChild(text);
+
+        const varfor = document.createElement('p');
+        varfor.textContent = 'Postadress och folkbokföringsadress ska registreras '
+            + 'för varje kyrklig handling (SvKB 2009:9, 3 kap.).';
+        varfor.style.cssText = 'margin:0 0 1.1rem;color:#6b6862;font-size:.87rem';
+        ruta.appendChild(varfor);
+
+        const rad = document.createElement('div');
+        rad.style.cssText = 'display:flex;justify-content:flex-end';
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.textContent = 'OK';
+        ok.style.cssText = 'padding:.45rem 1.4rem;border-radius:6px;cursor:pointer;'
+            + `font:inherit;font-weight:600;background:${ACCENT};color:#fff;`
+            + `border:1px solid ${ACCENT}`;
+        ok.addEventListener('mouseenter', () => { ok.style.background = ACCENT_HOVER; });
+        ok.addEventListener('mouseleave', () => { ok.style.background = ACCENT; });
+
+        function stang() {
+            overlay.remove();
+            document.removeEventListener('keydown', viaTangent, true);
+        }
+        function viaTangent(e) {
+            if (e.key === 'Escape' || e.key === 'Enter') {
+                e.stopPropagation();
+                stang();
+            }
+        }
+        ok.addEventListener('click', stang);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) stang(); });
+        document.addEventListener('keydown', viaTangent, true);
+
+        rad.appendChild(ok);
+        ruta.appendChild(rad);
+        overlay.appendChild(ruta);
+        document.body.appendChild(overlay);
+        ok.focus();
     }
 
     function kravAdressVidVerifikat(e) {
@@ -758,7 +832,7 @@
         // Stoppas i capture-fasen, innan appens egen hanterare hinner köra.
         e.preventDefault();
         e.stopImmediatePropagation();
-        saknade.forEach(visaAdressfel);
+        visaAdressruta(saknade.length);
         saknade[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
 
