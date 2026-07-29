@@ -635,17 +635,13 @@ vad som fanns, inte vad folk tryckte på.
 - Om samma fällor finns i desktopklienten. Adresskontrollens inkonsekvens
   gör det - den är alltså ett arv, inte något webben infört.
 
-## Servern
+## Distributionen
 
-`serve.py` renderar README och serverar skriptet med rätt Content-Type.
-Ren stdlib, ingen pip. Startas med `python3 serve.py [port]` och är
-registrerad i portalen som `svk-kbok-enhancements`. Sidan kör på
-**http://ubuntu-ai:8003/** och når bara den som är i hemnätet - GitHub är
-vägen för alla andra.
-
-GitHub Pages kan dessutom hosta README:n som en riktig installationssida -
-Jekyll renderar den automatiskt, och länken till `.user.js` fungerar
-likadant därifrån.
+Innan repot publicerades fanns en egen installationssida i hemnätet
+(`serve.py`, port 8003) som renderade README och serverade skriptet med
+`text/javascript`, så att Tampermonkey fångade upp det. Den togs bort
+2026-07-29: GitHub gör samma sak, renderar README bättre och når alla
+oavsett var de är. Vill den ha tillbaka finns den i git-historiken.
 
 Skriptet är begränsat med `@match` till Kbok-domänerna. Produktionsadressen
 `kbok.svenskakyrkan.se` är en gissning efter mönstret från
