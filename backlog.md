@@ -34,7 +34,7 @@ Klart när: hämtningen går igång både vid inklistring och vid handskrivning,
 
 ---
 
-## [P2][doing] [svk-kbok-enhancements] Gör adressen obligatorisk även i övriga kyrkliga handlingar, som stop-gap
+## [P2][done] [svk-kbok-enhancements] Gör adressen obligatorisk även i övriga kyrkliga handlingar, som stop-gap
 
 Rasmus 2026-07-29. Kandidaten som redan står som Kartlagd fälla 3 i README, nu uttryckligen önskad som funktion i skriptet.
 
