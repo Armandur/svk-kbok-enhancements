@@ -196,6 +196,11 @@ med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
 utan:        ['Adress vid dop']
 ```
 
+Postnumret och orten står kvar även när gatuadressen tagits bort, och det är
+gatuadressen Kbok kontrollerar - fältet **Adress**. En sektion som bara
+innehåller `['Adress vid vigsel', '46230 Hjortnäs']` saknar alltså adress,
+trots att den har mer än rubriken.
+
 Varningen visas som en ruta, inte som text vid fältet, så att de fyra
 handlingarna beter sig som dopet: Kbok stoppar där med **"Kan inte skapa
 verifikat - Adress måste anges"**. Vid vigsel och välsignelse säger rutan

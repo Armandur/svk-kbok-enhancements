@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.24
+// @version      0.25
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.24';
+    const VERSION = '0.25';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -707,6 +707,11 @@
      *   med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
      *   utan:        ['Adress vid dop']
      *
+     * Postnumret och orten står kvar även när gatuadressen tagits bort, och
+     * det är gatuadressen Kbok kontrollerar - fältet Adress. En sektion som
+     * bara innehåller ['Adress vid vigsel', '46230 Hjortnäs'] saknar alltså
+     * adress, trots att den har mer än rubriken.
+     *
      * Hur djupt adressen ligger under rubriken varierar mellan handlingarna:
      * i vigsel sitter den i rubrikens egen förälder, i begravning fyra
      * nivåer upp. Sökningen går därför uppåt tills den hittar mer än
@@ -733,6 +738,8 @@
     // Rubriker som betyder att vi lämnat adressektionen och är uppe bland
     // personuppgifterna.
     const UTANFOR_ADRESS = /^(Personnummer|Person \d+|Personuppgifter|Status|Medlemstyp|Tilltalsnamn)$/;
+    // "46230 Hjortnäs" - postnummer och ort, som står kvar utan gatuadress.
+    const POSTRAD = /^\d{3}\s?\d{2}\s+\S/;
 
     function harAdress(rubrik) {
         let box = rubrik;
@@ -741,8 +748,11 @@
             const rader = (box.innerText || '').split('\n')
                 .map((s) => s.trim()).filter(Boolean);
             if (rader.some((r) => UTANFOR_ADRESS.test(r))) return false;
-            // Mer än rubriken betyder att en adress är registrerad.
-            if (rader.length > 1) return true;
+            if (rader.length > 1) {
+                // Gatuadressen är den rad som varken är rubriken eller
+                // postnummer och ort.
+                return rader.slice(1).some((r) => !POSTRAD.test(r));
+            }
         }
         return false;
     }
