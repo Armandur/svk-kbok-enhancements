@@ -94,7 +94,7 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Länk till GitHub-repot någonstans i Kbok Plus-panelen
+## [P3][done] [svk-kbok-enhancements] Länk till GitHub-repot någonstans i Kbok Plus-panelen
 
 Rasmus 2026-07-29: panelen visar version och Sök efter uppdatering längst ned, men ingenstans var tillägget kommer ifrån. Den som vill läsa vad det gör, se changeloggen i sin helhet eller anmäla något har ingen väg dit.
 
@@ -108,7 +108,7 @@ Inte utrett: om länken ska öppnas i ny flik (troligen ja) och om den ska heta 
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Dela upp inställningspanelen i två flikar: inställningar och genvägar
+## [P3][done] [svk-kbok-enhancements] Dela upp inställningspanelen i två flikar: inställningar och genvägar
 
 Rasmus 2026-07-29: panelen är en enda lång kolumn - fyra grupper med kryssrutor, och därunder genvägslistan med inspelningsknappar. Med alla grupper synliga blir den högre än en mobilskärm och har fått egen scroll som plåster.
 
@@ -150,7 +150,7 @@ Klart när: README går att läsa på en minut och säger vad tillägget gör, o
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Skärmdumpar i README som visar vad tillägget gör
+## [P3][done] [svk-kbok-enhancements] Skärmdumpar i README som visar vad tillägget gör
 
 Rasmus 2026-07-29, efter att repot publicerats.
 
@@ -185,7 +185,7 @@ Klart när: README visar vad tillägget gör med ett par bilder, tagna i Utbildn
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Visa när en ny version finns, och versionshistoriken i panelen
+## [P3][done] [svk-kbok-enhancements] Visa när en ny version finns, och versionshistoriken i panelen
 
 Rasmus 2026-07-29, efter att repot publicerats.
 
