@@ -101,11 +101,35 @@ startsidans verifikatlistor verifikatets, och under Alla församlingar
 församlingens. En länk byggd på fel id pekar på en personakt som inte
 finns.
 
-Personnummerkolumnen skiljer dem åt: en lista där en personakt går att
-öppna har alltid personnumret med. Ikonen, den extra kolumnen och
-mittenklicket läggs bara på sådana listor. Startsidans tre
-verifikatflikar - Aktuella, Senaste och Alla församlingar - lämnas alltså
-orörda (rättat i 0.11).
+Uppdelningen ser ut så här:
+
+| Lista | data-id | Betyder |
+| --- | --- | --- |
+| Sök personer | `21070` | personaktens id |
+| Ministerialbok | `4318026` | blankettnumret |
+| Verifikat | `27708792` | verifikatets id |
+| Alla församlingar | `21` | församlingens id |
+
+Kolumnernas `data-field` skiljer dem åt: Sök personer använder versaler
+(`PERSNR`, `NAMN`), Ministerialboken och Pålysningsboken gemener
+(`personnummer`, `namn`). `PERSNR` betyder att radens id går att länka
+rakt av.
+
+För Ministerialboken finns personaktens id ändå - bara inte i DOM:en.
+Listans API-svar bär `personid` för varje post, sida vid sida med det
+`kyrklighandlingsId` som blir radens `data-id`:
+
+```json
+{"namn": "Svensson, Roger", "personid": 21068, "kyrklighandlingsId": 4318026}
+```
+
+Skriptet fångar därför svaren när de passerar och parar ihop dem med
+raderna. Appen hämtar med `XMLHttpRequest`, inte `fetch`, så patchen
+sitter där.
+
+Verifierat att länken pekar dit appens eget dubbelklick går, i både
+Ministerialboken och Sök personer. Startsidans tre verifikatflikar får
+ingen ikon alls - där finns inget personakt-id att bygga av.
 
 ### Om auto-hämtningen
 

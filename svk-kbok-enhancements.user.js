@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.13
+// @version      0.14
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.13';
+    const VERSION = '0.14';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -221,21 +221,79 @@
     /* ---------- Länkikon per rad ----------
      *
      * Alla träfflistor är samma sorts DataGrid och bär data-id på raden, men
-     * id:t betyder olika saker. I personlistorna är det personaktens id, i
-     * startsidans verifikatlistor verifikatets, och under Alla församlingar
-     * församlingens. En länk byggd på fel id pekar på en personakt som inte
-     * finns, så listan måste kunna kännas igen.
+     * id:t betyder olika saker:
      *
-     * Personnummerkolumnen är det som skiljer dem: en lista där en personakt
-     * går att öppna har alltid personnumret med.
+     *   Sök personer     data-id 21070    personaktens id
+     *   Ministerialbok   data-id 4318026  blankettnumret
+     *   Verifikat        data-id 27708792 verifikatets id
+     *   Alla församlingar                 församlingens id
+     *
+     * En länk byggd på fel id pekar på en personakt som inte finns. Att bara
+     * kräva en personnummerkolumn räckte inte - Ministerialboken har en, men
+     * dess data-id är blankettnumret, och personaktens id finns inte någon-
+     * stans i raden. Där går länken alltså inte att bygga alls.
+     *
+     * Kolumnernas data-field skiljer listorna åt. Sök personer använder
+     * versaler (PERSNR, NAMN, ADRESS), Ministerialboken och Pålysningsboken
+     * gemener (personnummer, namn). PERSNR betyder alltså att radens data-id
+     * är personaktens id och går att länka rakt av.
+     *
+     * För de övriga finns id:t ändå - bara inte i DOM:en. Listans API-svar
+     * (SearchMinisterialbokPrel) bär personid för varje post, sida vid sida
+     * med kyrklighandlingsId som blir radens data-id:
+     *
+     *   {"namn": "Svensson, Roger", "personid": 21068,
+     *    "kyrklighandlingsId": 4318026, ...}
+     *
+     * Svaren fångas därför när de passerar och paras ihop med raderna. Appen
+     * hämtar med XMLHttpRequest, inte fetch, så patchen sitter där.
      */
+
+    // kyrklighandlingsId (radens data-id) -> personaktens id
+    const PERSONID = new Map();
+
+    function fangaPersonid() {
+        const original = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (metod, url, ...resten) {
+            if (/\/Search/i.test(String(url))) {
+                this.addEventListener('load', () => {
+                    let poster;
+                    try {
+                        poster = JSON.parse(this.responseText).paginatedResults;
+                    } catch (e) {
+                        // Svaret är inte den JSON vi väntade oss. Patchen ligger
+                        // på varje sökanrop, så andra svarsformer är väntade och
+                        // inte värda ett larm - länkikonen uteblir bara.
+                        return;
+                    }
+                    if (!Array.isArray(poster)) return;
+                    poster.forEach((post) => {
+                        if (post && post.kyrklighandlingsId && post.personid) {
+                            PERSONID.set(String(post.kyrklighandlingsId),
+                                String(post.personid));
+                        }
+                    });
+                });
+            }
+            return original.call(this, metod, url, ...resten);
+        };
+    }
+
+    function personaktIdFor(rad) {
+        const id = rad.getAttribute('data-id');
+        if (!id) return null;
+        // Sök personer: radens id ÄR personaktens.
+        if (arPersonlista(rad)) return id;
+        // Övriga listor: slå upp det ur API-svaret.
+        return PERSONID.get(id) || null;
+    }
 
     function gridArPersonlista(grid) {
         // Griden byggs om vid filtrering och sidbyte, men rubrikerna är
         // desamma - svaret cachas så det inte räknas ut per rad.
         if (grid.dataset.svkKbokPersonlista === undefined) {
             const har = [...grid.querySelectorAll('[role="columnheader"]')].some(
-                (h) => (h.textContent || '').trim() === 'Personnummer');
+                (h) => h.getAttribute('data-field') === 'PERSNR');
             grid.dataset.svkKbokPersonlista = har ? '1' : '0';
         }
         return grid.dataset.svkKbokPersonlista === '1';
@@ -261,9 +319,8 @@
 
     function laggTillLank(rad) {
         if (rad.querySelector('.' + LANK_KLASS)) return;
-        const id = rad.getAttribute('data-id');
+        const id = personaktIdFor(rad);
         if (!id) return;
-        if (!arPersonlista(rad)) return;
         const forsta = rad.querySelector('[role="gridcell"]');
         if (!forsta) return;
 
@@ -302,7 +359,10 @@
         // tre verifikatlistor som inte får någon ikon, och en rubrikcell där
         // hade blivit en tom kolumn utan innehåll.
         document.querySelectorAll('[role="grid"]').forEach((grid) => {
-            if (!gridArPersonlista(grid)) return;
+            // Rubriken hör ihop med ikonen: bara där någon rad faktiskt får
+            // en, annars blir kolumnen tom.
+            const rader = [...grid.querySelectorAll(RAD)];
+            if (!rader.some(personaktIdFor)) return;
             const rubrikrad = grid.querySelector('[role="columnheader"]');
             if (!rubrikrad || !rubrikrad.parentElement) return;
             const rad = rubrikrad.parentElement;
@@ -331,10 +391,9 @@
     function radUnder(e) {
         if (!installningar.mittenklick || e.button !== 1) return null;
         const rad = e.target.closest(RAD);
-        if (!rad || !rad.getAttribute('data-id')) return null;
         // Samma id-fälla som länkikonen: verifikatlistornas data-id är inte
-        // en personakt.
-        return arPersonlista(rad) ? rad : null;
+        // en personakt, och Ministerialbokens är blankettnumret.
+        return rad && personaktIdFor(rad) ? rad : null;
     }
 
     function hindraAutoscroll(e) {
@@ -345,7 +404,7 @@
         const rad = radUnder(e);
         if (!rad) return;
         e.preventDefault();
-        window.open(personaktUrl(rad.getAttribute('data-id')), '_blank', 'noopener');
+        window.open(personaktUrl(personaktIdFor(rad)), '_blank', 'noopener');
     }
 
     /* ---------- Auto-hämta relationspersoner ----------
@@ -1381,6 +1440,7 @@
     // Patchen läggs på en gång, inte i uppdatera() - den körs vid varje
     // DOM-ändring och hade staplat lager på lager av omslutande funktioner.
     dopOmNedladdningar();
+    fangaPersonid();
 
     document.addEventListener('mousedown', hindraAutoscroll, true);
     document.addEventListener('auxclick', oppnaViaMittenklick, true);
