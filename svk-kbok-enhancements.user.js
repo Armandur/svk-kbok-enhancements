@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.34
+// @version      0.35
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.34';
+    const VERSION = '0.35';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -2220,7 +2220,7 @@
             visa.href = '#';
             visa.textContent = 'Visa ändringar';
             visa.style.cssText = `color:${ACCENT};text-decoration:underline;`
-                + 'cursor:pointer;font-size:.85rem;display:inline-block;margin:.6rem 0 0';
+                + 'cursor:pointer;font-size:.85rem;display:block;margin:.6rem 0 0';
             visa.addEventListener('click', (e) => {
                 e.preventDefault();
                 visaChangelog();
@@ -2228,14 +2228,19 @@
             ruta.appendChild(visa);
         }
 
+        // Egen rad, högerställd. Länken ovanför är inline och drog annars
+        // upp knappen bredvid sig.
+        const knapprad = document.createElement('div');
+        knapprad.style.cssText = 'display:flex;justify-content:flex-end;margin-top:1rem';
         const stang = document.createElement('button');
         stang.textContent = 'Stäng';
-        stang.style.cssText = `margin-top:1rem;background:${ACCENT};color:#fff;border:none;`
+        stang.style.cssText = `background:${ACCENT};color:#fff;border:none;`
             + 'border-radius:999px;padding:.55rem 1.5rem;cursor:pointer;font-weight:600;font-size:.9rem';
         stang.addEventListener('mouseenter', () => { stang.style.background = ACCENT_HOVER; });
         stang.addEventListener('mouseleave', () => { stang.style.background = ACCENT; });
         stang.addEventListener('click', () => overlay.remove());
-        ruta.appendChild(stang);
+        knapprad.appendChild(stang);
+        ruta.appendChild(knapprad);
 
         overlay.appendChild(ruta);
         overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
