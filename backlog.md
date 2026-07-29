@@ -34,7 +34,7 @@ Klart när: hämtningen går igång både vid inklistring och vid handskrivning,
 
 ---
 
-## [P2][todo] [svk-kbok-enhancements] Gör adressen obligatorisk även i övriga kyrkliga handlingar, som stop-gap
+## [P2][doing] [svk-kbok-enhancements] Gör adressen obligatorisk även i övriga kyrkliga handlingar, som stop-gap
 
 Rasmus 2026-07-29. Kandidaten som redan står som Kartlagd fälla 3 i README, nu uttryckligen önskad som funktion i skriptet.
 
@@ -225,7 +225,7 @@ Klart när: en xlsx-rapport går att läsa i rutan utan att laddas ner, eller s�
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Inställning: visa blanketten i webbläsaren i stället för att ladda ner den direkt
+## [P3][done] [svk-kbok-enhancements] Inställning: visa blanketten i webbläsaren i stället för att ladda ner den direkt
 
 Rasmus 2026-07-29, under arbetet med TASK-514.
 
@@ -254,7 +254,7 @@ Klart när: antingen finns inställningen och filnamnet överlever, eller så ä
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Byt namn på utskrivna blanketter till datum, handlingstyp och namn
+## [P3][done] [svk-kbok-enhancements] Byt namn på utskrivna blanketter till datum, handlingstyp och namn
 
 Rasmus 2026-07-28. Gäller blanketterna för dop, konfirmation, vigsel, välsignelse och begravning som skrivs ut eller sparas.
 
