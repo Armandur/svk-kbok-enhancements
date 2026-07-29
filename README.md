@@ -134,10 +134,25 @@ efter appens första anrop har svaret redan passerat, och raderna får ingen
 ikon förrän användaren söker om. Verifierat - pålagt efter listladdningen
 blev det 0 ikoner, och 12 först efter en ny sökning.
 
-Länken går till `/personakt/<id>`, medan appens eget dubbelklick i
-Ministerialboken går till `/personakt/<id>/begravning`. Ikonen heter
-"Öppna personakten i ny flik", så det är avsiktligt - samma person,
-personaktsvyn i stället för handlingen.
+I Ministerialboken öppnar länken **ministerialboksposten**, inte bara
+personakten - samma vy som appens eget dubbelklick. Handlingstypens kod
+finns i samma API-svar och styr vilken:
+
+| Kod | Handlingstyp | Vy |
+| --- | --- | --- |
+| `D` | Dop | `/personakt/<id>/dop` |
+| `K` | Konfirmation | `/personakt/<id>/konf` |
+| `B` | Begravning | `/personakt/<id>/begravning` |
+| `V` | Vigsel och välsignelse | `/personakt/<id>/vigsel?kyrklighandlingsId=<handlingens id>` |
+
+Välsignelse har också kod `V` och samma vy - den lagras som en vigsel.
+Vigsel och välsignelse gäller två personer och delar vy, så handlingens id
+måste med i frågesträngen för att rätt post ska öppnas.
+
+Verifierat mot alla fem typerna, i Utbildningsmiljön och testmiljön (som är enda
+miljön med en välsignelsepost). I Sök personer går länken fortfarande till
+personakten - där finns ingen handling att öppna - och ikonens
+hjälptext följer med.
 
 Verifierat att länken pekar dit appens eget dubbelklick går, i både
 Ministerialboken och Sök personer. Startsidans tre verifikatflikar får

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.15
+// @version      0.16
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.15';
+    const VERSION = '0.16';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -249,8 +249,22 @@
      * hämtar med XMLHttpRequest, inte fetch, så patchen sitter där.
      */
 
-    // kyrklighandlingsId (radens data-id) -> personaktens id
-    const PERSONID = new Map();
+    // kyrklighandlingsId (radens data-id) -> {personid, kod}
+    const HANDLING = new Map();
+
+    /* Handlingstypens kod ur API-svaret styr vilken vy appen öppnar. Mätt
+     * genom att dubbelklicka en rad av varje typ och läsa URL:en:
+     *
+     *   D  ->  /personakt/<id>/dop
+     *   K  ->  /personakt/<id>/konf
+     *   B  ->  /personakt/<id>/begravning
+     *   V  ->  /personakt/<id>/vigsel?kyrklighandlingsId=<handlingens id>
+     *
+     * Välsignelse har också kod V och samma vy - den lagras som en vigsel.
+     * Vigsel och välsignelse gäller två personer och delar vy, så handlingens
+     * id måste med i frågesträngen för att rätt post ska öppnas.
+     */
+    const HANDLINGSVY = { D: 'dop', K: 'konf', B: 'begravning', V: 'vigsel' };
 
     function fangaPersonid() {
         const original = XMLHttpRequest.prototype.open;
@@ -273,8 +287,10 @@
                     if (!Array.isArray(poster)) return;
                     poster.forEach((post) => {
                         if (post && post.kyrklighandlingsId && post.personid) {
-                            PERSONID.set(String(post.kyrklighandlingsId),
-                                String(post.personid));
+                            HANDLING.set(String(post.kyrklighandlingsId), {
+                                personid: String(post.personid),
+                                kod: (post.handlingstyp || {}).kod,
+                            });
                         }
                     });
                 });
@@ -283,13 +299,19 @@
         };
     }
 
-    function personaktIdFor(rad) {
+    function lankmalFor(rad) {
         const id = rad.getAttribute('data-id');
         if (!id) return null;
-        // Sök personer: radens id ÄR personaktens.
-        if (arPersonlista(rad)) return id;
-        // Övriga listor: slå upp det ur API-svaret.
-        return PERSONID.get(id) || null;
+        // Sök personer: radens id ÄR personaktens, och där finns ingen
+        // handling att öppna.
+        if (arPersonlista(rad)) return personaktUrl(id);
+        const post = HANDLING.get(id);
+        if (!post) return null;
+        const vy = HANDLINGSVY[post.kod];
+        // Okänd handlingstyp: personakten är bättre än ingen länk alls.
+        if (!vy) return personaktUrl(post.personid);
+        const fraga = post.kod === 'V' ? `?kyrklighandlingsId=${id}` : '';
+        return `${personaktUrl(post.personid)}/${vy}${fraga}`;
     }
 
     function gridArPersonlista(grid) {
@@ -323,8 +345,8 @@
 
     function laggTillLank(rad) {
         if (rad.querySelector('.' + LANK_KLASS)) return;
-        const id = personaktIdFor(rad);
-        if (!id) return;
+        const mal = lankmalFor(rad);
+        if (!mal) return;
         const forsta = rad.querySelector('[role="gridcell"]');
         if (!forsta) return;
 
@@ -340,10 +362,12 @@
             + 'justify-content:center;padding:0';
 
         const a = document.createElement('a');
-        a.href = personaktUrl(id);
+        a.href = mal;
         a.target = '_blank';
         a.rel = 'noopener';
-        a.title = 'Öppna personakten i ny flik';
+        a.title = arPersonlista(rad)
+            ? 'Öppna personakten i ny flik'
+            : 'Öppna ministerialboksposten i ny flik';
         a.innerHTML = NYFLIK_IKON;
         a.style.cssText = 'text-decoration:none;line-height:0;display:flex;'
             + 'opacity:.45;cursor:pointer;color:inherit;padding:3px 4px';
@@ -366,7 +390,7 @@
             // Rubriken hör ihop med ikonen: bara där någon rad faktiskt får
             // en, annars blir kolumnen tom.
             const rader = [...grid.querySelectorAll(RAD)];
-            if (!rader.some(personaktIdFor)) return;
+            if (!rader.some(lankmalFor)) return;
             const rubrikrad = grid.querySelector('[role="columnheader"]');
             if (!rubrikrad || !rubrikrad.parentElement) return;
             const rad = rubrikrad.parentElement;
@@ -397,7 +421,7 @@
         const rad = e.target.closest(RAD);
         // Samma id-fälla som länkikonen: verifikatlistornas data-id är inte
         // en personakt, och Ministerialbokens är blankettnumret.
-        return rad && personaktIdFor(rad) ? rad : null;
+        return rad && lankmalFor(rad) ? rad : null;
     }
 
     function hindraAutoscroll(e) {
@@ -408,7 +432,7 @@
         const rad = radUnder(e);
         if (!rad) return;
         e.preventDefault();
-        window.open(personaktUrl(personaktIdFor(rad)), '_blank', 'noopener');
+        window.open(lankmalFor(rad), '_blank', 'noopener');
     }
 
     /* ---------- Auto-hämta relationspersoner ----------
