@@ -234,6 +234,18 @@ namnet genom att patcha `HTMLAnchorElement.prototype.click` och skriva om
 attributet i klicket, innan originalanropet släpps igenom. Ingen
 `Content-Disposition` och inget `GM_download` behövs.
 
+Bekräftar man ett verifikat senare - via Aktuella på startsidan i stället
+för direkt när det skapas - finns ingen personakt bakom att läsa namnet ur.
+Verifikatet visar det självt, men sammanskrivet som `Per Persson` i stället
+för uppdelat i fält, och då blir filnamnet
+`Utträdesbevis - Per Persson.pdf`. Att dela strängen går inte att göra
+rätt, och fallet är ett undantag.
+
+Verifikatet bär också ett **Händelsedatum**, och det läggs först i
+filnamnet när det finns - det är ju den händelse beviset gäller. Fältet
+finns på in- och utträdesverifikat men inte på alla typer; saknas det utgår
+datumdelen som förut.
+
 Bevisen ligger i personaktens Rapporter-meny, som har 29 poster mot
 handlingspostens fem. Bara de som står i listan ovan döps om - övriga
 rapporter, som Medlemsbevis och Registerutdrag, lämnas som de är.

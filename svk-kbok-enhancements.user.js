@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.19
+// @version      0.20
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.19';
+    const VERSION = '0.20';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -802,7 +802,9 @@
         // Personakten saknar sektionsrubrik - där står namnet i raden högst
         // upp. Den läses sist: på en handlingspost utan personakt är raden
         // tom, och då ska sektionen ovan ha fått svara först.
-        return personnamnUr(document.querySelector('main')) || ihagkommetNamn();
+        return personnamnUr(document.querySelector('main'))
+            || ihagkommetNamn()
+            || verifikatnamn();
     }
 
     /* Utträdesvyn visar namnet som löpande text - "Örjan Persson" följt av
@@ -831,6 +833,38 @@
         if (namn && pnr) {
             sessionStorage.setItem(PERSONNYCKEL, JSON.stringify({ pnr, namn }));
         }
+    }
+
+    /* Ett verifikat som bekräftas senare - via Aktuella på startsidan i
+     * stället för direkt när det skapas - har ingen personakt bakom sig att
+     * läsa namnet ur, och inget ihågkommet namn i fliken.
+     *
+     * Verifikatet visar uppgifterna självt, men namnet sammanskrivet som
+     * "Tarja Persson" i stället för uppdelat i fält. Det får stå som det
+     * står: att dela strängen går inte att göra rätt, och fallet är ett
+     * undantag. Händelsedatumet finns däremot rent och hör till beviset -
+     * det är ju den händelse beviset gäller.
+     */
+
+    function verifikatfalt(etikett) {
+        const rotter = [...document.querySelectorAll('[role="dialog"]')];
+        rotter.push(document.querySelector('main'));
+        for (const rot of rotter) {
+            const varde = rot && sektionsfalt(rot, etikett);
+            if (varde) return varde;
+        }
+        return null;
+    }
+
+    function verifikatnamn() {
+        const varde = verifikatfalt('Namn');
+        return varde ? rensaFilnamnsdel(varde) : null;
+    }
+
+    function handelsedatum() {
+        const varde = verifikatfalt('Händelsedatum');
+        const traff = varde && varde.match(/\d{4}-\d{2}-\d{2}/);
+        return traff ? traff[0] : null;
     }
 
     function ihagkommetNamn() {
@@ -901,6 +935,12 @@
         if (arBlankett) {
             const datum = handlingsdatum();
             if (datum) delar.push(datum);
+        } else {
+            // Bevisen hämtas oftast från personakten, där inget datum finns.
+            // Går de via ett verifikat bär det händelsedatumet - och det är
+            // just den händelse beviset gäller.
+            const handelse = handelsedatum();
+            if (handelse) delar.push(handelse);
         }
         delar.push(typ, namn);
         return `${delar.join(' - ')}.pdf`;
