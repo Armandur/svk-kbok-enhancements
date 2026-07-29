@@ -132,7 +132,7 @@ Klart när: tio siffror blir tolv med rätt sekel, beslutet om sekelregeln är n
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Ctrl+B som genväg för Bekräfta verifikat
+## [P3][done] [svk-kbok-enhancements] Ctrl+B som genväg för Bekräfta verifikat
 
 Rasmus 2026-07-29.
 
