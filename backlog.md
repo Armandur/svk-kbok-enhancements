@@ -94,6 +94,41 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Sätt fokus i datumfältet när in- eller utträdesformuläret är klart
+
+Rasmus 2026-07-29.
+
+ÖNSKEMÅLET
+
+Inträde: när personen hämtats via personnumret ska fokus hamna direkt i Inträdesdatum.
+Utträde: så fort /uttrade laddat klart ska fokus hamna i Utträdesdatum.
+
+Båda sparar ett musklick eller några tabbtryck i ett flöde som annars är helt tangentbordsdrivet, och passar ihop med auto-hämtningen som redan gör hämtningen åt en.
+
+SKILLNADEN MELLAN DE TVÅ
+
+Utträde är enkelt: vyn har URL:en /personakt/<id>/uttrade och innehåller bara personuppgifterna och fältet Utträdesdatum. Fokus kan sättas så fort fältet finns.
+
+Inträde är svårare. Vyn /in-och-uttraden visar personnummerfältet från start, och Inträdesdatum dyker upp först när personen hämtats. Fokus får därför inte sättas för tidigt - och inte heller stjälas medan användaren fortfarande skriver personnumret. Kopplingen till auto-hämtningen (TASK-521) är att fokus rimligen ska flyttas när hämtningen är klar, alltså när namnet dykt upp på sidan.
+
+ATT TÄNKA PÅ
+
+Fokus får sättas EN gång per formulär, inte vid varje DOM-ändring - uppdatera() körs vid varje mutation, och ett fält som tar tillbaka fokus medan man skriver någon annanstans är värre än inget fokus alls. Samma mönster som fokuseraBekrafta använder: markera elementet med ett dataset-attribut när det är gjort.
+
+Fokus ska inte heller stjälas om användaren redan står i ett annat fält. Kontrollera document.activeElement innan.
+
+Fältet hittas via faltForEtikett('Inträdesdatum') respektive faltForEtikett('Utträdesdatum'), som redan finns i skriptet.
+
+Inställning i panelen under Formulär, rimligen på som standard - det flyttar bara fokus och förstör ingenting.
+
+Klart när: fokus hamnar i datumfältet i båda flödena, bara en gång per formulär, aldrig medan användaren skriver någon annanstans, och beteendet är verifierat i Utbildningsmiljön.
+
+- ID: `01KYPJD7DYSQZH48HQKAZJ4GND`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
 ## [P3][done] [svk-kbok-enhancements] Inställning: fyll ut tiosiffrigt personnummer till tolv siffror automatiskt
 
 Rasmus 2026-07-29: skriver man bara tio siffror ska tillägget kunna fylla ut numret automatiskt.
