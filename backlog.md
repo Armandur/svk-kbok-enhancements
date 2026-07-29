@@ -122,7 +122,7 @@ Inte utrett: om flikarna gör det svårare att hitta genvägarna för den som in
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Korta ned README och flytta detaljerna till en egen dokumentationsfil
+## [P3][done] [svk-kbok-enhancements] Korta ned README och flytta detaljerna till en egen dokumentationsfil
 
 Rasmus 2026-07-29: README på GitHub är alldeles för invecklad och inte målgruppsanpassad.
 
