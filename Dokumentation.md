@@ -221,6 +221,16 @@ Verifierat att länken pekar dit appens eget dubbelklick går, i både
 Ministerialboken och Sök personer. Startsidans tre verifikatflikar får
 ingen ikon alls - där finns inget personakt-id att bygga av.
 
+Pålysningsboken får ingen ikon i dag, men skulle kunna få en. Dess
+kolumner är gemena som Ministerialbokens (`palysningsdatum`, `namn`,
+`personnummer`, `lopnr`), så `gridArPersonlista()` känner inte igen den.
+Målet är däremot inte en personakt: en pålysning är ett eget objekt med
+eget id, och appen navigerar till `/palysning/<palysningId>`. Rapportlagret
+har ett eget `selectionIdType` för det, `PalysningsId`. Utrett i TASK-530;
+kvar är att avgöra om radens `data-id` redan är `palysningId` eller om det
+krävs ihopparning mot `Palysning/FetchPalysningarAktuella` och dess tre
+motsvarigheter.
+
 ## Om adresskravet
 
 Kbok stoppar verifikatet om adressen saknas i **Dop**, men släpper igenom
@@ -282,9 +292,17 @@ gjort sitt. Står markören redan i ett annat fält lämnas den i fred.
 
 ## Om auto-hämtningen
 
-Gäller alla personnummerfält med en hämtningsknapp: relationspersonfälten
-i handlingarna och personnummerfältet på Inträde. Hämtningen sker när
-numret blir komplett, oavsett om det skrivits eller klistrats in.
+Gäller relationspersonfälten i handlingarna och personnummerfältet på
+Inträde. Hämtningen sker när numret blir komplett, oavsett om det skrivits
+eller klistrats in.
+
+Ett undantag som **inte** är avsiktligt: det fristående
+pålysningsformulärets Person 1 hämtar inte. Fältet heter
+`huvudperson1.persnr`, och `arRelationsfalt()` sållar bort allt som börjar
+med `huvudperson` - avsett för handlingarnas knapp **Hämta uppgifter igen
+från folkbokföringen**, som skriver över redigerade uppgifter. Samma
+id-prefix betyder olika saker i de två vyerna, och i pålysningsformuläret
+är knappen en vanlig hämtning. Mätt 2026-07-30; följs upp i TASK-533.
 
 Två knappar klickas aldrig automatiskt, trots att de sitter närmast
 fältet i sina vyer: **Sök** på startsidan, som navigerar iväg, och
@@ -495,7 +513,7 @@ Underlaget kommer från arbetet med användarmanualen 2026-07-25 till
 Utbildningsmiljön. Fällorna nedan är alltså inte hypoteser - de kostade
 tid på riktigt under kartläggningen.
 
-### 1. Hämta-ikonen som måste klickas (åtgärdad i skriptet)
+### 1. Hämta-ikonen som måste klickas (åtgärdad utom i pålysningsformuläret)
 
 Relationspersonfälten har en egen, **namnlös** ikonknapp bredvid
 personnummerfältet. Att bara skriva in personnumret hämtar ingenting -
@@ -504,9 +522,10 @@ längre fram.
 
 Bekräftade fält (id i DOM:en):
 
-- `vardnadshavare1.persnr` och `vardnadshavare2.persnr` i Dop
-- Relationsperson i Begravning (Make/maka eller Vårdnadshavare)
-- Person 1 i det fristående pålysningsformuläret
+- `vardnadshavare1.persnr` och `vardnadshavare2.persnr` i Dop - åtgärdade
+- Relationsperson i Begravning (Make/maka eller Vårdnadshavare) - åtgärdad
+- Person 1 i det fristående pålysningsformuläret (`huvudperson1.persnr`) -
+  **inte** åtgärdad, se undantaget under Om auto-hämtningen och TASK-533
 
 Till skillnad från huvudsökningen, som har en tydlig knapp märkt
 **Hämta**, och personuppgiftssektionen, som har **Hämta uppgifter igen**,
@@ -514,7 +533,16 @@ Till skillnad från huvudsökningen, som har en tydlig knapp märkt
 
 Värst är pålysningsformuläret: saknas namnet ger **Spara ingen
 återkoppling alls**. Knappen ser aktiv ut, klicket registreras, och
-ingenting händer - ingen dialog, ingen fältmarkering, ingen notis.
+ingenting händer - ingen dialog, ingen fältmarkering, ingen notis. Att
+just det fältet också är det enda auto-hämtan missar gör kombinationen
+sämst möjliga.
+
+Mätt 2026-07-30 gäller tystnaden bredare än så: med namnet hämtat,
+handlingsdatum och handlingsförsamling ifyllda och alla synliga fält satta
+sparar Spara ändå ingenting och säger ingenting. Saknas i stället
+**Handlingsdatum** markeras det fältet med "Handlingsdatum måste anges" -
+valideringsåterkopplingen finns alltså, men träffar inte allt. Rapporterat
+som kbok-web TASK-534.
 
 ### 2. Hämta grupper uppdaterar inte listan automatiskt
 

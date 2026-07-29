@@ -94,6 +94,45 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Auto-hämta täcker inte pålysningsformulärets Person 1 - dokumentationen säger att den gör det
+
+Upptäckt 2026-07-30 under utredningen av TASK-530.
+
+MÄTT I UTBILDNINGSMILJÖN
+
+Fristående pålysning, /palysning/new, fältet Person 1 > Personnummer (id huvudperson1.persnr). Personnumret skrivet tecken för tecken med tangentbordet, 60 ms mellan tangenterna:
+
+  namn hämtat: nej
+  fältvärde:   19550307-1796
+
+Fältet har en namnlös förstoringsglas-ikon 22 px till höger, alltså precis det mönster auto-hämta finns till för. Ett klick på den knappen hämtar personen direkt.
+
+ORSAKEN
+
+arRelationsfalt() sållar bort alla fält vars id börjar med huvudperson:
+
+  if (/^huvudperson/.test(id)) return false;
+
+Avsikten är god - på en kyrklig handling är huvudpersonens knapp 'Hämta uppgifter igen från folkbokföringen', som skriver över redigerade uppgifter och aldrig ska klickas automatiskt. Men pålysningsformulärets Person 1 heter också huvudperson1.persnr, och där är knappen en vanlig hämtning. Samma id-prefix betyder olika saker i två vyer.
+
+VARFÖR DET SPELAR ROLL
+
+Dokumentation.md påstår motsatsen. Kartlagd fälla nr 1 listar 'Person 1 i det fristående pålysningsformuläret' bland de bekräftade fälten och rubriken säger '(åtgärdad i skriptet)'. Avsnittet 'Om auto-hämtningen' säger 'Gäller alla personnummerfält med en hämtningsknapp'. Båda är fel om just det här fältet.
+
+Värst är att pålysningsformuläret är det fält där fällan kostar mest: saknas namnet ger Spara ingen återkoppling alls.
+
+MÖJLIG LÖSNING, inte utredd
+
+Byt prefix-regeln mot att titta på knappen i stället - det är ju knappens etikett som avgör om den är destruktiv, och arHamtaKnapp() sållar redan bort 'Hämta uppgifter igen'. Alternativt undanta huvudperson bara när vyn är en kyrklig handling, inte på /palysning/new.
+
+Klart när: personnumret i pålysningsformulärets Person 1 hämtar personen av sig själv, huvudpersonens fält på dop/vigsel/begravning/konfirmation fortfarande INTE klickas automatiskt (verifiera båda), och Dokumentation.md stämmer med vad skriptet gör.
+
+- ID: `01KYQZYDMDP2BJ8WKKWG64R83N`
+- Type: bug
+- Actor: ai:claude-code
+
+---
+
 ## [P3][todo] [svk-kbok-enhancements] Döp om fler rapporter än bevisen - börja med Medlemsbevis
 
 Rasmus 2026-07-30, förslag 5 i genomgången.
@@ -120,7 +159,7 @@ Klart när: Medlemsbevis laddas ner med uttagsdatum, typ och namn, verifierat i 
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Kolla om pålysningar kan öppnas i ny flik som personakter och ministerialböcker
+## [P3][done] [svk-kbok-enhancements] Kolla om pålysningar kan öppnas i ny flik som personakter och ministerialböcker
 
 Rasmus 2026-07-30, förslag 3 i genomgången av vad mer tillägget kan göra.
 
