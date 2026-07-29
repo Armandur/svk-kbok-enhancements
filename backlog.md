@@ -1,6 +1,6 @@
 # Backlog Export
 
-## [P2][doing] [svk-kbok-enhancements] Auto-hämta utlöses inte när personnumret skrivs för hand
+## [P2][done] [svk-kbok-enhancements] Auto-hämta utlöses inte när personnumret skrivs för hand
 
 Rasmus 2026-07-29, efter att kryssknappsbuggen rättats i 0.9.
 
