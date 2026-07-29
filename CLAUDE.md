@@ -41,6 +41,18 @@ Undvik funktionsnamn, DOM-detaljer, webb-API:er och interna begrepp som
 versionsrubrik som `## 0.37`, nyast först. Fetstil på det som är en ny
 funktion, inte på rättningar.
 
+## README för användaren, Dokumentation.md för utvecklaren
+
+Samma uppdelning som changeloggen. `README.md` säger vad tillägget gör, hur
+man installerar det och vad man får - den ska gå att läsa på en minut och
+har skärmdumpar. Allt om hur något är byggt, varför en lösning ser ut som
+den gör och vilka fällor i Kbok som kartlagts hör hemma i
+`Dokumentation.md`.
+
+Skärmdumparna i `skarmdumpar/` tas om med `verktyg/skarmdumpar.py`. Läs
+bilderna innan de committas - ett skript som avslutas utan fel kan mycket
+väl ha fotograferat en tom PDF-ram.
+
 ## GitHub raw cachar i fem minuter
 
 `raw.githubusercontent.com` svarar med föregående innehåll i upp till fem

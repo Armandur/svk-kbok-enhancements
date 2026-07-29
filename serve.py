@@ -27,8 +27,9 @@ PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8003
 
 
 def infoga(text):
-    """Kodspann, fetstil och länkar - i den ordningen, så att kodspann
-    skyddas från att tolkas vidare."""
+    """Kodspann, fetstil, bilder och länkar - i den ordningen, så att
+    kodspann skyddas från att tolkas vidare och bilder inte fastnar i
+    länkregexen."""
     bitar = []
 
     def spara_kod(m):
@@ -38,6 +39,7 @@ def infoga(text):
     text = re.sub(r"`([^`]+)`", spara_kod, text)
     text = html.escape(text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", r'<img src="\2" alt="\1">', text)
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', text)
     return re.sub(r"\x00(\d+)\x00", lambda m: bitar[int(m.group(1))], text)
 
@@ -124,17 +126,20 @@ SIDA = """<!doctype html>
            padding:.7rem 1.4rem; border-radius:999px; font-weight:600; margin-top:.4rem }}
  .knapp:hover {{ opacity:.9 }}
  .dim {{ color:var(--dim); font-size:.9rem }}
+ img {{ max-width:100%; height:auto; border:1px solid var(--line); border-radius:8px; margin:.6rem 0 }}
 </style></head><body><div class="wrap">
-<div class="install">
+{installera}
+{innehall}
+</div></body></html>"""
+
+INSTALLERA = """<div class="install">
   <h2>Installera</h2>
   <p class="dim">Kräver Tampermonkey eller Greasemonkey i webbläsaren. Knappen
   öppnar skriptet, och tillägget visar sin egen installationsdialog.</p>
   <a class="knapp" href="/{filnamn}">Installera userscript</a>
   <p class="dim" style="margin-bottom:0">Fungerar inget: högerklicka länken, spara filen,
   och dra den till Tampermonkeys instrumentpanel.</p>
-</div>
-{innehall}
-</div></body></html>"""
+</div>"""
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -150,17 +155,41 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(kropp)
             return
 
-        if self.path in ("/", "/index.html"):
-            sida = SIDA.format(filnamn=SKRIPT.name, innehall=markdown(README.read_text()))
-            kropp = sida.encode()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(kropp)))
-            self.end_headers()
-            self.wfile.write(kropp)
+        # Skärmdumparna som README länkar in med relativa sökvägar.
+        if self.path.startswith("/skarmdumpar/") and self.path.endswith(".png"):
+            bild = (ROT / "skarmdumpar" / Path(self.path).name).resolve()
+            if bild.parent == (ROT / "skarmdumpar").resolve() and bild.is_file():
+                kropp = bild.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Length", str(len(kropp)))
+                self.end_headers()
+                self.wfile.write(kropp)
+                return
+            self.send_error(404)
             return
 
+        if self.path in ("/", "/index.html"):
+            self._markdown_sida(README, INSTALLERA.format(filnamn=SKRIPT.name))
+            return
+
+        # Övriga markdownfiler i reporoten - README länkar till Dokumentation
+        # och CHANGELOG, och de ska fungera även härifrån.
+        if self.path.endswith(".md"):
+            fil = (ROT / Path(self.path).name).resolve()
+            if fil.parent == ROT and fil.is_file():
+                self._markdown_sida(fil, "")
+                return
+
         self.send_error(404)
+
+    def _markdown_sida(self, fil, installera):
+        kropp = SIDA.format(installera=installera, innehall=markdown(fil.read_text())).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(kropp)))
+        self.end_headers()
+        self.wfile.write(kropp)
 
     def log_message(self, fmt, *args):
         print(f"{self.address_string()} {fmt % args}", flush=True)
