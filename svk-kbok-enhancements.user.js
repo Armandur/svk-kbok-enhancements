@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.21
+// @version      0.22
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.21';
+    const VERSION = '0.22';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -57,6 +57,7 @@
         hoppaOverDatumvaljare: true,
         markerbartPersonnummer: true,
         dagensDatum: true,
+        fokusDatum: true,
         blankettnamn: true,
         minnsMiljo: true,
         // Av som standard: Kbok laddar ner direkt, och den som vill ha
@@ -80,6 +81,7 @@
         hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
         markerbartPersonnummer: 'Personnumret går att markera utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
+        fokusDatum: 'Sätt fokus i datumfältet vid in- och utträde',
         blankettnamn: 'Döp om till handlingsdatum, typ och namn',
         minnsMiljo: 'Kom ihåg miljövalet, så det inte behöver göras om i varje ny flik',
         visaBlankett: 'Visa i en ruta med Skriv ut och Ladda ner i stället för att ladda ner direkt',
@@ -97,7 +99,7 @@
           nycklar: ['nyflikLank', 'mittenklick', 'markerbartPersonnummer'] },
         { rubrik: 'Formulär',
           nycklar: ['autoHamta', 'hoppaOverDatumvaljare', 'dagensDatum',
-              'tomPalysningsdatum'] },
+              'fokusDatum', 'tomPalysningsdatum'] },
         { rubrik: 'Blanketter och rapporter',
           nycklar: ['blankettnamn', 'visaBlankett'] },
         { rubrik: 'Utbildningsmiljön',
@@ -682,6 +684,43 @@
             hjalp.dataset.svkKbokDoltFel = '1';
             hjalp.style.visibility = 'hidden';
         }
+    }
+
+    /* ---------- Fokus i datumfältet vid in- och utträde ----------
+     *
+     * Båda flödena är annars helt tangentbordsdrivna: skriv personnumret,
+     * personen hämtas av sig själv, och sedan måste man ta musen för att nå
+     * datumfältet.
+     *
+     * Vyerna skiljer sig. Utträdet har fältet på plats direkt när sidan
+     * laddat, och där finns inget att flytta fokus ifrån. Inträdet visar
+     * Inträdesdatum först när personen hämtats, alltså precis när
+     * personnummerfältet gjort sitt - det är då fokus ska vidare.
+     */
+
+    function fokuseraDatumfalt() {
+        if (!installningar.fokusDatum) return;
+        let etikett = null;
+        if (/\/uttrade$/.test(location.pathname)) etikett = 'Utträdesdatum';
+        else if (/in-och-uttraden/.test(location.pathname)) etikett = 'Inträdesdatum';
+        if (!etikett) return;
+
+        const falt = faltForEtikett(etikett);
+        // En gång per fält. uppdatera() körs vid varje DOM-ändring, och ett
+        // fält som tar tillbaka fokus medan man skriver någon annanstans är
+        // värre än inget fokus alls.
+        if (!falt || falt.dataset.svkKbokFokuserad) return;
+
+        // Flytta bara från de lägen där det är fokus vi vill lämna: ingenting
+        // alls, Hämta-knappen, eller personnummerfältet som just gjort sitt.
+        const aktiv = document.activeElement;
+        const fårFlyttas = !aktiv || aktiv === document.body
+            || aktiv.tagName === 'BUTTON'
+            || /persnr|personnummer/i.test(aktiv.id || '');
+        if (!fårFlyttas) return;
+
+        falt.dataset.svkKbokFokuserad = '1';
+        falt.focus();
     }
 
     /* ---------- Hoppa över kalenderknappen vid tabb ---------- */
@@ -1575,6 +1614,7 @@
             });
         }
         stallInDatumTabb();
+        fokuseraDatumfalt();
         if (installningar.blankettnamn) {
             kommIhagGruppnamn();
             kommIhagPersonnamn();

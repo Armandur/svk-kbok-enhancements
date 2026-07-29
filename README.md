@@ -174,6 +174,21 @@ Verifierat att länken pekar dit appens eget dubbelklick går, i både
 Ministerialboken och Sök personer. Startsidans tre verifikatflikar får
 ingen ikon alls - där finns inget personakt-id att bygga av.
 
+### Om fokus i datumfältet
+
+In- och utträde är annars helt tangentbordsdrivna ända fram till datumet:
+skriv personnumret, personen hämtas, och sedan måste man ta musen.
+
+Skriptet flyttar därför fokus till datumfältet så fort det finns. Vid
+utträde ligger fältet på plats redan när `/uttrade` laddat. Vid inträde
+dyker `Inträdesdatum` upp först när personen hämtats - och det spelar ingen
+roll om hämtningen skedde av sig själv eller för att man klickade **Hämta**;
+det är fältets ankomst som räknas, inte vägen dit. Verifierat i båda lägen.
+
+Fokus flyttas en gång per fält, och bara från lägen där det är fokus man
+vill lämna: ingenting alls, Hämta-knappen, eller personnummerfältet som just
+gjort sitt. Står markören redan i ett annat fält lämnas den i fred.
+
 ### Om auto-hämtningen
 
 Gäller alla personnummerfält med en hämtningsknapp: relationspersonfälten
