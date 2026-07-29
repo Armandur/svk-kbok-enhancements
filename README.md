@@ -374,6 +374,12 @@ och arket är ett - tolkningen behöver bara läsa
 Går kalkylbladet inte att läsa laddas det ner i stället, liksom allt annat
 som varken är PDF eller xlsx.
 
+Fokus börjar på **Skriv ut**, som är det vanligaste nästa steget när
+blanketten väl visas, så Enter räcker. Rutan är en riktig modal: fokus hålls
+kvar inne i den så länge den är öppen. Utan det tog MUI tillbaka fokus till
+Rapporter-knappen när menyn stängdes - och eftersom blobben hämtas asynkront
+hinner rutan öppnas först, så ett enkelt `focus()` räckte inte.
+
 Rutan hämtar en egen kopia av blobben med `fetch` innan den visas. Appen
 tar bort länken direkt efter klicket och kan återkalla sin blob-URL, och
 då hade ramen visat en tom sida. Går blobben inte att läsa laddas filen

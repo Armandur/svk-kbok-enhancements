@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.29
+// @version      0.31
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.29';
+    const VERSION = '0.31';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1245,6 +1245,31 @@
     // Sparas innan patchen läggs på, så rutans egen nedladdning inte går
     // genom den och byter namn en gång till.
     const ORIGINALKLICK = HTMLAnchorElement.prototype.click;
+    const KNAPP_KLASS = 'svk-kbok-knapp';
+
+    /* Hover och fokusring går inte att uttrycka som inline-stil, så rutans
+     * knappar får ett eget litet stilblad. Fokusringen behövs för att det ska
+     * synas vilken knapp Enter träffar. */
+    function laggTillKnappstil() {
+        if (document.getElementById('svk-kbok-knappstil')) return;
+        const stil = document.createElement('style');
+        stil.id = 'svk-kbok-knappstil';
+        stil.textContent = `
+            .${KNAPP_KLASS} {
+                padding: .45rem 1.1rem; border-radius: 6px; cursor: pointer;
+                font: inherit; font-weight: 600; white-space: nowrap;
+                background: ${ACCENT}; color: #fff; border: 1px solid ${ACCENT};
+                transition: background .12s, box-shadow .12s;
+            }
+            .${KNAPP_KLASS}:hover { background: ${ACCENT_HOVER};
+                border-color: ${ACCENT_HOVER}; }
+            .${KNAPP_KLASS}.svk-kbok-sekundar { background: #fff; color: ${ACCENT}; }
+            .${KNAPP_KLASS}.svk-kbok-sekundar:hover { background: #f3e9ed; }
+            .${KNAPP_KLASS}:focus-visible, .${KNAPP_KLASS}:focus {
+                outline: 2px solid ${ACCENT}; outline-offset: 2px; }
+        `;
+        document.head.appendChild(stil);
+    }
 
     function laddaNer(url, filnamn) {
         const lank = document.createElement('a');
@@ -1256,6 +1281,7 @@
     }
 
     function byggBlankettruta(url, filnamn, egenYta, egenNedladdning) {
+        laggTillKnappstil();
         const overlay = document.createElement('div');
         overlay.id = 'svk-kbok-blankett';
         overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);'
@@ -1294,10 +1320,14 @@
         const fot = document.createElement('div');
         fot.style.cssText = 'display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;'
             + 'padding:.9rem 1.2rem;border-top:1px solid #e5e2dc';
+        let forstaKnapp = null;
+
+        const stangare = [];
 
         function stang() {
             overlay.remove();
             document.removeEventListener('keydown', viaEscape, true);
+            stangare.forEach((gor) => gor());
             // Blobben är skriptets egen kopia, ingen annan använder den.
             if (url) URL.revokeObjectURL(url);
         }
@@ -1325,21 +1355,16 @@
             ['Ladda ner', true, () => (egenNedladdning
                 ? egenNedladdning() : laddaNer(url, filnamn))],
             ['Stäng', false, stang],
-        ].forEach(([text, primar, gor]) => {
+        ].forEach(([text, primar, gor], i) => {
             const knapp = document.createElement('button');
             knapp.type = 'button';
             knapp.textContent = text;
-            knapp.style.cssText = 'padding:.45rem 1.1rem;border-radius:6px;cursor:pointer;'
-                + 'font:inherit;font-weight:600;white-space:nowrap;'
-                + (primar
-                    ? `background:${ACCENT};color:#fff;border:1px solid ${ACCENT}`
-                    : `background:#fff;color:${ACCENT};border:1px solid ${ACCENT}`);
-            if (primar) {
-                knapp.addEventListener('mouseenter', () => { knapp.style.background = ACCENT_HOVER; });
-                knapp.addEventListener('mouseleave', () => { knapp.style.background = ACCENT; });
-            }
+            knapp.className = KNAPP_KLASS + (primar ? '' : ' svk-kbok-sekundar');
             knapp.addEventListener('click', gor);
             fot.appendChild(knapp);
+            // Skriv ut är det vanligaste nästa steg när blanketten väl visas,
+            // och med fokus där går den att nå med Enter direkt.
+            if (i === 0) forstaKnapp = knapp;
         });
 
         ruta.appendChild(fot);
@@ -1349,6 +1374,25 @@
         });
         document.addEventListener('keydown', viaEscape, true);
         document.body.appendChild(overlay);
+
+        /* Fokusfälla. MUI lämnar tillbaka fokus till Rapporter-knappen när
+         * menyn stängs, och eftersom blobben hämtas asynkront hinner rutan
+         * öppnas först - ett enkelt focus() räcker därför inte. Fällan håller
+         * dessutom tabbningen inne i rutan, som en modal ska.
+         *
+         * Skriv ut är det vanligaste nästa steget när blanketten väl visas,
+         * så fokus börjar där och Enter räcker.
+         */
+        function tillbakaFokus(e) {
+            if (!overlay.isConnected || overlay.contains(e.target)) return;
+            if (forstaKnapp) forstaKnapp.focus();
+        }
+        if (forstaKnapp) {
+            document.addEventListener('focusin', tillbakaFokus, true);
+            stangare.push(() => document.removeEventListener(
+                'focusin', tillbakaFokus, true));
+            forstaKnapp.focus();
+        }
     }
 
     /* ---------- Kalkylblad i rutan ----------
