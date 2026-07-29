@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.31
+// @version      0.32
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.31';
+    const VERSION = '0.32';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -83,6 +83,7 @@
         // desktopklientens flöde slår på det medvetet.
         fokusBekraftaVerifikat: false,
         genvagarPa: true,
+        kollaUppdatering: true,
     };
 
     const ETIKETTER = {
@@ -100,6 +101,7 @@
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar',
         genvagarPa: 'Genvägarna är på',
+        kollaUppdatering: 'Säg till när en ny version finns - hämtar versionsnumret från GitHub en gång per dygn',
     };
 
     /* Inställningarna grupperas efter var de märks, i stället för att ligga
@@ -116,6 +118,8 @@
           nycklar: ['blankettnamn', 'visaBlankett'] },
         { rubrik: 'Utbildningsmiljön',
           nycklar: ['minnsMiljo'] },
+        { rubrik: 'Tillägget',
+          nycklar: ['kollaUppdatering'] },
     ];
 
     /* ---------- Tangentbordsgenvägar ----------
@@ -1711,6 +1715,66 @@
             });
     }
 
+    /* ---------- Ny version och versionshistorik ----------
+     *
+     * GitHub raw skickar access-control-allow-origin: *, så både skriptfilen
+     * och changeloggen går att hämta med fetch utan @grant. Det kompletterar
+     * Tampermonkeys egen kontroll: den kollar på sitt eget intervall, det här
+     * ger besked när panelen öppnas.
+     *
+     * Anropet går till GitHub från en flik som visar personuppgifter. Inget
+     * skickas - det är en GET efter en publik fil - men det är ett utgående
+     * anrop till tredjepart, och därför en egen inställning.
+     */
+
+    const CHANGELOG_URL = INSTALLATIONSURL.replace(
+        /[^/]+\.user\.js$/, 'CHANGELOG.md');
+    const UPPDATERINGSNYCKEL = 'svk-kbok-senaste-version';
+    const DYGN = 24 * 60 * 60 * 1000;
+
+    /* Jämför per siffergrupp, inte som text: '0.9' är inte nyare än '0.31'. */
+    function arNyare(kandidat, nuvarande) {
+        const a = String(kandidat).split('.').map(Number);
+        const b = String(nuvarande).split('.').map(Number);
+        for (let i = 0; i < Math.max(a.length, b.length); i++) {
+            const x = a[i] || 0;
+            const y = b[i] || 0;
+            if (x !== y) return x > y;
+        }
+        return false;
+    }
+
+    function hamtaSenasteVersion() {
+        let sparat = null;
+        try {
+            sparat = JSON.parse(localStorage.getItem(UPPDATERINGSNYCKEL) || 'null');
+        } catch (e) {
+            sparat = null;
+        }
+        // Ett anrop per sidladdning vore för ofta.
+        if (sparat && Date.now() - sparat.tid < DYGN) {
+            return Promise.resolve(sparat.version);
+        }
+        return fetch(INSTALLATIONSURL, { cache: 'no-store' })
+            .then((svar) => svar.text())
+            .then((text) => {
+                const traff = text.match(/@version\s+([\d.]+)/);
+                if (!traff) return null;
+                localStorage.setItem(UPPDATERINGSNYCKEL,
+                    JSON.stringify({ version: traff[1], tid: Date.now() }));
+                return traff[1];
+            })
+            .catch(() => null);
+    }
+
+    // Läses av menyposten, som byggs om av appen och inte kan vänta på ett
+    // nätverksanrop varje gång.
+    let senasteVersion = null;
+
+    function finnsNyareVersion() {
+        return !!senasteVersion && arNyare(senasteVersion, VERSION);
+    }
+
     /* ---------- Inställningspanel ----------
      *
      * Sitter som ett kugghjul i sidhuvudet, bredvid Kboks egna ikoner.
@@ -1890,6 +1954,52 @@
         fot.appendChild(uppdatera_lank);
         ruta.appendChild(fot);
 
+        if (installningar.kollaUppdatering) {
+            const historik = document.createElement('div');
+            historik.style.cssText = 'margin:.6rem 0 0';
+            ruta.appendChild(historik);
+
+            hamtaSenasteVersion().then((senaste) => {
+                senasteVersion = senaste;
+                if (senaste && arNyare(senaste, VERSION)) {
+                    ver.textContent = `Version ${VERSION} - ${senaste} finns`;
+                    ver.style.color = ACCENT;
+                    ver.style.fontWeight = '600';
+                    uppdatera_lank.textContent = `Uppdatera till ${senaste}`;
+                }
+                laggTillMenypost();
+            });
+
+            const visa = document.createElement('a');
+            visa.href = '#';
+            visa.textContent = 'Visa ändringar';
+            visa.style.cssText = `color:${ACCENT};text-decoration:underline;`
+                + 'cursor:pointer;font-size:.85rem';
+            visa.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (historik.dataset.oppen) {
+                    historik.textContent = '';
+                    delete historik.dataset.oppen;
+                    historik.appendChild(visa);
+                    return;
+                }
+                historik.dataset.oppen = '1';
+                visa.textContent = 'Dölj ändringar';
+                const text = document.createElement('pre');
+                text.textContent = 'Hämtar...';
+                text.style.cssText = 'max-height:14rem;overflow:auto;margin:.5rem 0 0;'
+                    + 'padding:.7rem .9rem;background:#f6f4f1;border-radius:6px;'
+                    + 'font:inherit;font-size:.82rem;white-space:pre-wrap';
+                historik.appendChild(text);
+                fetch(CHANGELOG_URL, { cache: 'no-store' })
+                    .then((svar) => svar.text())
+                    // Rubrikmarkörerna hjälper inte i en pre-tagg.
+                    .then((md) => { text.textContent = md.replace(/^#+ /gm, ''); })
+                    .catch(() => { text.textContent = 'Kunde inte hämta ändringarna.'; });
+            });
+            historik.appendChild(visa);
+        }
+
         const stang = document.createElement('button');
         stang.textContent = 'Stäng';
         stang.style.cssText = `margin-top:1rem;background:${ACCENT};color:#fff;border:none;`
@@ -1915,6 +2025,13 @@
      */
 
     function laggTillMenypost() {
+        // Menyposten byggs om av appen vid varje öppning. Har versionsläget
+        // ändrats sedan den sattes in måste den bytas ut, annars saknas
+        // pricken tills menyn öppnas nästa gång.
+        const befintlig = document.querySelector('.' + MENY_KLASS);
+        if (befintlig && befintlig.dataset.svkKbokNy !== String(finnsNyareVersion())) {
+            befintlig.remove();
+        }
         const nav = document.querySelector('nav.MuiList-root, .MuiList-root');
         if (!nav || nav.querySelector('.' + MENY_KLASS)) return;
 
@@ -1937,11 +2054,26 @@
         }
         const text = post.querySelector('.MuiListItemText-primary')
             || post.querySelector('.MuiTypography-root');
-        if (text) text.textContent = PRODUKTNAMN;
+        if (text) {
+            text.textContent = PRODUKTNAMN;
+            // En prick räcker - menyposten är trång, och panelen säger vilken
+            // version det gäller.
+            if (finnsNyareVersion()) {
+                const prick = document.createElement('span');
+                prick.textContent = ' \u25CF';
+                prick.title = `Version ${senasteVersion} finns`;
+                prick.style.cssText = `color:${ACCENT};font-size:.7em;`
+                    + 'vertical-align:middle';
+                text.appendChild(prick);
+            }
+        }
 
         // Klonen bär med sig förlagans lyssnare i vissa webbläsare - byt ut
         // noden mot en ren kopia av sig själv innan vår egen kopplas på.
         const ren = post.cloneNode(true);
+        // Speglar versionsläget posten byggdes med, så den kan bytas ut när
+        // det ändras.
+        ren.dataset.svkKbokNy = String(finnsNyareVersion());
         ren.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();

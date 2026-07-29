@@ -29,9 +29,18 @@ Tampermonkey hämtar `@updateURL` med jämna mellanrum, jämför `@version` och
 erbjuder uppdatering när numret höjts. Det kräver bara att versionsnumret
 faktiskt räknas upp vid varje ändring.
 
-Panelen visar dessutom vilken version som körs och har en länk **Sök efter
-uppdatering**, som öppnar skriptet direkt så att tillägget visar sin dialog
-utan att man behöver vänta på nästa automatiska kontroll.
+Panelen visar dessutom vilken version som körs, och säger till när en nyare
+finns: versionsraden blir `Version 0.31 - 0.32 finns`, länken byter till
+**Uppdatera till 0.32**, och menyposten får en prick. Under den går
+ändringarna att fälla ut - changeloggen hämtas från samma adress.
+
+Versionsnumret hämtas med `fetch` från GitHub raw, som skickar
+`access-control-allow-origin: *`, så inget `@grant` behövs. Kontrollen sker
+högst en gång per dygn; svaret sparas i `localStorage`.
+
+Anropet är en GET efter en publik fil och skickar ingen data, men det går
+till tredjepart från en flik som visar personuppgifter. Därför är det en egen
+inställning som går att stänga av.
 
 ## Vad skriptet gör
 
