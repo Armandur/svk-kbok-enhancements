@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.12
+// @version      0.13
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.12';
+    const VERSION = '0.13';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -955,7 +955,55 @@
      */
 
     const MILJONYCKEL = 'svk-kbok-miljo';
+    const MALNYCKEL = 'svk-kbok-onskad-sida';
+    const FORSOKNYCKEL = 'svk-kbok-mal-forsokt';
     const MILJOVAL_SIDA = /utv_selectDb/i;
+
+    /* Miljövalet kastar bort adressen man var på väg till: efter valet landar
+     * man på startsidan, inte på personakten man klickade.
+     *
+     * Omdirigeringen görs av appen, inte av servern - begäran om
+     * /personakt/<id> besvaras med 200 och appen byter sedan sida.
+     * Navigeringsposten bär därför kvar den ursprungliga adressen, och den
+     * fungerar även för en länk som klistrats in för hand.
+     *
+     * Målet läggs i sessionStorage, som är per flik - två flikar på väg till
+     * olika personakter ska inte kunna ta varandras.
+     */
+
+    function sparaOnskadSida() {
+        const post = performance.getEntriesByType('navigation')[0];
+        if (!post || !post.name) return;
+        let mal;
+        try {
+            mal = new URL(post.name);
+        } catch (e) {
+            return;
+        }
+        if (mal.origin !== location.origin) return;
+        if (MILJOVAL_SIDA.test(mal.pathname) || mal.pathname === '/') return;
+        // Högst ett försök per flik. Kräver måladressen miljöval igen hamnar
+        // man annars i en rundgång mellan de två sidorna tills sessionen dör.
+        if (sessionStorage.getItem(FORSOKNYCKEL)) return;
+        sessionStorage.setItem(MALNYCKEL, mal.pathname + mal.search);
+    }
+
+    function gaTillOnskadSida() {
+        if (MILJOVAL_SIDA.test(location.pathname)) return;
+        const mal = sessionStorage.getItem(MALNYCKEL);
+        if (!mal) return;
+        // Tas bort före navigeringen: leder adressen tillbaka till miljövalet
+        // ska skriptet inte försöka igen i all evighet.
+        sessionStorage.removeItem(MALNYCKEL);
+        sessionStorage.setItem(FORSOKNYCKEL, '1');
+        if (mal === location.pathname + location.search) return;
+        // Måste gå via routern, inte location.href: varje FULL sidladdning
+        // nollställer miljövalet, så en vanlig navigering hade kastat
+        // tillbaka en till miljövalssidan i all oändlighet. pushState plus
+        // popstate byter vy utan att ladda om, och sessionen rörs inte.
+        history.pushState({}, '', mal);
+        window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+    }
 
     function ledtext(text) {
         return [...document.querySelectorAll('body *')].find(
@@ -988,9 +1036,20 @@
     }
 
     function hanteraMiljoval() {
-        if (!MILJOVAL_SIDA.test(location.pathname)) return;
+        if (!installningar.minnsMiljo) {
+            // Inställningen av: låt inte heller en kvarglömd måladress
+            // flytta användaren efter ett val som gjorts för hand.
+            sessionStorage.removeItem(MALNYCKEL);
+            return;
+        }
+        if (!MILJOVAL_SIDA.test(location.pathname)) {
+            gaTillOnskadSida();
+            return;
+        }
+        sparaOnskadSida();
 
-        // Lär av det användaren själv väljer, oavsett om inställningen är på.
+        // Lär av det användaren själv väljer - första gången finns inget
+        // sparat, och då är det klicket som ger skriptet svaret.
         document.querySelectorAll('[role="option"]').forEach((val) => {
             if (val.dataset.svkKbokMiljo) return;
             val.dataset.svkKbokMiljo = '1';
@@ -1000,7 +1059,6 @@
             });
         });
 
-        if (!installningar.minnsMiljo) return;
         const sparad = localStorage.getItem(MILJONYCKEL);
         if (!sparad) return;
         // En gång per sidladdning - annars skulle MutationObserver starta om

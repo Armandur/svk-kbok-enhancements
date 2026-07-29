@@ -66,9 +66,25 @@ Verifierat: en ny flik mot `/personakt/<id>` landar på miljövalet, och den
 ursprungliga fliken gör det också vid nästa sidladdning. Sessionen bärs av
 en enda cookie; `localStorage` och `sessionStorage` är tomma.
 
+Värre än så: **varje full sidladdning** kräver nytt miljöval, inte bara
+nya flikar. Valet överlever bara navigering inne i appen. En inklistrad
+länk, en ny flik eller ett F5 kastar alltid ut en.
+
 Skriptet kommer ihåg vad som valdes senast och fyller i det igen. Första
 gången väljer man själv - då lär sig skriptet valet. Sidan finns bara i
 Utbildningsmiljön, så inget av det här rör produktionen.
+
+Adressen man var på väg till tas också med. Omdirigeringen görs av appen,
+inte av servern - begäran om `/personakt/<id>` besvaras med `200` och
+appen byter sedan sida - så den ursprungliga adressen ligger kvar i
+navigeringsposten och går att läsa, även för en länk som klistrats in för
+hand. Målet sparas i `sessionStorage` (per flik, så två flikar på väg till
+olika personakter inte tar varandras) och nås efter miljövalet.
+
+Den sista navigeringen måste gå via routern med `pushState` plus
+`popstate`, inte via `location.href`: en full sidladdning hade nollställt
+miljövalet igen och gett en rundgång mellan de två sidorna tills sessionen
+dog. Skriptet gör dessutom högst ett försök per flik.
 
 Detta är ett plåster, inte en lösning: orsaken sitter i Kbok och är
 rapporterad som kbok-web TASK-520.
