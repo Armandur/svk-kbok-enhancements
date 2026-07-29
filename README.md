@@ -31,8 +31,14 @@ faktiskt räknas upp vid varje ändring.
 
 Finns en nyare version säger skriptet till med en ruta, en gång per dygn.
 Den har tre val: **Uppdatera**, som öppnar skriptet så att tillägget visar sin
-egen dialog, **Visa ändringar**, som hämtar changeloggen, och **Senare**, som
-skjuter upp till nästa dygn i stället för till nästa sidladdning.
+egen dialog, **Visa ändringar**, som öppnar changeloggen i en egen ruta ovanpå, och
+**Senare**, som skjuter upp till nästa dygn i stället för till nästa
+sidladdning.
+
+Changeloggen renderas som markdown - rubriker, listor, fetstil, kod och
+länkar. Filen är repots egen och använder bara en handfull element, så en
+fullständig parser vore överdrift, men innehållet byggs som DOM-noder och
+inte via `innerHTML`.
 
 Panelen visar dessutom vilken version som körs, och säger till när en nyare
 finns: versionsraden blir `Version 0.31 - 0.32 finns`, länken byter till

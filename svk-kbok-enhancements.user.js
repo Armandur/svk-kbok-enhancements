@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.33
+// @version      0.34
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.33';
+    const VERSION = '0.34';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1773,6 +1773,183 @@
 
     const VISADNYCKEL = 'svk-kbok-uppdatering-visad';
 
+    /* Changeloggen renderas som markdown. Filen är vår egen och använder bara
+     * en handfull element, så en fullständig parser vore överdrift - men
+     * innehållet byggs som DOM-noder och inte via innerHTML, så en framtida
+     * rad med HTML i sig inte kan köras. */
+
+    function markeraInline(rad, mal) {
+        // **fet**, `kod` och [text](adress)
+        const monster = /(\*\*[^*]+\*\*)|(`[^`]+`)|(\[[^\]]+\]\([^)]+\))/g;
+        let sist = 0;
+        let traff = monster.exec(rad);
+        while (traff) {
+            if (traff.index > sist) {
+                mal.appendChild(document.createTextNode(rad.slice(sist, traff.index)));
+            }
+            const bit = traff[0];
+            if (bit.startsWith('**')) {
+                const stark = document.createElement('strong');
+                stark.textContent = bit.slice(2, -2);
+                mal.appendChild(stark);
+            } else if (bit.startsWith('`')) {
+                const kod = document.createElement('code');
+                kod.textContent = bit.slice(1, -1);
+                kod.style.cssText = 'background:#f6f4f1;padding:.05rem .3rem;'
+                    + 'border-radius:3px;font-size:.9em';
+                mal.appendChild(kod);
+            } else {
+                const delar = bit.match(/\[([^\]]+)\]\(([^)]+)\)/);
+                const lank = document.createElement('a');
+                lank.textContent = delar[1];
+                lank.href = delar[2];
+                lank.target = '_blank';
+                lank.rel = 'noopener';
+                lank.style.color = ACCENT;
+                mal.appendChild(lank);
+            }
+            sist = traff.index + bit.length;
+            traff = monster.exec(rad);
+        }
+        if (sist < rad.length) {
+            mal.appendChild(document.createTextNode(rad.slice(sist)));
+        }
+    }
+
+    /* Markdown viker rader: en listpunkt eller ett stycke fortsätter över
+     * radbrytningar tills en tom rad. Utan att vika ihop dem först bryts
+     * ord som **Skriv ut** mitt itu och renderas som text. */
+    function vikBlock(md) {
+        const block = [];
+        let aktuellt = null;
+        md.split('\n').forEach((rad) => {
+            const text = rad.trim();
+            if (!text) {
+                aktuellt = null;
+                return;
+            }
+            const nyttBlock = /^(#{1,4}\s|[-*]\s)/.test(text);
+            if (nyttBlock || !aktuellt) {
+                aktuellt = { text };
+                block.push(aktuellt);
+            } else {
+                aktuellt.text += ` ${text}`;
+            }
+        });
+        return block;
+    }
+
+    function renderaMarkdown(md, hoppaOverForstaRubrik) {
+        const yta = document.createElement('div');
+        let lista = null;
+        let forstaRubrikPasserad = false;
+
+        vikBlock(md).forEach(({ text }) => {
+            const rubrik = text.match(/^(#{1,4})\s+(.*)$/);
+            if (rubrik) {
+                lista = null;
+                // Filens egen topprubrik dubblerar rutans.
+                if (hoppaOverForstaRubrik && rubrik[1].length === 1
+                    && !forstaRubrikPasserad) {
+                    forstaRubrikPasserad = true;
+                    return;
+                }
+                forstaRubrikPasserad = true;
+                const h = document.createElement(`h${Math.min(rubrik[1].length + 1, 6)}`);
+                markeraInline(rubrik[2], h);
+                h.style.cssText = rubrik[1].length <= 2
+                    ? `font-size:1rem;margin:1.2rem 0 .3rem;color:${ACCENT}`
+                    : 'font-size:.92rem;margin:.9rem 0 .2rem';
+                yta.appendChild(h);
+                return;
+            }
+            const punkt = text.match(/^[-*]\s+(.*)$/);
+            if (punkt) {
+                if (!lista) {
+                    lista = document.createElement('ul');
+                    lista.style.cssText = 'margin:.3rem 0;padding-left:1.2rem';
+                    yta.appendChild(lista);
+                }
+                const li = document.createElement('li');
+                li.style.margin = '.25rem 0';
+                markeraInline(punkt[1], li);
+                lista.appendChild(li);
+                return;
+            }
+            lista = null;
+            const stycke = document.createElement('p');
+            stycke.style.cssText = 'margin:.4rem 0';
+            markeraInline(text, stycke);
+            yta.appendChild(stycke);
+        });
+        return yta;
+    }
+
+    /* Egen ruta ovanpå den som öppnade den. Tidigare fälldes ändringarna ut
+     * inuti panelen, vilket gjorde den lång och lämnade knappen kvar med fel
+     * text när man fällde ihop igen. */
+
+    function visaChangelog() {
+        if (document.getElementById('svk-kbok-changelog')) return;
+        laggTillKnappstil();
+        const overlay = document.createElement('div');
+        overlay.id = 'svk-kbok-changelog';
+        overlay.style.cssText = 'position:fixed;inset:0;z-index:100000;'
+            + 'background:rgba(0,0,0,.35);display:flex;align-items:center;'
+            + 'justify-content:center;padding:1.5rem';
+
+        const ruta = document.createElement('div');
+        ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
+            + 'width:min(40rem,100%);max-height:calc(100vh - 3rem);display:flex;'
+            + 'flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.25);'
+            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+
+        const rubrik = document.createElement('h2');
+        rubrik.textContent = 'Ändringar';
+        rubrik.style.cssText = 'margin:0;padding:1.2rem 1.5rem .6rem;font-size:1.1rem';
+        ruta.appendChild(rubrik);
+
+        const kropp = document.createElement('div');
+        kropp.style.cssText = 'flex:1;overflow-y:auto;padding:0 1.5rem';
+        kropp.textContent = 'Hämtar...';
+        ruta.appendChild(kropp);
+
+        const fot = document.createElement('div');
+        fot.style.cssText = 'display:flex;justify-content:flex-end;'
+            + 'padding:.9rem 1.5rem 1.2rem';
+        const stangKnapp = document.createElement('button');
+        stangKnapp.type = 'button';
+        stangKnapp.textContent = 'Stäng';
+        stangKnapp.className = KNAPP_KLASS;
+
+        function stang() {
+            overlay.remove();
+            document.removeEventListener('keydown', viaEscape, true);
+        }
+        function viaEscape(e) {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                stang();
+            }
+        }
+        stangKnapp.addEventListener('click', stang);
+        fot.appendChild(stangKnapp);
+        ruta.appendChild(fot);
+        overlay.appendChild(ruta);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) stang(); });
+        document.addEventListener('keydown', viaEscape, true);
+        document.body.appendChild(overlay);
+        stangKnapp.focus();
+
+        fetch(CHANGELOG_URL, { cache: 'no-store' })
+            .then((svar) => svar.text())
+            .then((md) => {
+                kropp.textContent = '';
+                kropp.appendChild(renderaMarkdown(md, true));
+            })
+            .catch(() => { kropp.textContent = 'Kunde inte hämta ändringarna.'; });
+    }
+
     /* En ny version är lätt att missa som en prick i en meny man sällan
      * öppnar. Rutan visas därför en gång per dygn - klickar man Senare
      * kommer den tillbaka i morgon, inte vid nästa sidladdning. */
@@ -1803,10 +1980,6 @@
         ingress.style.cssText = 'margin:0 0 1rem;color:#6b6862;font-size:.9rem';
         ruta.appendChild(ingress);
 
-        const historik = document.createElement('div');
-        historik.style.cssText = 'margin:0 0 1rem';
-        ruta.appendChild(historik);
-
         const fot = document.createElement('div');
         fot.style.cssText = 'display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap';
 
@@ -1827,20 +2000,7 @@
                 window.open(INSTALLATIONSURL, '_blank', 'noopener');
                 stang();
             }],
-            ['Visa ändringar', false, () => {
-                if (historik.dataset.oppen) return;
-                historik.dataset.oppen = '1';
-                const text = document.createElement('pre');
-                text.textContent = 'Hämtar...';
-                text.style.cssText = 'max-height:16rem;overflow:auto;margin:0;'
-                    + 'padding:.7rem .9rem;background:#f6f4f1;border-radius:6px;'
-                    + 'font:inherit;font-size:.82rem;white-space:pre-wrap';
-                historik.appendChild(text);
-                fetch(CHANGELOG_URL, { cache: 'no-store' })
-                    .then((svar) => svar.text())
-                    .then((md) => { text.textContent = md.replace(/^#+ /gm, ''); })
-                    .catch(() => { text.textContent = 'Kunde inte hämta ändringarna.'; });
-            }],
+            ['Visa ändringar', false, visaChangelog],
             ['Senare', false, stang],
         ].forEach(([namn, primar, gor], i) => {
             const knapp = document.createElement('button');
@@ -2056,49 +2216,16 @@
         ruta.appendChild(fot);
 
         if (installningar.kollaUppdatering) {
-            const historik = document.createElement('div');
-            historik.style.cssText = 'margin:.6rem 0 0';
-            ruta.appendChild(historik);
-
-            hamtaSenasteVersion().then((senaste) => {
-                senasteVersion = senaste;
-                if (senaste && arNyare(senaste, VERSION)) {
-                    ver.textContent = `Version ${VERSION} - ${senaste} finns`;
-                    ver.style.color = ACCENT;
-                    ver.style.fontWeight = '600';
-                    uppdatera_lank.textContent = `Uppdatera till ${senaste}`;
-                }
-                laggTillMenypost();
-            });
-
             const visa = document.createElement('a');
             visa.href = '#';
             visa.textContent = 'Visa ändringar';
             visa.style.cssText = `color:${ACCENT};text-decoration:underline;`
-                + 'cursor:pointer;font-size:.85rem';
+                + 'cursor:pointer;font-size:.85rem;display:inline-block;margin:.6rem 0 0';
             visa.addEventListener('click', (e) => {
                 e.preventDefault();
-                if (historik.dataset.oppen) {
-                    historik.textContent = '';
-                    delete historik.dataset.oppen;
-                    historik.appendChild(visa);
-                    return;
-                }
-                historik.dataset.oppen = '1';
-                visa.textContent = 'Dölj ändringar';
-                const text = document.createElement('pre');
-                text.textContent = 'Hämtar...';
-                text.style.cssText = 'max-height:14rem;overflow:auto;margin:.5rem 0 0;'
-                    + 'padding:.7rem .9rem;background:#f6f4f1;border-radius:6px;'
-                    + 'font:inherit;font-size:.82rem;white-space:pre-wrap';
-                historik.appendChild(text);
-                fetch(CHANGELOG_URL, { cache: 'no-store' })
-                    .then((svar) => svar.text())
-                    // Rubrikmarkörerna hjälper inte i en pre-tagg.
-                    .then((md) => { text.textContent = md.replace(/^#+ /gm, ''); })
-                    .catch(() => { text.textContent = 'Kunde inte hämta ändringarna.'; });
+                visaChangelog();
             });
-            historik.appendChild(visa);
+            ruta.appendChild(visa);
         }
 
         const stang = document.createElement('button');
