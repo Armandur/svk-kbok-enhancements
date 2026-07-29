@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.26
+// @version      0.27
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.26';
+    const VERSION = '0.27';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -1184,7 +1184,7 @@
         lank.remove();
     }
 
-    function byggBlankettruta(url, filnamn) {
+    function byggBlankettruta(url, filnamn, egenYta, egenNedladdning) {
         const overlay = document.createElement('div');
         overlay.id = 'svk-kbok-blankett';
         overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);'
@@ -1206,14 +1206,19 @@
         huvud.appendChild(namn);
         ruta.appendChild(huvud);
 
-        const ram = document.createElement('iframe');
-        // toolbar=0 döljer webbläsarens egen verktygsrad i PDF-visaren. Dess
-        // nedladdningsknapp föreslår blob-URL:ens GUID som filnamn, alltså
-        // precis den fälla rutan finns till för att undvika. Zoom fungerar
-        // ändå med Ctrl och scrollhjulet.
-        ram.src = `${url}#toolbar=0&navpanes=0`;
-        ram.style.cssText = 'flex:1;width:100%;border:0';
-        ruta.appendChild(ram);
+        let ram = null;
+        if (egenYta) {
+            ruta.appendChild(egenYta);
+        } else {
+            ram = document.createElement('iframe');
+            // toolbar=0 döljer webbläsarens egen verktygsrad i PDF-visaren.
+            // Dess nedladdningsknapp föreslår blob-URL:ens GUID som filnamn,
+            // alltså precis den fälla rutan finns till för att undvika. Zoom
+            // fungerar ändå med Ctrl och scrollhjulet.
+            ram.src = `${url}#toolbar=0&navpanes=0`;
+            ram.style.cssText = 'flex:1;width:100%;border:0';
+            ruta.appendChild(ram);
+        }
 
         const fot = document.createElement('div');
         fot.style.cssText = 'display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap;'
@@ -1223,7 +1228,7 @@
             overlay.remove();
             document.removeEventListener('keydown', viaEscape, true);
             // Blobben är skriptets egen kopia, ingen annan använder den.
-            URL.revokeObjectURL(url);
+            if (url) URL.revokeObjectURL(url);
         }
 
         function viaEscape(e) {
@@ -1236,13 +1241,18 @@
         [
             ['Skriv ut', true, () => {
                 try {
-                    ram.contentWindow.focus();
-                    ram.contentWindow.print();
+                    if (ram) {
+                        ram.contentWindow.focus();
+                        ram.contentWindow.print();
+                    } else {
+                        window.print();
+                    }
                 } catch (e) {
                     console.warn('svk-kbok-enhancements: kunde inte skriva ut', e);
                 }
             }],
-            ['Ladda ner', true, () => laddaNer(url, filnamn)],
+            ['Ladda ner', true, () => (egenNedladdning
+                ? egenNedladdning() : laddaNer(url, filnamn))],
             ['Stäng', false, stang],
         ].forEach(([text, primar, gor]) => {
             const knapp = document.createElement('button');
@@ -1270,6 +1280,101 @@
         document.body.appendChild(overlay);
     }
 
+    /* ---------- Kalkylblad i rutan ----------
+     *
+     * Rapporter-popupen kan leverera samma rapport som kalkylblad i stället
+     * för PDF. Webbläsaren kan inte visa xlsx, men formatet är en zip med
+     * XML och går att packa upp med DecompressionStream - ingen extern
+     * modul behövs.
+     *
+     * Kboks kalkylblad är enkla: strängarna ligger inline i cellerna, det
+     * finns ingen sharedStrings.xml, och arket är ett. Tolkningen behöver
+     * därför bara läsa xl/worksheets/sheet1.xml.
+     */
+
+    async function lasZip(blob) {
+        const data = new Uint8Array(await blob.arrayBuffer());
+        const vy = new DataView(data.buffer);
+        // Katalogen hittas via End of Central Directory, som ligger sist.
+        let eocd = -1;
+        for (let i = data.length - 22; i >= 0 && i > data.length - 65558; i--) {
+            if (vy.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+        }
+        if (eocd < 0) throw new Error('ingen zip-katalog');
+        const antal = vy.getUint16(eocd + 10, true);
+        let pos = vy.getUint32(eocd + 16, true);
+        const filer = {};
+        for (let i = 0; i < antal; i++) {
+            const namnlangd = vy.getUint16(pos + 28, true);
+            filer[new TextDecoder().decode(
+                data.subarray(pos + 46, pos + 46 + namnlangd))] = {
+                metod: vy.getUint16(pos + 10, true),
+                storlek: vy.getUint32(pos + 20, true),
+                offset: vy.getUint32(pos + 42, true),
+            };
+            pos += 46 + namnlangd + vy.getUint16(pos + 30, true)
+                + vy.getUint16(pos + 32, true);
+        }
+        return { data, vy, filer };
+    }
+
+    async function zipfil(zip, namn) {
+        const post = zip.filer[namn];
+        if (!post) return null;
+        // Namn- och extralängd i den lokala huvudet kan skilja från katalogens.
+        const start = post.offset + 30
+            + zip.vy.getUint16(post.offset + 26, true)
+            + zip.vy.getUint16(post.offset + 28, true);
+        const rad = zip.data.subarray(start, start + post.storlek);
+        if (post.metod === 0) return new TextDecoder().decode(rad);
+        return new Response(new Blob([rad]).stream()
+            .pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    }
+
+    function arkTillRader(xml) {
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        return [...doc.getElementsByTagName('row')].map((rad) => {
+            const celler = [];
+            [...rad.getElementsByTagName('c')].forEach((c) => {
+                // Cellens r-attribut bär kolumnbokstaven; tomma celler
+                // utelämnas i filen och måste fyllas i för att kolumnerna
+                // ska hamna rätt.
+                const bokstav = (c.getAttribute('r') || '').replace(/\d+$/, '');
+                let index = 0;
+                for (let i = 0; i < bokstav.length; i++) {
+                    index = index * 26 + (bokstav.charCodeAt(i) - 64);
+                }
+                const text = c.getElementsByTagName('t')[0]
+                    || c.getElementsByTagName('v')[0];
+                while (celler.length < index - 1) celler.push('');
+                celler.push(text ? text.textContent : '');
+            });
+            return celler;
+        });
+    }
+
+    function byggKalkylruta(rader, blob, filnamn) {
+        const tabell = document.createElement('table');
+        tabell.style.cssText = 'border-collapse:collapse;font-size:.85rem;width:100%';
+        rader.forEach((rad, i) => {
+            const tr = document.createElement('tr');
+            rad.forEach((cell) => {
+                const td = document.createElement(i === 0 ? 'th' : 'td');
+                td.textContent = cell;
+                td.style.cssText = 'border:1px solid #e5e2dc;padding:.3rem .5rem;'
+                    + 'text-align:left;white-space:nowrap'
+                    + (i === 0 ? ';background:#f6f4f1;font-weight:600' : '');
+                tr.appendChild(td);
+            });
+            tabell.appendChild(tr);
+        });
+        const yta = document.createElement('div');
+        yta.style.cssText = 'flex:1;overflow:auto;padding:1rem 1.2rem';
+        yta.appendChild(tabell);
+        byggBlankettruta(null, filnamn, yta, () => laddaNer(
+            URL.createObjectURL(blob), filnamn));
+    }
+
     function visaBlankett(url, filnamn) {
         // Egen kopia av blobben: appen tar bort länken direkt efter klicket
         // och kan återkalla sin blob-URL, och då hade ramen visat en tom sida.
@@ -1281,11 +1386,27 @@
                 // laddar ner det i stället, och då utan download-attribut, så
                 // filen får blob-URL:ens GUID som namn. Ladda hellre ner den
                 // med rätt namn direkt.
+                if (/sheet|excel/i.test(blob.type) || /\.xlsx$/i.test(filnamn)) {
+                    return lasZip(blob)
+                        .then((zip) => zipfil(zip, 'xl/worksheets/sheet1.xml'))
+                        .then((xml) => {
+                            if (!xml) throw new Error('inget ark i filen');
+                            byggKalkylruta(arkTillRader(xml), blob, filnamn);
+                        })
+                        .catch((e) => {
+                            // Går kalkylbladet inte att läsa är en nedladdning
+                            // bättre än ingenting.
+                            console.warn('svk-kbok-enhancements: kunde inte visa '
+                                + 'kalkylbladet', e);
+                            laddaNer(URL.createObjectURL(blob), filnamn);
+                        });
+                }
                 if (blob.type !== 'application/pdf') {
                     laddaNer(URL.createObjectURL(blob), filnamn);
-                    return;
+                    return undefined;
                 }
                 byggBlankettruta(URL.createObjectURL(blob), filnamn);
+                return undefined;
             })
             .catch((e) => {
                 // Går blobben inte att läsa är en nedladdning bättre än

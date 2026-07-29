@@ -360,10 +360,19 @@ nedladdningsknapp har samma problem. Zoom fungerar ändå med Ctrl och
 scrollhjulet.
 
 Rapporter-popupen har en växel högst upp mellan **PDF** och **kalkylblad**,
-och den gäller alla rapporter i listan. Ett kalkylblad går inte att visa i en
-iframe - webbläsaren laddar ner det i stället, utan `download`-attribut, så
-filen får blob-URL:ens GUID som namn. Rutan laddar därför ner allt som inte
-är PDF direkt, med rätt filnamn.
+och den gäller alla rapporter i listan. Kalkylblad visas som en tabell i
+samma ruta, med samma Skriv ut och Ladda ner.
+
+Webbläsaren kan inte rendera xlsx i en iframe - den laddar ner filen i
+stället, utan `download`-attribut, så den får blob-URL:ens GUID som namn.
+Formatet är däremot en zip med XML och går att packa upp med
+`DecompressionStream`, utan extern modul. Kboks kalkylblad är enkla:
+strängarna ligger inline i cellerna, det finns ingen `sharedStrings.xml`,
+och arket är ett - tolkningen behöver bara läsa
+`xl/worksheets/sheet1.xml`.
+
+Går kalkylbladet inte att läsa laddas det ner i stället, liksom allt annat
+som varken är PDF eller xlsx.
 
 Rutan hämtar en egen kopia av blobben med `fetch` innan den visas. Appen
 tar bort länken direkt efter klicket och kan återkalla sin blob-URL, och
