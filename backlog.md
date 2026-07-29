@@ -64,7 +64,7 @@ Klart när: en saknad adress uppmärksammas vid Spara i alla fem handlingarna, i
 
 ---
 
-## [P2][todo] [svk-kbok-enhancements] Publicera repot på GitHub och testa skriptet i riktig Tampermonkey
+## [P2][done] [svk-kbok-enhancements] Publicera repot på GitHub och testa skriptet i riktig Tampermonkey
 
 Två saker som återstår innan skriptet kan sägas fungera på riktigt. Dokumenterat 2026-07-29 inför sessionsslut.
 
