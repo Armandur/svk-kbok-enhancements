@@ -125,7 +125,19 @@ Listans API-svar bär `personid` för varje post, sida vid sida med det
 
 Skriptet fångar därför svaren när de passerar och parar ihop dem med
 raderna. Appen hämtar med `XMLHttpRequest`, inte `fetch`, så patchen
-sitter där.
+sitter där, och bara på `SearchMinisterialbok` - andra sökanrop
+(`FetchVerifikatBySearchlist`, `SearchKyrkoperson`) returnerar också
+`paginatedResults` men med andra id-rymder.
+
+Av samma skäl körs skriptet med `@run-at document-start`: kommer patchen
+efter appens första anrop har svaret redan passerat, och raderna får ingen
+ikon förrän användaren söker om. Verifierat - pålagt efter listladdningen
+blev det 0 ikoner, och 12 först efter en ny sökning.
+
+Länken går till `/personakt/<id>`, medan appens eget dubbelklick i
+Ministerialboken går till `/personakt/<id>/begravning`. Ikonen heter
+"Öppna personakten i ny flik", så det är avsiktligt - samma person,
+personaktsvyn i stället för handlingen.
 
 Verifierat att länken pekar dit appens eget dubbelklick går, i både
 Ministerialboken och Sök personer. Startsidans tre verifikatflikar får

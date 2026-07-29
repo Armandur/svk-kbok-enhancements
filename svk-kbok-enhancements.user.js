@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.14
+// @version      0.15
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
 // @match        https://testmiljön/*
 // @match        https://testmiljön/*
-// @run-at       document-idle
+// @run-at       document-start
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
 // @downloadURL  https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.14';
+    const VERSION = '0.15';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -255,7 +255,11 @@
     function fangaPersonid() {
         const original = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function (metod, url, ...resten) {
-            if (/\/Search/i.test(String(url))) {
+            // Bara ministerialbokens sökning. Andra sökanrop returnerar också
+            // paginatedResults - FetchVerifikatBySearchlist och
+            // SearchKyrkoperson - men med andra id-rymder, och en träff där
+            // hade kunnat para ihop en rad med fel person.
+            if (/SearchMinisterialbok/i.test(String(url))) {
                 this.addEventListener('load', () => {
                     let poster;
                     try {
@@ -1430,23 +1434,42 @@
         fokuseraBekrafta();
     }
 
-    let vantar = false;
-    new MutationObserver(() => {
-        if (vantar) return;
-        vantar = true;
-        requestAnimationFrame(() => { vantar = false; uppdatera(); });
-    }).observe(document.body, { childList: true, subtree: true });
-
-    // Patchen läggs på en gång, inte i uppdatera() - den körs vid varje
-    // DOM-ändring och hade staplat lager på lager av omslutande funktioner.
+    /* Patcharna läggs på omedelbart, före appen hunnit köra något. Skriptet
+     * körs därför med @run-at document-start.
+     *
+     * Det spelar roll för fangaPersonid: kommer patchen efter appens första
+     * anrop har svaret redan passerat, kartan är tom och Ministerialbokens
+     * rader får ingen ikon förrän användaren söker om. Verifierat - med
+     * skriptet pålagt efter listladdningen blev det 0 ikoner, och 12 först
+     * efter en ny sökning.
+     *
+     * De läggs på en gång, inte i uppdatera() - den körs vid varje DOM-ändring
+     * och hade staplat lager på lager av omslutande funktioner.
+     */
     dopOmNedladdningar();
     fangaPersonid();
 
-    document.addEventListener('mousedown', hindraAutoscroll, true);
-    document.addEventListener('auxclick', oppnaViaMittenklick, true);
-    document.addEventListener('keydown', hanteraGenvag, true);
-    document.addEventListener('keydown', hanteraDagensDatum, true);
-    uppdatera();
+    // Resten rör DOM:en och väntar därför in den.
+    function start() {
+        let vantar = false;
+        new MutationObserver(() => {
+            if (vantar) return;
+            vantar = true;
+            requestAnimationFrame(() => { vantar = false; uppdatera(); });
+        }).observe(document.body, { childList: true, subtree: true });
 
-    console.log('svk-kbok-enhancements laddat');
+        document.addEventListener('mousedown', hindraAutoscroll, true);
+        document.addEventListener('auxclick', oppnaViaMittenklick, true);
+        document.addEventListener('keydown', hanteraGenvag, true);
+        document.addEventListener('keydown', hanteraDagensDatum, true);
+        uppdatera();
+
+        console.log('svk-kbok-enhancements laddat');
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
 })();
