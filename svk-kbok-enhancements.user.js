@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.11
+// @version      0.12
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.11';
+    const VERSION = '0.12';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -58,6 +58,7 @@
         markerbartPersonnummer: true,
         dagensDatum: true,
         blankettnamn: true,
+        minnsMiljo: true,
         // Av som standard: Kbok laddar ner direkt, och den som vill ha
         // desktopklientens läge-först slår på det medvetet.
         visaBlankett: false,
@@ -80,6 +81,7 @@
         markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
         blankettnamn: 'Döp om nedladdade blanketter och bevis till handlingsdatum, typ och namn',
+        minnsMiljo: 'Kom ihåg miljövalet i Utbildningsmiljön, så det inte behöver göras om i varje ny flik',
         visaBlankett: 'Visa blanketten i en ruta med Skriv ut och Ladda ner i stället för att ladda ner den direkt',
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar (irreversibelt)',
@@ -938,6 +940,93 @@
         };
     }
 
+    /* ---------- Kom ihåg miljövalet i Utbildningsmiljön ----------
+     *
+     * Utbildningsmiljön låter en välja instans på /utv_selectDb efter
+     * inloggningen. Valet ligger i serversessionen, inte i fliken, och att
+     * öppna en länk i en ny flik nollställer det - för BÅDA flikarna,
+     * eftersom sessionen är gemensam. Verifierat: en ny flik mot
+     * /personakt/<id> landar på miljövalet, och den ursprungliga fliken gör
+     * det också vid nästa sidladdning.
+     *
+     * Skriptet kommer därför ihåg vad som valdes senast och fyller i det
+     * igen. Sidan finns bara i Utbildningsmiljön, så inget av det här rör
+     * produktionen.
+     */
+
+    const MILJONYCKEL = 'svk-kbok-miljo';
+    const MILJOVAL_SIDA = /utv_selectDb/i;
+
+    function ledtext(text) {
+        return [...document.querySelectorAll('body *')].find(
+            (el) => el.children.length === 0
+                && (el.textContent || '').trim() === text);
+    }
+
+    // Stegen i dropdownen renderas asynkront, så varje steg väntar in sitt
+    // element i stället för att anta att föregående klick hunnit slå igenom.
+    function vantaPa(hitta, forsok = 20) {
+        return new Promise((klar, fel) => {
+            const prova = (kvar) => {
+                const traff = hitta();
+                if (traff) return klar(traff);
+                if (kvar <= 0) return fel(new Error('hittade inte elementet'));
+                return setTimeout(() => prova(kvar - 1), 150);
+            };
+            prova(forsok);
+        });
+    }
+
+    /* MUI:s Select öppnar listan på mousedown, inte på click - ett vanligt
+     * element.click() gjorde ingenting alls, och listan förblev tom. */
+    function oppnaLista(el) {
+        ['pointerdown', 'mousedown', 'mouseup', 'click'].forEach((typ) => {
+            el.dispatchEvent(new MouseEvent(typ, {
+                bubbles: true, cancelable: true, view: window, button: 0,
+            }));
+        });
+    }
+
+    function hanteraMiljoval() {
+        if (!MILJOVAL_SIDA.test(location.pathname)) return;
+
+        // Lär av det användaren själv väljer, oavsett om inställningen är på.
+        document.querySelectorAll('[role="option"]').forEach((val) => {
+            if (val.dataset.svkKbokMiljo) return;
+            val.dataset.svkKbokMiljo = '1';
+            val.addEventListener('click', () => {
+                const namn = (val.textContent || '').trim();
+                if (namn) localStorage.setItem(MILJONYCKEL, namn);
+            });
+        });
+
+        if (!installningar.minnsMiljo) return;
+        const sparad = localStorage.getItem(MILJONYCKEL);
+        if (!sparad) return;
+        // En gång per sidladdning - annars skulle MutationObserver starta om
+        // sekvensen för varje ändring den själv orsakar.
+        if (document.body.dataset.svkKbokMiljoval) return;
+        document.body.dataset.svkKbokMiljoval = '1';
+
+        vantaPa(() => ledtext('Inget valt'))
+            .then((trigger) => {
+                oppnaLista(trigger);
+                return vantaPa(() => [...document.querySelectorAll('[role="option"]')]
+                    .find((o) => (o.textContent || '').trim() === sparad));
+            })
+            .then((val) => {
+                val.click();
+                return vantaPa(() => [...document.querySelectorAll('button')].find(
+                    (b) => (b.innerText || '').trim() === 'Välj miljö' && !b.disabled));
+            })
+            .then((knapp) => knapp.click())
+            .catch(() => {
+                // Ser sidan annorlunda ut får användaren välja själv - bättre
+                // än att klicka på måfå i ett formulär som byter instans.
+                console.warn(`svk-kbok-enhancements: kunde inte välja miljön "${sparad}"`);
+            });
+    }
+
     /* ---------- Inställningspanel ----------
      *
      * Sitter som ett kugghjul i sidhuvudet, bredvid Kboks egna ikoner.
@@ -1219,6 +1308,7 @@
             kommIhagGruppnamn();
             kommIhagPersonnamn();
         }
+        hanteraMiljoval();
         tomPalysningsdatum();
         fokuseraBekrafta();
     }

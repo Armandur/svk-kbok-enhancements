@@ -41,6 +41,7 @@ utan att man behöver vänta på nästa automatiska kontroll.
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
 | D för dagens datum | `D` i ett tomt datumfält fyller i dagens datum, som i desktopklienten. Formatet läses ur fältets placeholder - dödsdatum vill ha ÅÅÅÅMMDD, övriga ÅÅÅÅ-MM-DD. | På |
 | Filnamn på blanketter | Döper nedladdade blanketter och bevis efter handlingsdatum, typ och namn i stället för bara typen. Se nedan. | På |
+| Minns miljövalet | Fyller i senast valda miljön i Utbildningsmiljön, så den inte behöver väljas om i varje ny flik. Se nedan. | På |
 | Visa blanketten i stället | Visar PDF:en i en ruta med Skriv ut och Ladda ner, i stället för att ladda ner den direkt. Se nedan. | **Av** |
 | Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. Valideringsfelet döljs tills fältet rörts, se nedan. | **Av** |
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
@@ -51,6 +52,30 @@ slutregistrering och går inte att ångra, så en fokuserad knapp plus ett
 reflexmässigt Enter vore en obehaglig kombination. Att dialogen saknar
 tangentfokus över huvud taget är fångat som en möjlig avvikelse i
 kbok-web TASK-510.
+
+### Om miljövalet i Utbildningsmiljön
+
+Utbildningsmiljön låter en välja instans på `/utv_selectDb` efter
+inloggningen. Valet ligger i serversessionen, inte i fliken, och att öppna
+en länk i en ny flik nollställer det - för **båda** flikarna, eftersom
+sessionen är gemensam. Det räcker alltså att klistra in en länk till en
+personakt i en ny flik för att bli utsparkad till miljövalet på två
+ställen.
+
+Verifierat: en ny flik mot `/personakt/<id>` landar på miljövalet, och den
+ursprungliga fliken gör det också vid nästa sidladdning. Sessionen bärs av
+en enda cookie; `localStorage` och `sessionStorage` är tomma.
+
+Skriptet kommer ihåg vad som valdes senast och fyller i det igen. Första
+gången väljer man själv - då lär sig skriptet valet. Sidan finns bara i
+Utbildningsmiljön, så inget av det här rör produktionen.
+
+Detta är ett plåster, inte en lösning: orsaken sitter i Kbok och är
+rapporterad som kbok-web TASK-520.
+
+En detalj värd att minnas: MUI:s `Select` öppnar listan på `mousedown`,
+inte på `click`. Ett vanligt `element.click()` gjorde ingenting alls och
+listan förblev tom.
 
 ### Om vilka listor som får länkikonen
 
