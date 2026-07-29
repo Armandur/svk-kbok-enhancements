@@ -60,6 +60,38 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Visa xlsx-rapporter inline i samma ruta som PDF-blanketterna
+
+Rasmus 2026-07-29, följdfråga till TASK-516: går det att visa xlsx-filer i rutan på samma sätt som PDF:erna?
+
+VARFÖR DET ÄR SVÅRARE ÄN PDF
+
+PDF fungerar för att webbläsaren har en inbyggd visare - en iframe med blob-URL:en räcker. Något motsvarande finns inte för xlsx. En iframe mot en xlsx-blob laddar ner filen i stället för att visa den, så innehållet måste tolkas av skriptet självt och renderas som HTML.
+
+RAPPORTEN DET GÄLLER
+
+Personaktens Rapporter-meny har 'Namn- och adresslista passande Excel'. Kontrollera först om den ens levereras som en a[download]-blob - Registerutdrag utan familj gör det INTE (verifierat 2026-07-29: inget click på en download-länk, ingen nedladdning, ingen ny flik), utan går troligen via Beställda rapporter-ikonen i sidhuvudet. Är Excel-rapporten av samma sort når patchen den aldrig, och frågan faller.
+
+TVÅ VÄGAR OM DEN GÅR ATT NÅ
+
+1. SheetJS via @require från CDN. Minst arbete, hanterar alla varianter av formatet. Men: skriptet kör i dag med @grant none och utan externa beroenden, och en CDN-hämtad tredjepartsmodul i ett system med personuppgifter är en supply chain-risk värd att väga. Data lämnar visserligen inte webbläsaren.
+
+2. Egen minimal tolkning. xlsx är en zip med XML. DecompressionStream finns i moderna webbläsare, så xl/worksheets/sheet1.xml plus xl/sharedStrings.xml går att läsa utan bibliotek - fast zip-katalogen måste tolkas för hand. Räcker för enkla listrapporter, går sönder på formler, flera blad och formatering. Ingen extern kod.
+
+Väg 2 är rimlig om rapporten är en enkel lista, vilket namnet antyder. Kontrollera hur filen faktiskt ser ut innan valet.
+
+ATT ÅTERANVÄNDA
+
+Rutan är redan generell: patchen gäller varje a[download], inte bara blanketter, och rapportens eget filnamn används när inget kan byggas (verifierat med Medlemsbevis.pdf). Det som behövs är en gren i byggBlankettruta som renderar en tabell i stället för en iframe när filen är xlsx, plus att Ladda ner behåller rätt filändelse. Skriv ut blir en utskrift av tabellen.
+
+Klart när: en xlsx-rapport går att läsa i rutan utan att laddas ner, eller så är frågan avfärdad med motiveringen - t.ex. att rapporten inte går via download-länken alls.
+
+- ID: `01KYP9KHE6BMEJNSYV5NWXDTC4`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
 ## [P3][doing] [svk-kbok-enhancements] Inställning: visa blanketten i webbläsaren i stället för att ladda ner den direkt
 
 Rasmus 2026-07-29, under arbetet med TASK-514.
