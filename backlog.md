@@ -94,6 +94,132 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Länk till GitHub-repot någonstans i Kbok Plus-panelen
+
+Rasmus 2026-07-29: panelen visar version och Sök efter uppdatering längst ned, men ingenstans var tillägget kommer ifrån. Den som vill läsa vad det gör, se changeloggen i sin helhet eller anmäla något har ingen väg dit.
+
+Idé: en länk till https://github.com/Armandur/svk-kbok-enhancements i panelen, rimligen på versionsraden längst ned där Sök efter uppdatering redan sitter.
+
+Inte utrett: om länken ska öppnas i ny flik (troligen ja) och om den ska heta repots namn eller något som säger vad man hittar där.
+
+- ID: `01KYQN930WRZASTE9YM0SJSEMR`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Dela upp inställningspanelen i två flikar: inställningar och genvägar
+
+Rasmus 2026-07-29: panelen är en enda lång kolumn - fyra grupper med kryssrutor, och därunder genvägslistan med inspelningsknappar. Med alla grupper synliga blir den högre än en mobilskärm och har fått egen scroll som plåster.
+
+Idé: två flikar i stället. En för inställningsvalen (Träfflistor, Formulär, Blanketter och rapporter, Utbildningsmiljön) och en för tangentbordsgenvägarna som går att sätta om. Genvägsbrytaren följer med till genvägsfliken.
+
+Inte utrett: om flikarna gör det svårare att hitta genvägarna för den som inte vet att de finns, och hur Går inte att ångra-markeringen ska synas när dess två poster hamnar i olika flikar.
+
+- ID: `01KYQMRWHGXZ56Z2MRAPCR3Q14`
+- Type: improvement
+- Actor: ai:claude-code
+
+---
+
+## [P3][doing] [svk-kbok-enhancements] Korta ned README och flytta detaljerna till en egen dokumentationsfil
+
+Rasmus 2026-07-29: README på GitHub är alldeles för invecklad och inte målgruppsanpassad.
+
+PROBLEMET
+
+README har vuxit med varje funktion och är nu en blandning av två saker: vad tillägget gör för den som ska använda det, och hur det är byggt och varför lösningarna ser ut som de gör. Det andra är värdefullt men hör inte hemma först.
+
+Den som hittar repot vill veta vad tillägget gör, hur man installerar det, och vad man får. Inte att MUI:s Select öppnar listan på mousedown, att adressboxen ligger olika djupt i olika handlingar, eller hur zip-uppackningen fungerar.
+
+FÖRSLAG
+
+README behåller: kort beskrivning, installation, funktionstabellen, genvägstabellen, länk till changelog och vidare läsning.
+
+En Dokumentation.md tar över: kartlagda fällor, de tekniska motiveringarna bakom varje lösning, gamla Kboks kortkommandolista, avsnitten om hur filnamn, miljöval, adresskrav och kalkylblad är byggda.
+
+Behåll allt innehåll - det är dokumentation av verkliga fynd i Kbok och värt att spara. Det är placeringen som är fel, inte texten.
+
+Skärmdumparna i TASK-526 hör till README och gör den mer begriplig; de två uppgifterna hänger ihop.
+
+Klart när: README går att läsa på en minut och säger vad tillägget gör, och detaljerna finns kvar i en egen fil som är länkad.
+
+- ID: `01KYQJGP2N584BHG0RR0Z2K1MN`
+- Type: improvement
+- Actor: ai:claude-code
+
+---
+
+## [P3][doing] [svk-kbok-enhancements] Skärmdumpar i README som visar vad tillägget gör
+
+Rasmus 2026-07-29, efter att repot publicerats.
+
+VARFÖR
+
+README beskriver funktionerna i text och tabell, men repot har ingen bild alls. Den som hittar dit ser inte vad tillägget faktiskt gör förrän hen installerat det. Ett par skärmdumpar från Utbildningsmiljön skulle visa det på en gång.
+
+VAD SOM ÄR VÄRT ATT VISA
+
+  inställningspanelen med grupperna och genvägarna
+  visningsrutan med en blankett, Skriv ut och Ladda ner
+  kalkylbladsrutan med tabellen
+  länkikonen i en träfflista, med den omdöpta filen bredvid
+  adressvarningen vid Skapa verifikat
+  versionsraden när en ny version finns
+
+Sex bilder är troligen för många för en README. Två eller tre som visar det som märks mest - panelen, visningsrutan och länkikonen - räcker sannolikt.
+
+FÖRUTSÄTTNINGAR
+
+Bilderna ska tas i Utbildningsmiljön, vars personer Rasmus bekräftat är fiktiv övningsdata som får publiceras. testmiljön får INTE användas - där finns riktiga testpersoner.
+
+Verktyget finns: manual/verktyg i kbok-web har inloggning och skärmdumpsrutiner för samma miljö, och skriptet injiceras med add_init_script som i sessionens övriga tester. PDF-rendering kräver channel='chromium', inte Playwrights standard-headless.
+
+Bilderna läggs i en egen mapp i repot och länkas från README med relativa sökvägar, så de fungerar både på GitHub och i en lokal klon.
+
+Klart när: README visar vad tillägget gör med ett par bilder, tagna i Utbildningsmiljön, och de syns korrekt på GitHub.
+
+- ID: `01KYQHZVWWG45BFX5AK1800TN3`
+- Type: improvement
+- Actor: ai:claude-code
+
+---
+
+## [P3][doing] [svk-kbok-enhancements] Visa när en ny version finns, och versionshistoriken i panelen
+
+Rasmus 2026-07-29, efter att repot publicerats.
+
+TVÅ DELAR, SAMMA MEKANISM
+
+1. Indikera att en ny version finns. Hämta @version ur raw-filen, jämför med den körande, och visa det i panelen och på menyposten när de skiljer sig.
+
+2. Visa versionshistoriken. CHANGELOG.md ligger på samma raw-adress och kan hämtas och visas i panelen.
+
+FÖRUTSÄTTNINGEN ÄR PÅ PLATS
+
+GitHub raw skickar access-control-allow-origin: *, verifierat 2026-07-29. Skriptet kan alltså hämta båda filerna med fetch utan @grant, vilket var den öppna frågan i TASK-513.
+
+  https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
+  https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/CHANGELOG.md
+
+ATT TÄNKA PÅ
+
+Frekvens. Ett anrop per sidladdning är för ofta. Spara tidsstämpel i localStorage och kolla högst en gång per dygn.
+
+Versionsjämförelse måste ske per siffergrupp, inte som sträng - '0.9' är inte nyare än '0.31'.
+
+Integritet. Anropet går till GitHub från en flik som visar personuppgifter. Ingen data skickas, det är en GET efter en publik fil, men det är ett utgående anrop till tredjepart från ett kyrkobokföringssystem. Egen inställning, så att den som inte vill ha det slipper.
+
+Kompletterar Tampermonkeys egen kontroll snarare än ersätter den: Tampermonkey kollar på sitt eget intervall, det här ger besked när panelen öppnas.
+
+Klart när: panelen visar körande version, säger till när en nyare finns, och kan visa changeloggen. Inställningen finns. Beteendet verifierat mot den publicerade raw-adressen.
+
+- ID: `01KYQHSEKT23TMKWP7296X90KW`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
 ## [P3][done] [svk-kbok-enhancements] Sätt fokus i datumfältet när in- eller utträdesformuläret är klart
 
 Rasmus 2026-07-29.
