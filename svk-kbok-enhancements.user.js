@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.37
+// @version      0.38
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,13 +49,12 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.37';
+    const VERSION = '0.38';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
-    // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
-    // först när repot är publicerat på GitHub; fram till dess installeras
-    // skriptet från den lokala servern och uppdateras för hand.
+    // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
         + 'svk-kbok-enhancements/main/svk-kbok-enhancements.user.js';
+    const REPOURL = 'https://github.com/Armandur/svk-kbok-enhancements';
     // Kboks egna färger, avlästa ur computed style i appen.
     const ACCENT = '#7d0037';
     const ACCENT_HOVER = '#570026';
@@ -2108,8 +2107,50 @@
 
         const ingress = document.createElement('p');
         ingress.textContent = 'Inställningarna sparas i den här webbläsaren.';
-        ingress.style.cssText = 'margin:0 0 1rem;color:#6b6862;font-size:.9rem';
+        ingress.style.cssText = 'margin:0 0 .6rem;color:#6b6862;font-size:.9rem';
         ruta.appendChild(ingress);
+
+        /* Flikrad. Måtten är avlästa ur Kboks egna MUI-flikar (Aktuella /
+         * Senaste / Alla församlingar på startsidan): 14px, halvfet, ingen
+         * versalisering, 12px 16px padding, och en 2px indikator i
+         * accentfärgen under den valda. Typsnittet ärvs från panelen i
+         * stället för att sättas till Kboks DM Sans - resten av panelen
+         * använder systemtypsnittet, och en avvikande flikrad hade synts
+         * mer än den hade liknat. */
+        const flikrad = document.createElement('div');
+        flikrad.style.cssText = 'display:flex;border-bottom:1px solid #e3e0da;margin:0 0 .2rem';
+        ruta.appendChild(flikrad);
+
+        const flikar = [];
+
+        function laggTillFlik(etikett) {
+            const knapp = document.createElement('button');
+            knapp.type = 'button';
+            knapp.textContent = etikett;
+            const yta = document.createElement('div');
+            flikrad.appendChild(knapp);
+            ruta.appendChild(yta);
+            const flik = { knapp, yta };
+            knapp.addEventListener('click', () => valjFlik(flik));
+            flikar.push(flik);
+            return yta;
+        }
+
+        function valjFlik(vald) {
+            flikar.forEach((flik) => {
+                const aktiv = flik === vald;
+                flik.knapp.style.cssText = 'font:500 14px/1.4 inherit;text-transform:none;'
+                    + 'padding:12px 16px;min-width:90px;background:none;border:none;'
+                    + 'cursor:pointer;border-bottom:2px solid '
+                    + (aktiv ? ACCENT : 'transparent') + ';margin-bottom:-1px;'
+                    + 'color:' + (aktiv ? ACCENT : 'rgba(0,0,0,.6)');
+                flik.yta.style.display = aktiv ? 'block' : 'none';
+            });
+        }
+
+        const flikInstallningar = laggTillFlik('Inställningar');
+        const flikGenvagar = laggTillFlik('Genvägar');
+        valjFlik(flikar[0]);
 
         function kryssrad(nyckel, markerad) {
             const rad = document.createElement('label');
@@ -2143,31 +2184,35 @@
         }
 
         GRUPPER.forEach((grupp) => {
-            ruta.appendChild(gruppRubrik(grupp.rubrik));
-            grupp.nycklar.forEach((n) => ruta.appendChild(kryssrad(n)));
+            flikInstallningar.appendChild(gruppRubrik(grupp.rubrik));
+            grupp.nycklar.forEach((n) => flikInstallningar.appendChild(kryssrad(n)));
         });
+
+        flikInstallningar.appendChild(gruppRubrik('Går inte att ångra'));
+        flikInstallningar.appendChild(kryssrad('fokusBekraftaVerifikat', true));
+        const varning = document.createElement('p');
+        varning.textContent = 'Att bekräfta ett verifikat är slutregistrering. '
+            + 'Genvägen Ctrl+B gör samma sak.';
+        varning.style.cssText = 'margin:.2rem 0 0 1.6rem;color:#6b6862;font-size:.82rem';
+        flikInstallningar.appendChild(varning);
 
         /* Genvägar med inspelning. Inget bibliotek behövs - keydown bär
          * redan tangent och modifierare, och att spela in en kombination är
          * att läsa nästa keydown och beskriva den. */
         const genvHuvud = document.createElement('div');
         genvHuvud.style.cssText = 'display:flex;align-items:center;gap:1rem;'
-            + 'margin:1.4rem 0 .2rem';
-        const genvRubrik = gruppRubrik('Genvägar');
-        genvRubrik.style.margin = '0';
-        genvRubrik.style.flex = '1';
-        genvHuvud.appendChild(genvRubrik);
-        // Huvudbrytaren hör till listan nedanför, inte till kryssrutorna ovan.
+            + 'margin:1.2rem 0 .2rem';
+        const genvHjalp = document.createElement('p');
+        genvHjalp.textContent = 'Klicka på en tangentkombination och tryck den nya du vill använda.';
+        genvHjalp.style.cssText = 'margin:0;color:#6b6862;font-size:.85rem;flex:1';
+        genvHuvud.appendChild(genvHjalp);
+        // Huvudbrytaren hör till listan nedanför, inte till kryssrutorna
+        // på den andra fliken.
         const genvBrytare = kryssrad('genvagarPa');
         genvBrytare.style.margin = '0';
         genvBrytare.style.fontSize = '.85rem';
         genvHuvud.appendChild(genvBrytare);
-        ruta.appendChild(genvHuvud);
-
-        const genvHjalp = document.createElement('p');
-        genvHjalp.textContent = 'Klicka på en tangentkombination och tryck den nya du vill använda.';
-        genvHjalp.style.cssText = 'margin:0 0 .6rem;color:#6b6862;font-size:.85rem';
-        ruta.appendChild(genvHjalp);
+        flikGenvagar.appendChild(genvHuvud);
 
         Object.entries(KOMMANDON).forEach(([nyckel, kmd]) => {
             const rad = document.createElement('div');
@@ -2230,8 +2275,16 @@
             rad.appendChild(namn);
             rad.appendChild(knapp);
             rad.appendChild(ater);
-            ruta.appendChild(rad);
+            flikGenvagar.appendChild(rad);
         });
+
+        // Ctrl+B står markerad i listan ovan, men markeringen säger inte vad
+        // den betyder. Varningen om slutregistrering finns på båda flikarna
+        // eftersom både inställningen och genvägen gör samma sak.
+        const genvVarning = document.createElement('p');
+        genvVarning.textContent = 'Ctrl+B slutregistrerar verifikatet. Det går inte att ångra.';
+        genvVarning.style.cssText = 'margin:.9rem 0 0;color:#6b6862;font-size:.82rem';
+        flikGenvagar.appendChild(genvVarning);
 
         const fot = document.createElement('div');
         fot.style.cssText = 'margin-top:1.3rem;padding-top:.9rem;border-top:1px solid #e3e0da;'
@@ -2239,13 +2292,14 @@
         const ver = document.createElement('span');
         ver.textContent = `Version ${VERSION}`;
         ver.style.flex = '1';
-        ruta.appendChild(gruppRubrik('Går inte att ångra'));
-        ruta.appendChild(kryssrad('fokusBekraftaVerifikat', true));
-        const varning = document.createElement('p');
-        varning.textContent = 'Att bekräfta ett verifikat är slutregistrering. '
-            + 'Genvägen Ctrl+B gör samma sak.';
-        varning.style.cssText = 'margin:.2rem 0 0 1.6rem;color:#6b6862;font-size:.82rem';
-        ruta.appendChild(varning);
+
+        const repolank = document.createElement('a');
+        repolank.href = REPOURL;
+        repolank.target = '_blank';
+        repolank.rel = 'noopener';
+        repolank.textContent = 'GitHub';
+        repolank.title = 'Repot med beskrivning, ändringar och källkod';
+        repolank.style.cssText = `color:${ACCENT};text-decoration:underline`;
 
         const uppdatera_lank = document.createElement('a');
         uppdatera_lank.href = INSTALLATIONSURL;
@@ -2256,6 +2310,7 @@
             + 'om en nyare version finns';
         uppdatera_lank.style.cssText = `color:${ACCENT};text-decoration:underline`;
         fot.appendChild(ver);
+        fot.appendChild(repolank);
         fot.appendChild(uppdatera_lank);
         ruta.appendChild(fot);
 

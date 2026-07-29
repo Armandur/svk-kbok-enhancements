@@ -3,6 +3,14 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.38
+
+- **Inställningarna ligger nu på två flikar**, en för valen och en för
+  genvägarna. Genvägsfliken får plats utan att skrollas, och inställningarna
+  är kortare än förut.
+- Länk till GitHub längst ned i panelen, där beskrivningen och alla
+  ändringar finns samlade.
+
 ## 0.37
 
 - Ändringslistan märker ut vad som är nytt sedan din version.

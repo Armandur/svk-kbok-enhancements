@@ -8,12 +8,31 @@ det. Den här filen är för den som vill veta varför.
 
 ## Inställningspanelen
 
-Panelen grupperar inställningarna efter var de märks - Träfflistor,
+Panelen har två flikar: **Inställningar** och **Genvägar**. Flikraden är
+formaterad efter Kboks egna MUI-flikar (Aktuella / Senaste / Alla
+församlingar på startsidan) - 14px, halvfet, ingen versalisering, 12px 16px
+padding, och en 2 px indikator i accentfärgen under den valda. Typsnittet
+ärvs från panelen i stället för Kboks DM Sans: resten av panelen använder
+systemtypsnittet, och en avvikande flikrad hade synts mer än den hade
+liknat.
+
+Uppdelningen kortar panelen från cirka 1500 till 1044 pixlar. Den räcker
+inte hela vägen - inställningsfliken skrollar fortfarande på en skärm under
+ungefär 1100 pixlar - men genvägsfliken får plats i sin helhet, och den
+långa listan står inte längre i vägen för kryssrutorna.
+
+Inställningsfliken grupperar valen efter var de märks - Träfflistor,
 Formulär, Blanketter och rapporter, Utbildningsmiljön - i stället för att
-lägga dem i en enda lista. Genvägsbrytaren sitter vid genvägsrubriken där
-den hör hemma, och fokusinställningen står sist under **Går inte att
-ångra**. Panelen har egen scroll; med alla grupper utfällda blir den högre
-än en mobilskärm.
+lägga dem i en enda lista. Genvägsbrytaren följde med till genvägsfliken,
+där listan den styr ligger.
+
+Varningen om slutregistrering står på **båda** flikarna. Fokusinställningen
+och `Ctrl + B` gör samma sak, och när de hamnade på var sin flik gick det
+inte längre att låta en enda **Går inte att ångra**-rubrik täcka båda.
+
+Flikbytet mättes inte in i någon låst höjd. Ett försök att låsa ytan till
+den högsta flikens höjd gav en genvägsflik med 600 pixlar tomrum under
+listan, vilket var värre än att rutan ändrar storlek.
 
 Fokusinställningen är avstängd med flit: att bekräfta ett verifikat är
 slutregistrering och går inte att ångra, så en fokuserad knapp plus ett
