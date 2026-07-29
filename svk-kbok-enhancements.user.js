@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.10
+// @version      0.11
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.10';
+    const VERSION = '0.11';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -216,12 +216,52 @@
         return `${location.origin}/personakt/${id}`;
     }
 
-    /* ---------- Länkikon per rad ---------- */
+    /* ---------- Länkikon per rad ----------
+     *
+     * Alla träfflistor är samma sorts DataGrid och bär data-id på raden, men
+     * id:t betyder olika saker. I personlistorna är det personaktens id, i
+     * startsidans verifikatlistor verifikatets, och under Alla församlingar
+     * församlingens. En länk byggd på fel id pekar på en personakt som inte
+     * finns, så listan måste kunna kännas igen.
+     *
+     * Personnummerkolumnen är det som skiljer dem: en lista där en personakt
+     * går att öppna har alltid personnumret med.
+     */
+
+    function gridArPersonlista(grid) {
+        // Griden byggs om vid filtrering och sidbyte, men rubrikerna är
+        // desamma - svaret cachas så det inte räknas ut per rad.
+        if (grid.dataset.svkKbokPersonlista === undefined) {
+            const har = [...grid.querySelectorAll('[role="columnheader"]')].some(
+                (h) => (h.textContent || '').trim() === 'Personnummer');
+            grid.dataset.svkKbokPersonlista = har ? '1' : '0';
+        }
+        return grid.dataset.svkKbokPersonlista === '1';
+    }
+
+    function arPersonlista(rad) {
+        let el = rad;
+        for (let i = 0; i < 12 && el.parentElement; i++) {
+            el = el.parentElement;
+            if (el.getAttribute && el.getAttribute('role') === 'grid') {
+                return gridArPersonlista(el);
+            }
+        }
+        return false;
+    }
+
+    // Material Designs open_in_new, samma formspråk som Kboks egna ikoner.
+    const NYFLIK_IKON = '<svg viewBox="0 0 24 24" width="15" height="15" '
+        + 'fill="currentColor" aria-hidden="true">'
+        + '<path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 '
+        + '2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>'
+        + '</svg>';
 
     function laggTillLank(rad) {
         if (rad.querySelector('.' + LANK_KLASS)) return;
         const id = rad.getAttribute('data-id');
         if (!id) return;
+        if (!arPersonlista(rad)) return;
         const forsta = rad.querySelector('[role="gridcell"]');
         if (!forsta) return;
 
@@ -241,8 +281,8 @@
         a.target = '_blank';
         a.rel = 'noopener';
         a.title = 'Öppna personakten i ny flik';
-        a.textContent = '↗';
-        a.style.cssText = 'text-decoration:none;font-size:14px;line-height:1;'
+        a.innerHTML = NYFLIK_IKON;
+        a.style.cssText = 'text-decoration:none;line-height:0;display:flex;'
             + 'opacity:.45;cursor:pointer;color:inherit;padding:3px 4px';
         a.addEventListener('mouseenter', () => { a.style.opacity = '1'; });
         a.addEventListener('mouseleave', () => { a.style.opacity = '.45'; });
@@ -256,16 +296,22 @@
     }
 
     function laggTillKolumnrubrik() {
-        const rubrikrad = document.querySelector('[role="columnheader"]');
-        if (!rubrikrad || !rubrikrad.parentElement) return;
-        const rad = rubrikrad.parentElement;
-        if (rad.querySelector('.' + LANK_KLASS)) return;
-        const cell = document.createElement('div');
-        cell.className = LANK_KLASS + ' MuiDataGrid-columnHeader';
-        cell.setAttribute('role', 'columnheader');
-        cell.style.cssText = `width:${KOLUMNBREDD}px;min-width:${KOLUMNBREDD}px;`
-            + `max-width:${KOLUMNBREDD}px;padding:0`;
-        rad.insertBefore(cell, rad.firstChild);
+        // Per grid, inte första bästa rubrikrad på sidan: startsidan visar
+        // tre verifikatlistor som inte får någon ikon, och en rubrikcell där
+        // hade blivit en tom kolumn utan innehåll.
+        document.querySelectorAll('[role="grid"]').forEach((grid) => {
+            if (!gridArPersonlista(grid)) return;
+            const rubrikrad = grid.querySelector('[role="columnheader"]');
+            if (!rubrikrad || !rubrikrad.parentElement) return;
+            const rad = rubrikrad.parentElement;
+            if (rad.querySelector('.' + LANK_KLASS)) return;
+            const cell = document.createElement('div');
+            cell.className = LANK_KLASS + ' MuiDataGrid-columnHeader';
+            cell.setAttribute('role', 'columnheader');
+            cell.style.cssText = `width:${KOLUMNBREDD}px;min-width:${KOLUMNBREDD}px;`
+                + `max-width:${KOLUMNBREDD}px;padding:0`;
+            rad.insertBefore(cell, rad.firstChild);
+        });
     }
 
     function taBortLankar() {
@@ -283,7 +329,10 @@
     function radUnder(e) {
         if (!installningar.mittenklick || e.button !== 1) return null;
         const rad = e.target.closest(RAD);
-        return rad && rad.getAttribute('data-id') ? rad : null;
+        if (!rad || !rad.getAttribute('data-id')) return null;
+        // Samma id-fälla som länkikonen: verifikatlistornas data-id är inte
+        // en personakt.
+        return arPersonlista(rad) ? rad : null;
     }
 
     function hindraAutoscroll(e) {

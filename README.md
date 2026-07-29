@@ -35,7 +35,7 @@ utan att man behöver vänta på nästa automatiska kontroll.
 
 | Funktion | Beskrivning | Standard |
 | --- | --- | --- |
-| Öppna i ny flik | Länkikon ↗ i varje rad i träfflistorna. Vanligt klick, mittenklick och högerklickmenyns Öppna i ny flik fungerar alla, eftersom ikonen är en riktig länk. Mittenklick var som helst på raden gör samma sak. | På |
+| Öppna i ny flik | Länkikon i varje rad i personlistorna. Vanligt klick, mittenklick och högerklickmenyns Öppna i ny flik fungerar alla, eftersom ikonen är en riktig länk. Mittenklick var som helst på raden gör samma sak. Se nedan om vilka listor som räknas. | På |
 | Auto-hämta person | Klickar Hämta åt dig så fort ett komplett personnummer skrivits eller klistrats in i ett personnummerfält - relationspersoner och Inträde. Se nedan. | På |
 | Hoppa över datumväljaren | Ger kalender- och klockknappen `tabindex="-1"`, så tabb går från datumfältet vidare i formuläret i stället för in i väljaren. | På |
 | Markerbart personnummer | Gör PERSNR-cellen markerbar så numret går att dra över och kopiera. Griden fångar annars klicket och öppnar posten. | På |
@@ -51,6 +51,20 @@ slutregistrering och går inte att ångra, så en fokuserad knapp plus ett
 reflexmässigt Enter vore en obehaglig kombination. Att dialogen saknar
 tangentfokus över huvud taget är fångat som en möjlig avvikelse i
 kbok-web TASK-510.
+
+### Om vilka listor som får länkikonen
+
+Alla träfflistor är samma sorts DataGrid och bär `data-id` på raden, men
+id:t betyder olika saker. I personlistorna är det personaktens id, i
+startsidans verifikatlistor verifikatets, och under Alla församlingar
+församlingens. En länk byggd på fel id pekar på en personakt som inte
+finns.
+
+Personnummerkolumnen skiljer dem åt: en lista där en personakt går att
+öppna har alltid personnumret med. Ikonen, den extra kolumnen och
+mittenklicket läggs bara på sådana listor. Startsidans tre
+verifikatflikar - Aktuella, Senaste och Alla församlingar - lämnas alltså
+orörda (rättat i 0.11).
 
 ### Om auto-hämtningen
 
