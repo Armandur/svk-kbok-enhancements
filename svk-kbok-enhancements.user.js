@@ -2,7 +2,7 @@
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
 // @version      0.37
-// @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
+// @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
 // @match        https://testmiljön/*
@@ -2082,9 +2082,9 @@
 
     /* ---------- Inställningspanel ----------
      *
-     * Sitter som ett kugghjul i sidhuvudet, bredvid Kboks egna ikoner.
-     * Användarmenyn under avataren vore en naturligare plats, men den
-     * byggs om av appen vid varje öppning och en injicerad post försvinner.
+     * Nås via menyposten Kbok Plus i användarmenyn under avataren. Menyn
+     * byggs om av appen vid varje öppning, så posten läggs till på nytt av
+     * MutationObserver - se laggTillMenypost().
      */
 
     function byggPanel() {
