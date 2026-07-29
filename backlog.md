@@ -94,7 +94,7 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Inställning: fyll ut tiosiffrigt personnummer till tolv siffror automatiskt
+## [P3][done] [svk-kbok-enhancements] Inställning: fyll ut tiosiffrigt personnummer till tolv siffror automatiskt
 
 Rasmus 2026-07-29: skriver man bara tio siffror ska tillägget kunna fylla ut numret automatiskt.
 
