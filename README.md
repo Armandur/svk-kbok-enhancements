@@ -47,6 +47,13 @@ utan att man behöver vänta på nästa automatiska kontroll.
 | Tangentbordsgenvägar | Se nedan. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
 
+Panelen grupperar inställningarna efter var de märks - Träfflistor,
+Formulär, Blanketter och rapporter, Utbildningsmiljön - i stället för att
+lägga dem i en enda lista. Genvägsbrytaren sitter vid genvägsrubriken där
+den hör hemma, och fokusinställningen står sist under **Går inte att
+ångra**. Panelen har egen scroll; med alla grupper utfällda blir den högre
+än en mobilskärm.
+
 Fokusinställningen är avstängd med flit: att bekräfta ett verifikat är
 slutregistrering och går inte att ångra, så en fokuserad knapp plus ett
 reflexmässigt Enter vore en obehaglig kombination. Att dialogen saknar

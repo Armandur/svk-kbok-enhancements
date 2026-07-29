@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.18
+// @version      0.19
 // @description  Öppna personakt i ny flik, markerbart personnummer, auto-hämta relationsperson, tabb förbi datumväljaren och tangentbordsgenvägar. Inställningar via kugghjulet.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -39,7 +39,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.18';
+    const VERSION = '0.19';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts. Raw-länken gäller
     // först när repot är publicerat på GitHub; fram till dess installeras
@@ -74,19 +74,35 @@
     };
 
     const ETIKETTER = {
-        nyflikLank: 'Länkikon i träfflistor som öppnar personakten i ny flik',
-        mittenklick: 'Mittenklick på en rad öppnar personakten i ny flik',
+        nyflikLank: 'Länkikon som öppnar posten i ny flik',
+        mittenklick: 'Mittenklick på en rad öppnar den i ny flik',
         autoHamta: 'Hämta personen automatiskt så fort personnumret är komplett',
         hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
-        markerbartPersonnummer: 'Gör personnumret i träfflistor markerbart utan att posten öppnas',
+        markerbartPersonnummer: 'Personnumret går att markera utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
-        blankettnamn: 'Döp om nedladdade blanketter och bevis till handlingsdatum, typ och namn',
-        minnsMiljo: 'Kom ihåg miljövalet i Utbildningsmiljön, så det inte behöver göras om i varje ny flik',
-        visaBlankett: 'Visa blanketten i en ruta med Skriv ut och Ladda ner i stället för att ladda ner den direkt',
+        blankettnamn: 'Döp om till handlingsdatum, typ och namn',
+        minnsMiljo: 'Kom ihåg miljövalet, så det inte behöver göras om i varje ny flik',
+        visaBlankett: 'Visa i en ruta med Skriv ut och Ladda ner i stället för att ladda ner direkt',
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
-        fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar (irreversibelt)',
-        genvagarPa: 'Tangentbordsgenvägar',
+        fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar',
+        genvagarPa: 'Genvägarna är på',
     };
+
+    /* Inställningarna grupperas efter var de märks, i stället för att ligga
+     * i en enda lista. Genvägsbrytaren hör till genvägsrubriken och ligger
+     * där; fokusinställningen står sist, ensam, eftersom den gör Enter till
+     * en slutregistrering. */
+    const GRUPPER = [
+        { rubrik: 'Träfflistor',
+          nycklar: ['nyflikLank', 'mittenklick', 'markerbartPersonnummer'] },
+        { rubrik: 'Formulär',
+          nycklar: ['autoHamta', 'hoppaOverDatumvaljare', 'dagensDatum',
+              'tomPalysningsdatum'] },
+        { rubrik: 'Blanketter och rapporter',
+          nycklar: ['blankettnamn', 'visaBlankett'] },
+        { rubrik: 'Utbildningsmiljön',
+          nycklar: ['minnsMiljo'] },
+    ];
 
     /* ---------- Tangentbordsgenvägar ----------
      *
@@ -1208,8 +1224,11 @@
             + 'display:flex;align-items:center;justify-content:center';
 
         const ruta = document.createElement('div');
+        // Egen scroll: med alla grupper utfällda blev panelen högre än en
+        // mobilskärm och svämmade ut ur rutan.
         ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;padding:1.4rem 1.6rem;'
             + 'max-width:34rem;width:calc(100% - 2rem);box-shadow:0 8px 32px rgba(0,0,0,.25);'
+            + 'max-height:calc(100vh - 3rem);overflow-y:auto;'
             + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
         const rubrik = document.createElement('h2');
@@ -1222,9 +1241,10 @@
         ingress.style.cssText = 'margin:0 0 1rem;color:#6b6862;font-size:.9rem';
         ruta.appendChild(ingress);
 
-        Object.keys(STANDARD).forEach((nyckel) => {
+        function kryssrad(nyckel, markerad) {
             const rad = document.createElement('label');
-            rad.style.cssText = 'display:flex;gap:.6rem;align-items:flex-start;margin:.7rem 0;cursor:pointer';
+            rad.style.cssText = 'display:flex;gap:.6rem;align-items:flex-start;'
+                + 'margin:.55rem 0;cursor:pointer';
             const kryss = document.createElement('input');
             kryss.type = 'checkbox';
             kryss.checked = !!installningar[nyckel];
@@ -1238,21 +1258,41 @@
             });
             const text = document.createElement('span');
             text.textContent = ETIKETTER[nyckel];
-            if (nyckel === 'fokusBekraftaVerifikat') {
-                text.style.color = ACCENT;
-            }
+            if (markerad) text.style.color = ACCENT;
             rad.appendChild(kryss);
             rad.appendChild(text);
-            ruta.appendChild(rad);
+            return rad;
+        }
+
+        function gruppRubrik(titel) {
+            const h = document.createElement('h3');
+            h.textContent = titel;
+            h.style.cssText = 'font-size:.8rem;text-transform:uppercase;'
+                + 'letter-spacing:.05em;color:#6b6862;margin:1.2rem 0 .3rem';
+            return h;
+        }
+
+        GRUPPER.forEach((grupp) => {
+            ruta.appendChild(gruppRubrik(grupp.rubrik));
+            grupp.nycklar.forEach((n) => ruta.appendChild(kryssrad(n)));
         });
 
         /* Genvägar med inspelning. Inget bibliotek behövs - keydown bär
          * redan tangent och modifierare, och att spela in en kombination är
          * att läsa nästa keydown och beskriva den. */
-        const genvRubrik = document.createElement('h3');
-        genvRubrik.textContent = 'Genvägar';
-        genvRubrik.style.cssText = 'font-size:.95rem;margin:1.3rem 0 .2rem';
-        ruta.appendChild(genvRubrik);
+        const genvHuvud = document.createElement('div');
+        genvHuvud.style.cssText = 'display:flex;align-items:center;gap:1rem;'
+            + 'margin:1.4rem 0 .2rem';
+        const genvRubrik = gruppRubrik('Genvägar');
+        genvRubrik.style.margin = '0';
+        genvRubrik.style.flex = '1';
+        genvHuvud.appendChild(genvRubrik);
+        // Huvudbrytaren hör till listan nedanför, inte till kryssrutorna ovan.
+        const genvBrytare = kryssrad('genvagarPa');
+        genvBrytare.style.margin = '0';
+        genvBrytare.style.fontSize = '.85rem';
+        genvHuvud.appendChild(genvBrytare);
+        ruta.appendChild(genvHuvud);
 
         const genvHjalp = document.createElement('p');
         genvHjalp.textContent = 'Klicka på en tangentkombination och tryck den nya du vill använda.';
@@ -1329,6 +1369,14 @@
         const ver = document.createElement('span');
         ver.textContent = `Version ${VERSION}`;
         ver.style.flex = '1';
+        ruta.appendChild(gruppRubrik('Går inte att ångra'));
+        ruta.appendChild(kryssrad('fokusBekraftaVerifikat', true));
+        const varning = document.createElement('p');
+        varning.textContent = 'Att bekräfta ett verifikat är slutregistrering. '
+            + 'Genvägen Ctrl+B gör samma sak.';
+        varning.style.cssText = 'margin:.2rem 0 0 1.6rem;color:#6b6862;font-size:.82rem';
+        ruta.appendChild(varning);
+
         const uppdatera_lank = document.createElement('a');
         uppdatera_lank.href = INSTALLATIONSURL;
         uppdatera_lank.target = '_blank';
