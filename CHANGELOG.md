@@ -3,6 +3,40 @@
 Nyast först. Versionsnumret är det som står i `@version` och som Tampermonkey
 jämför mot.
 
+## 0.37
+
+- Changeloggen märker ut vilka versioner som är nyare än den man kör, så det
+  syns var ens egen slutar när man hoppat över flera.
+
+## 0.36
+
+- Uppdateringsrutan återkommer vid varje sidladdning tills man tagit
+  ställning. Tidigare försvann den i ett dygn så fort sidan laddades om, även
+  om man inte hunnit läsa den.
+- Panelen frågar alltid GitHub på nytt i stället för att lita på dygnscachen.
+  En nyss utgiven version kunde annars se ut att inte finnas.
+- Versionskontrollen loggar vad den kom fram till. Utan det gick ett blockerat
+  anrop inte att skilja från att ingen ny version fanns.
+
+## 0.35
+
+- Panelens Stäng-knapp ligger på egen rad, högerställd.
+
+## 0.34
+
+- **Ändringarna visas i en egen ruta** ovanpå den som öppnade den, med riktig
+  markdown-rendering i stället för förformaterad text.
+
+## 0.33
+
+- **En ruta säger till när en ny version finns**, en gång per dygn, med val
+  att uppdatera, läsa ändringarna eller vänta.
+
+## 0.32
+
+- Panelen visar när en nyare version finns och kan hämta changeloggen.
+  Versionsnumret läses från GitHub, som skickar CORS-huvuden.
+
 ## 0.31
 
 - Rutans knappar har fått hover och fokusring, och fokus börjar på **Skriv
