@@ -21,6 +21,8 @@ snart repot är publicerat. GitHub Pages kan dessutom hosta README:n som en
 riktig installationssida - Jekyll renderar den automatiskt, och länken till
 `.user.js` fungerar likadant därifrån.
 
+Ändringar per version finns i [CHANGELOG.md](CHANGELOG.md).
+
 ## Uppdateringar
 
 Tampermonkey hämtar `@updateURL` med jämna mellanrum, jämför `@version` och
