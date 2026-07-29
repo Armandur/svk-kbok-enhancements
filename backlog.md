@@ -193,7 +193,7 @@ Klart när: genvägen finns, går att spela om, står i README:s genvägstabell 
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Visa xlsx-rapporter inline i samma ruta som PDF-blanketterna
+## [P3][done] [svk-kbok-enhancements] Visa xlsx-rapporter inline i samma ruta som PDF-blanketterna
 
 Rasmus 2026-07-29, följdfråga till TASK-516: går det att visa xlsx-filer i rutan på samma sätt som PDF:erna?
 
@@ -376,7 +376,7 @@ Klart när: inställningen finns, är av som standard, och fältet är tomt när
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] RASMUS: fråga någon vad Ctrl+M Ministerialboksperson faktiskt gjorde i gamla Kbok
+## [P3][done] [svk-kbok-enhancements] RASMUS: fråga någon vad Ctrl+M Ministerialboksperson faktiskt gjorde i gamla Kbok
 
 Rasmus 2026-07-28: fråga någon som arbetat i desktopklienten.
 
