@@ -3,6 +3,13 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.45
+
+- **Skriv ut-ikon på ett öppnat verifikat**, som i desktopklienten.
+  Utskriften blir en sida med bara verifikatet - inga tomma ark efter, och
+  inga knappar med på pappret. Det gäller även om du trycker Ctrl+P som
+  vanligt.
+
 ## 0.44
 
 - **Dopinbjudan döps om med det datum du anger i rutan**, inte med dagens:

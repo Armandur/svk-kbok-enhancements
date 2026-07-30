@@ -37,6 +37,7 @@ till höger, tillsammans med Byt församling och Inställningar.
 | Visa blanketten i stället | Visar PDF:en i en ruta med Skriv ut och Ladda ner, i stället för att ladda ner den direkt. | **Av** |
 | Adress krävs för verifikat | Stoppar **Skapa verifikat** när adressen saknas i konfirmation, vigsel, välsignelse eller begravning. Kbok kräver den bara i dop. | På |
 | Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. | **Av** |
+| Skriv ut verifikat | Utskriftsikon på ett öppnat verifikat, och utskrift på en sida i stället för flera med tomma ark. Gäller även webbläsarens Ctrl+P. | På |
 | Tangentbordsgenvägar | Se nästa avsnitt. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
 

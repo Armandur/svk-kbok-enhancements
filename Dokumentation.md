@@ -564,6 +564,38 @@ tar bort länken direkt efter klicket och kan återkalla sin blob-URL, och
 då hade ramen visat en tom sida. Går blobben inte att läsa laddas filen
 ner som vanligt i stället - ett klick ska aldrig bara försvinna.
 
+## Om utskriften av verifikat
+
+Desktopklienten hade en utskriftsikon på verifikatet. Webben har ingen, och
+webbläsarens `Ctrl + P` skriver ut hela sidan bakom rutan: verifikatet
+hamnar på första sidan och resten blir tomma ark. Uppmätt på ett
+begravningsverifikat i Utbildningsmiljön - **tre sidor**.
+
+Lösningen är ett utskriftsstilblad, inte en egen utskriftsvy. Det är den
+avgörande skillnaden: hade knappen byggt en egen ruta att skriva ut hade
+`Ctrl + P` fortsatt ge tre sidor för den som trycker av gammal vana. Nu ger
+båda vägarna samma resultat, **en sida**.
+
+Reglerna hänger på en klass som sätts på verifikatrutans portalrot, alltså
+den direkta barnnoden till `body` som rymmer dialogen. Vid utskrift döljs
+allt annat under `body`, överlägget tas bort, och rutan får statisk
+position utan takhöjd eller egen scroll - annars kapas innehållet vid
+rutans synliga höjd.
+
+Knapparna inne i rutan döljs också: de är kontroller, inte innehåll. Det
+räckte däremot inte för verktygsraden högst upp, som blev kvar som en tom
+remsa med kantlinjer när dess sex knappar försvann. Rader vars hela text
+kommer från deras egna knappar döljs därför i sin helhet - jämförelsen görs
+i JavaScript, eftersom CSS inte kan uttrycka den.
+
+Ikonen läggs i rubrikraden, före stängkrysset. Raden är flex med
+`space-between`, så en tredje nod hade hamnat mitt i raden;
+`margin-left:auto` lägger den intill krysset där den hör hemma.
+
+Verifierat med `page.pdf()`, som använder utskrifts-CSS och alltså ger
+samma sidbrytning som en riktig utskrift: tre sidor före, en efter, och tre
+igen när inställningen stängs av.
+
 ## Om genvägarna
 
 `F9` hämtar blanketten för den handling man står i, utan att gå via

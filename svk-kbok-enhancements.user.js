@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.44
+// @version      0.45
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.44';
+    const VERSION = '0.45';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -81,6 +81,7 @@
         // Enter är en obehaglig kombination, så den som vill ha tillbaka
         // desktopklientens flöde slår på det medvetet.
         fokusBekraftaVerifikat: false,
+        skrivUtVerifikat: true,
         genvagarPa: true,
         kollaUppdatering: true,
     };
@@ -99,6 +100,7 @@
         visaBlankett: 'Visa i en ruta i stället för att ladda ner direkt',
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar',
+        skrivUtVerifikat: 'Skriv ut-ikon på öppnade verifikat, och utskrift på en sida',
         genvagarPa: 'Genvägarna är på',
         kollaUppdatering: 'Säg till när en ny version finns - frågar GitHub en gång per dygn',
     };
@@ -114,7 +116,7 @@
           nycklar: ['autoHamta', 'hoppaOverDatumvaljare', 'dagensDatum',
               'fokusDatum', 'kravAdress', 'tomPalysningsdatum'] },
         { rubrik: 'Blanketter och rapporter',
-          nycklar: ['blankettnamn', 'visaBlankett'] },
+          nycklar: ['blankettnamn', 'visaBlankett', 'skrivUtVerifikat'] },
         { rubrik: 'Utbildningsmiljön',
           nycklar: ['minnsMiljo'] },
         { rubrik: 'Tillägget',
@@ -2474,6 +2476,120 @@
         document.body.appendChild(overlay);
     }
 
+    /* ---------- Skriv ut ett öppnat verifikat ----------
+     *
+     * Desktopklienten hade en utskriftsikon på verifikatet. Webben har
+     * ingen, och webbläsarens Ctrl+P skriver ut hela sidan bakom rutan -
+     * verifikatet hamnar på första sidan och resten blir tomma ark. Uppmätt
+     * på ett begravningsverifikat: tre sidor.
+     *
+     * Lösningen är ett utskriftsstilblad, inte en egen utskriftsvy. Då
+     * gäller den både för ikonen och för den som trycker Ctrl+P av gammal
+     * vana - hade knappen byggt sin egen ruta hade Ctrl+P fortsatt ge tre
+     * sidor.
+     *
+     * Reglerna hänger på en klass som sätts på verifikatrutans portalrot,
+     * alltså den direkta barnnoden till body som rymmer dialogen. Allt
+     * annat under body döljs vid utskrift; knapparna inne i rutan döljs
+     * också, eftersom de är kontroller och inte innehåll.
+     */
+
+    const UTSKRIFT_KLASS = 'svk-kbok-utskriftsrot';
+    const EJ_UTSKRIFT_KLASS = 'svk-kbok-ej-utskrift';
+
+    function laggTillUtskriftsstil() {
+        if (document.getElementById('svk-kbok-utskriftsstil')) return;
+        const stil = document.createElement('style');
+        stil.id = 'svk-kbok-utskriftsstil';
+        stil.textContent = `
+            @media print {
+                body > *:not(.${UTSKRIFT_KLASS}) { display: none !important; }
+                .${UTSKRIFT_KLASS} .MuiBackdrop-root { display: none !important; }
+                .${UTSKRIFT_KLASS} .MuiDialog-container {
+                    display: block !important; height: auto !important; }
+                .${UTSKRIFT_KLASS} .MuiDialog-paper {
+                    position: static !important; margin: 0 !important;
+                    width: 100% !important; max-width: none !important;
+                    height: auto !important; max-height: none !important;
+                    overflow: visible !important; box-shadow: none !important;
+                    border-radius: 0 !important; }
+                .${UTSKRIFT_KLASS} .MuiDialogContent-root {
+                    overflow: visible !important; }
+                .${UTSKRIFT_KLASS} button { display: none !important; }
+                .${UTSKRIFT_KLASS} .${EJ_UTSKRIFT_KLASS} { display: none !important; }
+            }
+        `;
+        document.head.appendChild(stil);
+    }
+
+    // Material Designs print, samma formspråk som Kboks egna ikoner.
+    const UTSKRIFT_IKON = '<svg viewBox="0 0 24 24" width="20" height="20" '
+        + 'fill="currentColor" aria-hidden="true">'
+        + '<path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 '
+        + '11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/>'
+        + '</svg>';
+
+    function arVerifikatruta(dialog) {
+        const rubrik = dialog.querySelector('.MuiDialogTitle-root');
+        return !!rubrik && /^Verifikat\b/.test((rubrik.textContent || '').trim());
+    }
+
+    function laggTillUtskriftsknapp() {
+        const dialog = [...document.querySelectorAll('[role="dialog"]')]
+            .find(arVerifikatruta);
+        if (!dialog) return;
+
+        // Portalroten bär klassen, inte dialogen: stilbladet döljer allt
+        // annat direkt under body, och dialogen ligger några nivåer ned.
+        const rot = [...document.body.children].find((el) => el.contains(dialog));
+        if (rot) rot.classList.add(UTSKRIFT_KLASS);
+
+        const rubrik = dialog.querySelector('.MuiDialogTitle-root');
+        if (!rubrik || rubrik.querySelector('.svk-kbok-skrivut')) return;
+
+        // Verktygsraden högst upp i innehållet består bara av knappar. De
+        // döljs var för sig av stilbladet, men raden själv blir kvar som en
+        // tom remsa med kantlinjer. Rader vars hela text kommer från deras
+        // egna knappar är kontroller och inget annat - de döljs i sin helhet.
+        const innehall = dialog.querySelector('.MuiDialogContent-root');
+        if (innehall) {
+            [...innehall.children].forEach((rad) => {
+                const knappar = [...rad.querySelectorAll('button')];
+                if (!knappar.length) return;
+                const bara = (t) => (t || '').replace(/\s+/g, '');
+                const knapptext = knappar.map((k) => k.innerText).join('');
+                if (bara(rad.innerText) === bara(knapptext)) {
+                    rad.classList.add(EJ_UTSKRIFT_KLASS);
+                }
+            });
+        }
+
+        const knapp = document.createElement('button');
+        knapp.type = 'button';
+        knapp.className = 'svk-kbok-skrivut';
+        knapp.title = 'Skriv ut verifikatet';
+        knapp.setAttribute('aria-label', 'Skriv ut verifikatet');
+        knapp.innerHTML = UTSKRIFT_IKON;
+        // Rubrikraden är flex med space-between. Utan margin-left:auto hade
+        // en tredje nod hamnat mitt i raden i stället för intill krysset.
+        knapp.style.cssText = 'background:none;border:none;cursor:pointer;padding:.35rem;'
+            + 'display:inline-flex;align-items:center;color:inherit;opacity:.7;'
+            + 'border-radius:50%;margin-left:auto';
+        knapp.addEventListener('mouseenter', () => { knapp.style.opacity = '1'; });
+        knapp.addEventListener('mouseleave', () => { knapp.style.opacity = '.7'; });
+        knapp.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            window.print();
+        });
+
+        // Stängkrysset sitter längst till höger i rubrikraden. Ikonen läggs
+        // före det, så krysset behåller sin plats i hörnet.
+        const kryss = rubrik.querySelector('button');
+        if (kryss) kryss.insertAdjacentElement('beforebegin', knapp);
+        else rubrik.appendChild(knapp);
+    }
+
     /* ---------- Menypost i användarmenyn ----------
      *
      * Avatarmenyn är en NAV.MuiList-root med posterna Byt församling,
@@ -2637,6 +2753,12 @@
             sakert('gruppnamnet', kommIhagGruppnamn);
             sakert('personnamnet', kommIhagPersonnamn);
             sakert('dopinbjudans datum', kommIhagDopinbjudan);
+        }
+        if (installningar.skrivUtVerifikat) {
+            sakert('utskriftsknappen', () => {
+                laggTillUtskriftsstil();
+                laggTillUtskriftsknapp();
+            });
         }
         sakert('miljövalet', hanteraMiljoval);
         sakert('pålysningsdatum', tomPalysningsdatum);
