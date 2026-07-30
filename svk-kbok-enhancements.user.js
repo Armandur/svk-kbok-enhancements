@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.41
+// @version      0.42
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.41';
+    const VERSION = '0.42';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -1216,6 +1216,24 @@
         return traff ? traff[0] : null;
     }
 
+    /* Tas beviset inte ut i verifikatets rapportruta får man hämta det från
+     * personakten i efterhand, och där finns inget Händelsedatum. Akten bär
+     * däremot tillhörighetens datum:
+     *
+     *     Tillhörighetsuppgifter
+     *       Datum            2026-07-01
+     *       Aktuell uppgift  Tillhörig
+     *
+     * Det är inträdesdatumet för ett upptagandebevis och utträdesdatumet för
+     * ett utträdesbevis. En gallrad personakt saknar sektionen, och då blir
+     * filnamnet som förut: bara typ och namn.
+     */
+    function tillhorighetsdatum() {
+        const varde = sektionsfalt(sektionMed('Tillhörighetsuppgifter'), 'Datum');
+        const traff = varde && varde.match(/\d{4}-\d{2}-\d{2}/);
+        return traff ? traff[0] : null;
+    }
+
     function ihagkommetNamn() {
         try {
             const sparat = JSON.parse(sessionStorage.getItem(PERSONNYCKEL) || 'null');
@@ -1287,10 +1305,11 @@
             const datum = handlingsdatum();
             if (datum) delar.push(datum);
         } else if (bevis) {
-            // Bevisen hämtas oftast från personakten, där inget datum finns.
-            // Går de via ett verifikat bär det händelsedatumet - och det är
-            // just den händelse beviset gäller.
-            const handelse = handelsedatum();
+            // Går beviset via ett verifikat bär det händelsedatumet - just
+            // den händelse beviset gäller. Tas det ut i efterhand från
+            // personakten finns inget verifikat, men aktens
+            // tillhörighetsuppgift bär samma datum.
+            const handelse = handelsedatum() || tillhorighetsdatum();
             if (handelse) delar.push(handelse);
         } else {
             // Verifikatets rapportruta efter ett in- eller utträde listar

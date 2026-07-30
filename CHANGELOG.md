@@ -3,6 +3,12 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.42
+
+- **Upptagande- och utträdesbevis får datum även när de hämtas från
+  personakten**, inte bara när de tas ut direkt i in- eller utträdesflödet.
+  Datumet är tillhörighetens, alltså samma dag som beviset gäller.
+
 ## 0.41
 
 - Rapporter som tas ur ett verifikats rapportruta får händelsedatumet, inte

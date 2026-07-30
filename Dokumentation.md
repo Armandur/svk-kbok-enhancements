@@ -379,8 +379,33 @@ rätt, och fallet är ett undantag.
 
 Verifikatet bär också ett **Händelsedatum**, och det läggs först i
 filnamnet när det finns - det är ju den händelse beviset gäller. Fältet
-finns på in- och utträdesverifikat men inte på alla typer; saknas det utgår
-datumdelen som förut.
+finns på in- och utträdesverifikat men inte på alla typer.
+
+Tar man inte ut beviset i rapportrutan direkt efter ett genomfört in- eller
+utträde får man hämta det från personakten i efterhand, och där finns inget
+verifikat att läsa datumet ur. Akten bär det ändå, i sin
+tillhörighetsuppgift:
+
+```
+Tillhörighetsuppgifter
+  Datum            2026-07-01
+  Aktuell uppgift  Tillhörig
+```
+
+Det är inträdesdatumet för ett upptagandebevis och utträdesdatumet för ett
+utträdesbevis, så beviset får rätt datum båda vägarna. Verifierat för
+upptagandebeviset: en person inträdd 2026-07-01, beviset uttaget den 30
+juli, gav `2026-07-01 - Upptagandebevis - Björklund, Urban.pdf`, och
+`med adress`-varianten samma. Utträdesbeviset läser samma fält med samma
+funktion men är inte provkört live.
+
+Fältet är **aktuell** tillhörighetsuppgift, inte en historik - har någon
+gått ur och in igen är det det senaste som står där. Det är rätt datum för
+ett bevis man tar ut i dag, men det är värt att veta att det inte finns
+någon koppling till ett specifikt verifikat.
+
+En gallrad personakt saknar sektionen. Då utgår datumdelen som förut, och
+filnamnet blir bara typ och namn.
 
 Bevisen ligger i personaktens Rapporter-meny, som har 29 poster mot
 handlingspostens fem.
