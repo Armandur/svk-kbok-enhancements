@@ -3,6 +3,12 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.41
+
+- Rapporter som tas ur ett verifikats rapportruta får händelsedatumet, inte
+  dagens datum. Välkomstmeddelandet efter ett inträde hamnar därmed på
+  samma datum som upptagandebeviset bredvid det.
+
 ## 0.40
 
 - **Fler rapporter från personakten döps om**, inte bara bevisen -

@@ -393,15 +393,28 @@ Menyns 29 poster är precis de rapportmallar som har
 Vigsel- och Begravningsblanketten - filtreras bort eftersom personakten
 inte är en handling.
 
-Sexton av dem döps om, med **uttagsdatum** i stället för handlingsdatum:
-ett medlemsbevis säger vad som gällde den dag det togs ut, inte vid någon
-registrerad händelse.
+Sexton av dem döps om. Datumet är **händelsedatumet när det finns, annars
+uttagsdatum**: ett medlemsbevis hämtat ur personakten säger vad som gällde
+den dag det togs ut, men samma rapport hämtad ur ett verifikats rapportruta
+gäller den händelse verifikatet bär.
 
 ```
 2026-07-30 - Medlemsbevis - Andersson, Lena Birgitta.pdf
 2026-07-30 - Registerutdrag med familj - Andersson, Lena Birgitta.pdf
 2026-07-30 - Anmälan inträde - Andersson, Lena Birgitta.pdf
+2026-07-01 - Välkomstmeddelande - Urban Björklund.pdf
 ```
+
+Den sista är hämtad ur ett inträdesverifikat med händelsedatum 2026-07-01,
+uttagen den 30 juli. Rapportrutan efter ett genomfört in- eller utträde
+listar Välkomstmeddelande sida vid sida med Upptagandebeviset, och beviset
+tar sedan tidigare händelsedatum. Toge rapporten alltid uttagsdatum hade
+två filer ur samma ruta fått olika datum - därför gäller samma regel båda.
+
+Namnformen skiljer sig mellan de två vägarna, och det är sedan tidigare
+känt: personakten har namnet i egna fält och ger `Efternamn, Tilltalsnamn`,
+medan verifikatet visar det sammanskrivet som `Urban Björklund` och den
+strängen inte går att dela med säkerhet.
 
 Kbok döper dem till mallens namn rakt av, med mellanslag utbytta mot
 understreck och inget annat ändrat - verifierat på sju av dem, inklusive

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.40
+// @version      0.41
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.40';
+    const VERSION = '0.41';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -1293,7 +1293,13 @@
             const handelse = handelsedatum();
             if (handelse) delar.push(handelse);
         } else {
-            delar.push(idagsDatum());
+            // Verifikatets rapportruta efter ett in- eller utträde listar
+            // Välkomstmeddelande sida vid sida med Upptagandebevis. Toge
+            // rapporten alltid uttagsdatum medan beviset tar händelsedatum
+            // hade två filer ur samma ruta fått olika datum. Finns ett
+            // händelsedatum gäller det därför båda; annars, som i
+            // personaktens meny, är uttagsdatum det enda som finns.
+            delar.push(handelsedatum() || idagsDatum());
         }
         delar.push(arBlankett ? typ : bevis || rapport, namn);
         return `${delar.join(' - ')}.pdf`;

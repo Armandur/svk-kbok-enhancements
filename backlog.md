@@ -94,6 +94,34 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Döp om Dopinbjudan med datumet ur modalen den frågar efter
+
+Rasmus 2026-07-30, efter genomgången av rapporterna i TASK-531.
+
+LÄGET
+
+Dopinbjudan hölls medvetet utanför omdöpningen i 0.40. Den är den enda av personaktens 29 rapportmallar som har needsDateInput: true i FetchReportTemplatesByFormularkod, och det datum Kbok frågar efter hör i filnamnet i stället för uttagsdatumet.
+
+RASMUS UPPGIFT
+
+Klickar man Dopinbjudan öppnas en modal där man anger det datum dopinbjudan ska registreras på. Det är alltså ett datum användaren skriver in, inte ett som redan finns i posten.
+
+ATT GÖRA
+
+Läs datumet ur modalen och lägg det först i filnamnet:
+
+  2026-08-15 - Dopinbjudan - Efternamn, Tilltalsnamn.pdf
+
+Modalen behöver kartläggas först: fältets id eller etikett, formatet, och om Kbok validerar. Nedladdningen sker efter att modalen bekräftats, så datumet måste plockas när knappen klickas och bäras till byggFilnamn - ungefär som gruppnamnet bärs över sidbytet för gruppblanketten, men inom samma vy.
+
+Klart när: Dopinbjudan laddas ner med det angivna datumet, verifierat i Utbildningsmiljön, och Dokumentation.md flyttar den från listan över undantag till listan över omdöpta.
+
+- ID: `01KYS02VWZCRKDESQBVBFZJFZK`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
 ## [P3][done] [svk-kbok-enhancements] Auto-hämta täcker inte pålysningsformulärets Person 1 - dokumentationen säger att den gör det
 
 Upptäckt 2026-07-30 under utredningen av TASK-530.
