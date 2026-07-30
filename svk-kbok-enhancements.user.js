@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.38
+// @version      0.39
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.38';
+    const VERSION = '0.39';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -585,8 +585,19 @@
         // arHamtaKnapp sållar bort den på etiketten, men avsikten hör hemma
         // här också - annars beror skyddet på att ett annat lager råkar
         // fånga just den knappen.
-        if (/^huvudperson/.test(id)) return false;
+        //
+        // Pålysningsformuläret är undantaget från undantaget: dess Person 1
+        // heter också huvudperson1.persnr, men där är knappen en vanlig
+        // hämtning och det finns inga uppgifter att skriva över. Samma
+        // prefix, två betydelser - och just det fältet är det som kostar
+        // mest att missa, eftersom Spara inte säger något när namnet
+        // saknas.
+        if (/^huvudperson/.test(id) && !arPalysningsformular()) return false;
         return true;
+    }
+
+    function arPalysningsformular() {
+        return /^\/palysning(\/|$)/.test(location.pathname);
     }
 
     function kopplaAutoHamta(falt) {

@@ -3,6 +3,12 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.39
+
+- Personen hämtas nu automatiskt även i det fristående
+  pålysningsformuläret. Där gjorde den inte det, trots att det är just den
+  vyn där ett glömt namn gör att Spara inte säger något alls.
+
 ## 0.38
 
 - **Inställningarna ligger nu på två flikar**, en för valen och en för
