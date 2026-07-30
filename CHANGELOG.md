@@ -3,6 +3,15 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.40
+
+- **Fler rapporter från personakten döps om**, inte bara bevisen -
+  medlemsbevis, registerutdrag, anmälningar, förfrågningar och
+  välkomstmeddelande. De får dagens datum, rapportens namn och personens
+  namn: `2026-07-30 - Medlemsbevis - Andersson, Lena.pdf`.
+- Namn- och adresslistorna lämnas som de är. De gäller ett urval, inte en
+  person, och har inget namn att döpas efter.
+
 ## 0.39
 
 - Personen hämtas nu automatiskt även i det fristående

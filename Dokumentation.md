@@ -383,8 +383,48 @@ finns på in- och utträdesverifikat men inte på alla typer; saknas det utgår
 datumdelen som förut.
 
 Bevisen ligger i personaktens Rapporter-meny, som har 29 poster mot
-handlingspostens fem. Bara de som står i listan ovan döps om - övriga
-rapporter, som Medlemsbevis och Registerutdrag, lämnas som de är.
+handlingspostens fem.
+
+### Övriga rapporter i personaktens meny
+
+Menyns 29 poster är precis de rapportmallar som har
+`selectionIdType: PersonId`. `FetchReportTemplatesByFormularkod` svarar med
+33 mallar, och de fyra med `KyrkligHandlingsId` - Dop-, Konfirmations-,
+Vigsel- och Begravningsblanketten - filtreras bort eftersom personakten
+inte är en handling.
+
+Sexton av dem döps om, med **uttagsdatum** i stället för handlingsdatum:
+ett medlemsbevis säger vad som gällde den dag det togs ut, inte vid någon
+registrerad händelse.
+
+```
+2026-07-30 - Medlemsbevis - Andersson, Lena Birgitta.pdf
+2026-07-30 - Registerutdrag med familj - Andersson, Lena Birgitta.pdf
+2026-07-30 - Anmälan inträde - Andersson, Lena Birgitta.pdf
+```
+
+Kbok döper dem till mallens namn rakt av, med mellanslag utbytta mot
+understreck och inget annat ändrat - verifierat på sju av dem, inklusive
+en med bindestreck och en med "på Engelska". Matchningen byter därför
+tillbaka understrecken och slår upp namnet.
+
+`med adress`-varianterna får samma grundnamn som sina syskon, av samma skäl
+som bevisen. `med familj` är däremot en egen rapport och står kvar i namnet.
+
+Tre poster hålls utanför:
+
+- De fyra **Namn- och adresslista**-varianterna är urval, inte en person,
+  och har ingen huvudperson att döpa efter.
+- **Dopinbjudan** är den enda mallen med `needsDateInput`, alltså den enda
+  som frågar efter ett datum. Det datumet, inte uttagsdatumet, hör i
+  filnamnet - och var det står går att läsa av först när någon behöver det.
+- Bevisen har redan sin egen regel ovan, med händelsedatum.
+
+Två observationer från Utbildningsmiljön som inte påverkar namngivningen:
+**Registerutdrag** frågar först i en dialog vilka programdelar som ska ingå
+och genererar filen efter **Fortsätt**, och `Anmälan utträde för barn U18`
+svarade med "Fel vid utskrift - Ett internt serverfel har inträffat" för en
+vuxen testperson, vilket rimligen är avsett.
 
 Bevisen finns i två varianter, med och utan adress. Varianten säger inget
 om vad beviset gäller, bara hur det är utformat, så båda får grundnamnet:

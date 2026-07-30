@@ -94,7 +94,7 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Auto-hämta täcker inte pålysningsformulärets Person 1 - dokumentationen säger att den gör det
+## [P3][done] [svk-kbok-enhancements] Auto-hämta täcker inte pålysningsformulärets Person 1 - dokumentationen säger att den gör det
 
 Upptäckt 2026-07-30 under utredningen av TASK-530.
 
@@ -133,7 +133,7 @@ Klart när: personnumret i pålysningsformulärets Person 1 hämtar personen av 
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Döp om fler rapporter än bevisen - börja med Medlemsbevis
+## [P3][done] [svk-kbok-enhancements] Döp om fler rapporter än bevisen - börja med Medlemsbevis
 
 Rasmus 2026-07-30, förslag 5 i genomgången.
 

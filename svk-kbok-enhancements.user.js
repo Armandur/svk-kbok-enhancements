@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.39
+// @version      0.40
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.39';
+    const VERSION = '0.40';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -1017,6 +1017,57 @@
         const utan = typ.replace(/[_ ]med[_ ]adress$/i, '');
         return BEVIS.indexOf(utan) >= 0 ? utan : null;
     }
+
+    /* Personaktens Rapporter-meny har 29 poster - alla rapportmallar med
+     * selectionIdType PersonId. Kbok döper dem till mallens namn rakt av, så
+     * två uttag blir Medlemsbevis.pdf och Medlemsbevis (1).pdf.
+     *
+     * Menyetiketten och filnamnet skiljer sig bara på att mellanslag blir
+     * understreck - verifierat på sju av dem, inklusive en med bindestreck
+     * och en med "på Engelska".
+     *
+     * De fyra Namn- och adresslista-varianterna står medvetet utanför: de är
+     * urval, inte en person, och har ingen huvudperson att döpa efter.
+     * Dopinbjudan står också utanför - den är den enda mallen som frågar
+     * efter ett datum, och det datumet, inte uttagsdatumet, hör i filnamnet.
+     */
+    const PERSONRAPPORTER = [
+        'Anmälan inträde',
+        'Anmälan utträde',
+        'Anmälan utträde för barn U18',
+        'Begäran borttag av anteckning',
+        'Följebrev utträdesanmälan via epost',
+        'Förfrågan - meddelande inför konfirmation',
+        'Förfrågan om medlemskap barn',
+        'Förfrågan om medlemskap vuxna',
+        'Information inför 18-årsdagen',
+        'Meddelande om inträde barn',
+        'Medlemsbevis',
+        'Medlemsbevis på Engelska',
+        'Registerutdrag utan familj',
+        'Registerutdrag med familj',
+        'Registerutdrag med familj på engelska',
+        'Välkomstmeddelande',
+    ];
+
+    function personrapportnamn(typ) {
+        // Suffixet "med adress" säger hur rapporten är utformad, inte vad den
+        // gäller - samma resonemang som för bevisen, alltså samma grundnamn.
+        // "med familj" är däremot en egen rapport och får stå kvar.
+        const utan = typ.replace(/_/g, ' ').replace(/ med adress$/i, '');
+        return PERSONRAPPORTER.indexOf(utan) >= 0 ? utan : null;
+    }
+
+    /* Rapporterna gäller läget den dag de togs ut - ett medlemsbevis säger
+     * vad som gällde då, inte vid någon registrerad händelse. Därför
+     * uttagsdatum, till skillnad från blanketterna som får handlingsdatum och
+     * bevisen som får händelsedatum.
+     */
+    function idagsDatum() {
+        const nu = new Date();
+        const tva = (n) => String(n).padStart(2, '0');
+        return `${nu.getFullYear()}-${tva(nu.getMonth() + 1)}-${tva(nu.getDate())}`;
+    }
     const GRUPPBLANKETT = 'Konfirmationsblankett_för_verksamhetsgrupp';
     const GRUPPNYCKEL = 'svk-kbok-gruppnamn';
     const GRUPPKALLA = 'svk-kbok-gruppkalla';
@@ -1227,21 +1278,24 @@
         if (typ === GRUPPBLANKETT) return gruppfilnamn();
         const arBlankett = BLANKETTER.indexOf(typ) >= 0;
         const bevis = arBlankett ? null : bevisnamn(typ);
-        if (!arBlankett && !bevis) return null;
+        const rapport = arBlankett || bevis ? null : personrapportnamn(typ);
+        if (!arBlankett && !bevis && !rapport) return null;
         const namn = handlingensNamndel();
         if (!namn) return null;
         const delar = [];
         if (arBlankett) {
             const datum = handlingsdatum();
             if (datum) delar.push(datum);
-        } else {
+        } else if (bevis) {
             // Bevisen hämtas oftast från personakten, där inget datum finns.
             // Går de via ett verifikat bär det händelsedatumet - och det är
             // just den händelse beviset gäller.
             const handelse = handelsedatum();
             if (handelse) delar.push(handelse);
+        } else {
+            delar.push(idagsDatum());
         }
-        delar.push(arBlankett ? typ : bevis, namn);
+        delar.push(arBlankett ? typ : bevis || rapport, namn);
         return `${delar.join(' - ')}.pdf`;
     }
 
