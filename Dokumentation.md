@@ -16,10 +16,22 @@ padding, och en 2 px indikator i accentfärgen under den valda. Typsnittet
 systemtypsnittet, och en avvikande flikrad hade synts mer än den hade
 liknat.
 
-Uppdelningen kortar panelen från cirka 1500 till 1044 pixlar. Den räcker
-inte hela vägen - inställningsfliken skrollar fortfarande på en skärm under
-ungefär 1100 pixlar - men genvägsfliken får plats i sin helhet, och den
-långa listan står inte längre i vägen för kryssrutorna.
+Uppdelningen kortade panelen från cirka 1500 till 1044 pixlar, och en
+omgång ihopdragning tog den vidare till 862. Inställningsfliken ryms
+därmed vid 900 pixlars skärmhöjd, som är det låga fallet för en laptop.
+Genvägsfliken är 572 och skrollar aldrig.
+
+Ihopdragningen är medvetet trubbig: tre etiketter kortades så att ingen
+radbryts, radavståndet mellan kryssrutorna gick från `.55rem` till
+`.3rem`, luften över grupprubrikerna från `1.2rem` till `.7rem`,
+radhöjden från `1.6` till `1.5`, och rutans tak från
+`calc(100vh - 3rem)` till `calc(100vh - 2rem)`. Ingenting göms bakom ett
+klick - hopfällbara grupper övervägdes och valdes bort, eftersom den som
+öppnar panelen för att se *vad* som finns då får svårare.
+
+Under ungefär 780 pixlars skärmhöjd skrollar inställningsfliken
+fortfarande. Det är under vad en normal webbläsare har att ge på en
+laptop, och den egna scrollen finns kvar för de fallen.
 
 Inställningsfliken grupperar valen efter var de märks - Träfflistor,
 Formulär, Blanketter och rapporter, Utbildningsmiljön - i stället för att

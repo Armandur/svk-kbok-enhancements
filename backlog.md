@@ -654,7 +654,7 @@ Klart när: någon som arbetat i desktopklienten har sagt vad kommandot gjorde, 
 
 ---
 
-## [P4][todo] [svk-kbok-enhancements] Få inställningsfliken att sluta skrolla på en laptopskärm
+## [P4][done] [svk-kbok-enhancements] Få inställningsfliken att sluta skrolla på en laptopskärm
 
 Rasmus 2026-07-30, förslag 6 i genomgången.
 

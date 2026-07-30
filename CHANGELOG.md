@@ -3,6 +3,11 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.43
+
+- Inställningarna ryms nu i sin helhet på en vanlig skärm, utan att man
+  behöver skrolla i rutan.
+
 ## 0.42
 
 - **Upptagande- och utträdesbevis får datum även när de hämtas från

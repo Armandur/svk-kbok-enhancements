@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.42
+// @version      0.43
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.42';
+    const VERSION = '0.43';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -89,18 +89,18 @@
         nyflikLank: 'Länkikon som öppnar posten i ny flik',
         mittenklick: 'Mittenklick på en rad öppnar den i ny flik',
         autoHamta: 'Hämta personen automatiskt så fort personnumret är komplett',
-        hoppaOverDatumvaljare: 'Hoppa över kalenderknappen vid tabb, så datum går att skriva rakt igenom',
+        hoppaOverDatumvaljare: 'Tabba förbi kalenderknappen till nästa fält',
         markerbartPersonnummer: 'Personnumret går att markera utan att posten öppnas',
         dagensDatum: 'D i ett tomt datumfält fyller i dagens datum',
         fokusDatum: 'Sätt fokus i datumfältet vid in- och utträde',
         kravAdress: 'Stoppa Skapa verifikat när adressen saknas - Kbok kräver den bara i dop',
         blankettnamn: 'Döp om till handlingsdatum, typ och namn',
         minnsMiljo: 'Kom ihåg miljövalet, så det inte behöver göras om i varje ny flik',
-        visaBlankett: 'Visa i en ruta med Skriv ut och Ladda ner i stället för att ladda ner direkt',
+        visaBlankett: 'Visa i en ruta i stället för att ladda ner direkt',
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar',
         genvagarPa: 'Genvägarna är på',
-        kollaUppdatering: 'Säg till när en ny version finns - hämtar versionsnumret från GitHub en gång per dygn',
+        kollaUppdatering: 'Säg till när en ny version finns - frågar GitHub en gång per dygn',
     };
 
     /* Inställningarna grupperas efter var de märks, i stället för att ligga
@@ -855,7 +855,7 @@
         ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
             + 'padding:1.4rem 1.6rem;max-width:26rem;width:100%;'
             + 'box-shadow:0 8px 32px rgba(0,0,0,.25);'
-            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+            + 'font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
         const rubrik = document.createElement('h2');
         rubrik.textContent = 'Kan inte skapa verifikat';
@@ -1384,7 +1384,7 @@
         ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
             + 'width:min(60rem,100%);height:100%;display:flex;flex-direction:column;'
             + 'box-shadow:0 8px 32px rgba(0,0,0,.25);overflow:hidden;'
-            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+            + 'font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
         const huvud = document.createElement('div');
         huvud.style.cssText = 'display:flex;align-items:center;padding:.9rem 1.2rem;'
@@ -2031,7 +2031,7 @@
         ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
             + 'width:min(40rem,100%);max-height:calc(100vh - 3rem);display:flex;'
             + 'flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.25);'
-            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+            + 'font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
         const rubrik = document.createElement('h2');
         rubrik.textContent = 'Ändringar';
@@ -2094,9 +2094,9 @@
         const ruta = document.createElement('div');
         ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;'
             + 'padding:1.4rem 1.6rem;max-width:32rem;width:100%;'
-            + 'max-height:calc(100vh - 3rem);overflow-y:auto;'
+            + 'max-height:calc(100vh - 2rem);overflow-y:auto;'
             + 'box-shadow:0 8px 32px rgba(0,0,0,.25);'
-            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+            + 'font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
         const rubrik = document.createElement('h2');
         rubrik.textContent = `${PRODUKTNAMN} ${senaste} finns`;
@@ -2185,10 +2185,10 @@
         const ruta = document.createElement('div');
         // Egen scroll: med alla grupper utfällda blev panelen högre än en
         // mobilskärm och svämmade ut ur rutan.
-        ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;padding:1.4rem 1.6rem;'
+        ruta.style.cssText = 'background:#fff;color:#1c1b19;border-radius:10px;padding:1.2rem 1.6rem;'
             + 'max-width:34rem;width:calc(100% - 2rem);box-shadow:0 8px 32px rgba(0,0,0,.25);'
-            + 'max-height:calc(100vh - 3rem);overflow-y:auto;'
-            + 'font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
+            + 'max-height:calc(100vh - 2rem);overflow-y:auto;'
+            + 'font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif';
 
         const rubrik = document.createElement('h2');
         rubrik.textContent = PRODUKTNAMN;
@@ -2245,7 +2245,7 @@
         function kryssrad(nyckel, markerad) {
             const rad = document.createElement('label');
             rad.style.cssText = 'display:flex;gap:.6rem;align-items:flex-start;'
-                + 'margin:.55rem 0;cursor:pointer';
+                + 'margin:.3rem 0;cursor:pointer';
             const kryss = document.createElement('input');
             kryss.type = 'checkbox';
             kryss.checked = !!installningar[nyckel];
@@ -2269,7 +2269,7 @@
             const h = document.createElement('h3');
             h.textContent = titel;
             h.style.cssText = 'font-size:.8rem;text-transform:uppercase;'
-                + 'letter-spacing:.05em;color:#6b6862;margin:1.2rem 0 .3rem';
+                + 'letter-spacing:.05em;color:#6b6862;margin:.7rem 0 .2rem';
             return h;
         }
 
@@ -2377,7 +2377,7 @@
         flikGenvagar.appendChild(genvVarning);
 
         const fot = document.createElement('div');
-        fot.style.cssText = 'margin-top:1.3rem;padding-top:.9rem;border-top:1px solid #e3e0da;'
+        fot.style.cssText = 'margin-top:1rem;padding-top:.8rem;border-top:1px solid #e3e0da;'
             + 'display:flex;align-items:center;gap:.8rem;font-size:.82rem;color:#6b6862';
         const ver = document.createElement('span');
         ver.textContent = `Version ${VERSION}`;
@@ -2432,7 +2432,7 @@
         // Egen rad, högerställd. Länken ovanför är inline och drog annars
         // upp knappen bredvid sig.
         const knapprad = document.createElement('div');
-        knapprad.style.cssText = 'display:flex;justify-content:flex-end;margin-top:1rem';
+        knapprad.style.cssText = 'display:flex;justify-content:flex-end;margin-top:.8rem';
         const stang = document.createElement('button');
         stang.textContent = 'Stäng';
         stang.style.cssText = `background:${ACCENT};color:#fff;border:none;`
