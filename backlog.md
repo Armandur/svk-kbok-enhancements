@@ -94,7 +94,7 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Döp om Dopinbjudan med datumet ur modalen den frågar efter
+## [P3][done] [svk-kbok-enhancements] Döp om Dopinbjudan med datumet ur modalen den frågar efter
 
 Rasmus 2026-07-30, efter genomgången av rapporterna i TASK-531.
 

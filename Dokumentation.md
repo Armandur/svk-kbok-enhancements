@@ -430,7 +430,7 @@ Menyns 29 poster är precis de rapportmallar som har
 Vigsel- och Begravningsblanketten - filtreras bort eftersom personakten
 inte är en handling.
 
-Sexton av dem döps om. Datumet är **händelsedatumet när det finns, annars
+Sjutton av dem döps om. Datumet är **händelsedatumet när det finns, annars
 uttagsdatum**: ett medlemsbevis hämtat ur personakten säger vad som gällde
 den dag det togs ut, men samma rapport hämtad ur ett verifikats rapportruta
 gäller den händelse verifikatet bär.
@@ -461,13 +461,26 @@ tillbaka understrecken och slår upp namnet.
 `med adress`-varianterna får samma grundnamn som sina syskon, av samma skäl
 som bevisen. `med familj` är däremot en egen rapport och står kvar i namnet.
 
-Tre poster hålls utanför:
+**Dopinbjudan** är den enda mallen med `needsDateInput`, alltså den enda
+som frågar efter ett datum innan den skapas. Rutan har rubriken `Datum för
+dopinbjudan`, ett fält förifyllt med dagens datum och knappen **Fortsätt**.
+Det datumet, inte uttagsdatumet, är det inbjudan gäller, och rutan är borta
+när filen väl laddas ner - värdet läses därför medan den står öppen och
+bärs vidare, samma mönster som gruppnamnet för gruppblanketten.
+
+```
+eget datum 2026-09-20   ->  2026-09-20 - Dopinbjudan - Andersson, Lena Birgitta.pdf
+förslaget står kvar     ->  2026-07-30 - Dopinbjudan - Andersson, Lena Birgitta.pdf
+```
+
+Personakten har en egen sektion **Dopinbjudan** med ett Datum-fält, där det
+angivna datumet hamnar. Filnamnet läser ändå ur rutan: fältet på akten
+visar den senaste inbjudan, inte nödvändigtvis den man just tar ut.
+
+Två grupper hålls utanför:
 
 - De fyra **Namn- och adresslista**-varianterna är urval, inte en person,
   och har ingen huvudperson att döpa efter.
-- **Dopinbjudan** är den enda mallen med `needsDateInput`, alltså den enda
-  som frågar efter ett datum. Det datumet, inte uttagsdatumet, hör i
-  filnamnet - och var det står går att läsa av först när någon behöver det.
 - Bevisen har redan sin egen regel ovan, med händelsedatum.
 
 Två observationer från Utbildningsmiljön som inte påverkar namngivningen:

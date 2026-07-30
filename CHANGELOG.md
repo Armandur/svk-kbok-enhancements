@@ -3,6 +3,11 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.44
+
+- **Dopinbjudan döps om med det datum du anger i rutan**, inte med dagens:
+  `2026-09-20 - Dopinbjudan - Andersson, Lena.pdf`.
+
 ## 0.43
 
 - Inställningarna ryms nu i sin helhet på en vanlig skärm, utan att man

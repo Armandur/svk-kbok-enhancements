@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.43
+// @version      0.44
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.43';
+    const VERSION = '0.44';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -1028,14 +1028,15 @@
      *
      * De fyra Namn- och adresslista-varianterna står medvetet utanför: de är
      * urval, inte en person, och har ingen huvudperson att döpa efter.
-     * Dopinbjudan står också utanför - den är den enda mallen som frågar
-     * efter ett datum, och det datumet, inte uttagsdatumet, hör i filnamnet.
+     * Dopinbjudan är med, men får sitt datum ur rutan den frågar i - se
+     * kommIhagDopinbjudan().
      */
     const PERSONRAPPORTER = [
         'Anmälan inträde',
         'Anmälan utträde',
         'Anmälan utträde för barn U18',
         'Begäran borttag av anteckning',
+        'Dopinbjudan',
         'Följebrev utträdesanmälan via epost',
         'Förfrågan - meddelande inför konfirmation',
         'Förfrågan om medlemskap barn',
@@ -1234,6 +1235,27 @@
         return traff ? traff[0] : null;
     }
 
+    /* Dopinbjudan är den enda rapporten som frågar efter ett datum innan den
+     * skapas - en ruta med rubriken "Datum för dopinbjudan", ett fält
+     * förifyllt med dagens datum och knappen Fortsätt. Det datumet, inte
+     * uttagsdatumet, är det inbjudan gäller.
+     *
+     * Rutan är borta när filen väl laddas ner, så värdet läses medan den
+     * står öppen och bärs vidare - samma mönster som gruppnamnet.
+     */
+    let dopinbjudansDatum = null;
+
+    function kommIhagDopinbjudan() {
+        // En selektor först: rutan står öppen sällan, och innerText nedan
+        // tvingar fram en omritning vid varje DOM-ändring om den läses fritt.
+        const falt = document.querySelector('[role="dialog"] input[placeholder="ÅÅÅÅ-MM-DD"]');
+        if (!falt) return;
+        const ruta = falt.closest('[role="dialog"]');
+        if (!ruta || !/dopinbjudan/i.test(ruta.innerText || '')) return;
+        const traff = (falt.value || '').match(/\d{4}-\d{2}-\d{2}/);
+        if (traff) dopinbjudansDatum = traff[0];
+    }
+
     function ihagkommetNamn() {
         try {
             const sparat = JSON.parse(sessionStorage.getItem(PERSONNYCKEL) || 'null');
@@ -1311,6 +1333,10 @@
             // tillhörighetsuppgift bär samma datum.
             const handelse = handelsedatum() || tillhorighetsdatum();
             if (handelse) delar.push(handelse);
+        } else if (rapport === 'Dopinbjudan') {
+            // Rutan förifyller dagens datum, så uttagsdatum blir kvar om
+            // användaren låter förslaget stå.
+            delar.push(dopinbjudansDatum || idagsDatum());
         } else {
             // Verifikatets rapportruta efter ett in- eller utträde listar
             // Välkomstmeddelande sida vid sida med Upptagandebevis. Toge
@@ -2610,6 +2636,7 @@
         if (installningar.blankettnamn) {
             sakert('gruppnamnet', kommIhagGruppnamn);
             sakert('personnamnet', kommIhagPersonnamn);
+            sakert('dopinbjudans datum', kommIhagDopinbjudan);
         }
         sakert('miljövalet', hanteraMiljoval);
         sakert('pålysningsdatum', tomPalysningsdatum);
