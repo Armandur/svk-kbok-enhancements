@@ -94,6 +94,91 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
+## [P3][todo] [svk-kbok-enhancements] Bygg länkikonen i Pålysningsboken - utredningen är klar
+
+Uppföljning på TASK-530, som utredde frågan och stängdes 2026-07-30.
+
+DET SOM ÄR KLARLAGT
+
+Pålysningar är adresserbara. Appens router navigerar till /palysning/<palysningId>, avläst ur JS-bunten:
+
+  openPalysning: o => { ... if ('palysningId' in o && o.palysningId != null) { e(`/palysning/${o.palysningId}`) } }
+
+Rapportlagret har ett eget selectionIdType, PalysningsId. Pålysningar är alltså egna objekt, inte barn till en personakt - så länkmålet är INTE en personakt-URL med vy på slutet, som Ministerialbokens.
+
+Pålysningsbokens kolumner är gemena som Ministerialbokens (palysningsdatum, forsamling, kyrka, datum, typ.text, namn, personnummer, lopnr), så gridArPersonlista() känner inte igen griden och den får ingen ikon i dag.
+
+DET SOM ÅTERSTÅR
+
+Om radens data-id redan ÄR palysningId behövs ingen ihopparning - då räcker samma väg som Sök personer. Är det något annat krävs XHR-ihopparning som för SearchMinisterialbok, mot fyra anrop:
+
+  Palysning/FetchPalysningarAktuella
+  Palysning/FetchPalysningarTidigare
+  Palysning/FetchPalysningarMinnesgudstjanst
+  Palysning/SearchByAttribute
+
+Svaren har formen {totalt, skip, limit, paginatedResults}.
+
+HINDRET
+
+Pålysningsboken är TOM i Utbildningsmiljön - alla fyra flikar visar 0 rader - och det gick inte att skapa en testpålysning: Spara är tyst även med alla synliga fält ifyllda (kbok-web TASK-534). Frågan avgörs alltså på en instans som har data, eller efter att TASK-534 fått svar.
+
+Klart när: pålysningsrader har länkikon som öppnar /palysning/<id>, verifierat mot att appens eget dubbelklick går till samma adress.
+
+- ID: `01KYWJ3BDXHECB86AJYFSGXRRH`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Enter öppnar markerad rad i en träfflista
+
+Föreslogs 2026-07-29, aldrig reggat förrän nu.
+
+VARFÖR
+
+Gamla Kbok-hjälpen är uttrycklig: 'ENTER kan användas i stället för [OK] samt för att öppna markerad rad i en träfflista.' Webben kräver dubbelklick. Ren muskelminnesförlust från desktopklienten.
+
+VARFÖR DET ÄR BILLIGT
+
+Hela rad-till-adress-logiken finns redan i länkikonen: lankmalFor() ger rätt mål per lista, inklusive att Ministerialboken ska öppna handlingen och inte personakten, och att vigsel behöver kyrklighandlingsId i frågesträngen.
+
+ATT UTREDA
+
+Vad som räknas som markerad rad. Griden har kryssrutor (Select row) men också en fokuserad/aktiv rad - det är sannolikt den senare Enter ska följa, inte kryssmarkeringen. Kolla vad MUI DataGrid sätter för attribut på den aktiva raden.
+
+Genvägen får inte kapa Enter i formulärfält eller dialoger.
+
+Klart när: Enter på en markerad rad i Sök personer och Ministerialboken öppnar samma post som ett dubbelklick, verifierat i Utbildningsmiljön, och Enter fortfarande fungerar som vanligt i formulär.
+
+- ID: `01KYWJ25R35Q7H5CQ3DX4HBMY7`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Klicka Hämta grupper automatiskt när församlingen byts i Konfirmationsgrupper
+
+Föreslogs 2026-07-29 i genomgången av vad mer tillägget kan göra, aldrig reggat förrän nu.
+
+KARTLAGD FÄLLA, nr 2 i Dokumentation.md
+
+I Konfirmationsgrupper räcker det inte att välja församling i droplistan - listan uppdateras först när man klickar Hämta grupper. Byter man församling utan att klicka står de gamla grupperna kvar och ser ut som den nya församlingens.
+
+Verifierat under manualarbetet: efter byte från en församling med två grupper till en utan visades fortfarande de två. Det är alltså inte en hypotes - fällan visar fel data, inte bara ingen data.
+
+ANSATS
+
+Samma mönster som auto-hämta: lyssna på att församlingsvalet ändras och klicka Hämta grupper. Droplistan är en MUI Select, som öppnar på mousedown - men här handlar det om att reagera på ett val, inte att öppna listan.
+
+Klart när: ett byte av församling uppdaterar listan utan att man klickar Hämta grupper, verifierat i Utbildningsmiljön genom att byta till en församling med annat antal grupper.
+
+- ID: `01KYWJ25QNNS91MG7D32QXQ0J0`
+- Type: feature
+- Actor: ai:claude-code
+
+---
+
 ## [P3][done] [svk-kbok-enhancements] Döp om Dopinbjudan med datumet ur modalen den frågar efter
 
 Rasmus 2026-07-30, efter genomgången av rapporterna i TASK-531.
@@ -649,6 +734,64 @@ Kommandot står med i README:s lista över lediga tangenter (ingen konflikt med 
 Klart när: någon som arbetat i desktopklienten har sagt vad kommandot gjorde, och raden i README antingen förklarats eller strukits.
 
 - ID: `01KYN8RA579S8PKK3MMJ9N6XYC`
+- Type: task
+- Actor: ai:claude-code
+
+---
+
+## [P4][todo] [svk-kbok-enhancements] Verifiera verifikatutskriften i riktig utskriftsdialog och på fler verifikattyper
+
+Lucka i verifieringen av 0.45, Skriv ut-ikonen på öppnade verifikat.
+
+VAD SOM ÄR VERIFIERAT
+
+Sidantalet, mätt med page.pdf() som använder utskrifts-CSS:
+
+  före ändringen      3 sidor
+  efter               1 sida
+  inställningen av    3 sidor igen
+
+Innehållet granskat som bild: alla fält med, knappar borta, verktygsraden dold, footern kvar.
+
+VAD SOM INTE ÄR VERIFIERAT
+
+1. Hur det ser ut i en riktig webbläsares utskriftsdialog. page.pdf() använder samma CSS men är inte samma dialog - marginaler och sidhuvud/sidfot kan skilja.
+
+2. Andra verifikattyper än begravningsregistrering. Strukturen är densamma men antalet fält varierar. Ett långt verifikat kan behöva två sidor, och det är i så fall rätt.
+
+3. Att inget innehåll försvinner. Stilbladet döljer allt som är en button. Har någon verifikattyp innehåll inbakat i en knapp skulle det inte komma med på pappret.
+
+Klart när: utskriften kontrollerad i Rasmus egen webbläsare på minst tre verifikattyper, och det är bekräftat att inget fältinnehåll saknas.
+
+- ID: `01KYWJ3BEYJK56Z712SSF699AW`
+- Type: task
+- Actor: ai:claude-code
+
+---
+
+## [P4][todo] [svk-kbok-enhancements] Provkör utträdesbeviset från en personakt
+
+Lucka i verifieringen av 0.42, som gav bevisen datum även när de hämtas från personakten.
+
+VAD SOM ÄR VERIFIERAT
+
+Upptagandebeviset, hela vägen: person inträdd 2026-07-01, beviset uttaget 30 juli gav
+
+  2026-07-01 - Upptagandebevis - Björklund, Urban.pdf
+
+och med adress-varianten samma. Medlemsbeviset behöll uttagsdatum, som avsett.
+
+VAD SOM INTE ÄR VERIFIERAT
+
+Utträdesbeviset. Det läser samma fält (Tillhörighetsuppgifter > Datum) med samma funktion, tillhorighetsdatum(), så koden är densamma - men det är inte provkört, och det är inte kontrollerat vad fältet visar för en utträdd person. Väntat: utträdesdatumet, med Aktuell uppgift 'Ej tillhörig'.
+
+VARFÖR DET INTE BLEV GJORT
+
+Utträde nås inte från den personaktsvy testet landar i (via Sök personer > Centrala tillhörighetsregistret) - den har bara Redigera och Rapporter. Vägen till utträdesflödet behöver letas upp.
+
+Klart när: ett utträdesbevis hämtat från en personakt bär utträdesdatumet, verifierat i Utbildningsmiljön.
+
+- ID: `01KYWJ3BEA0J1181B1WRPJ62KH`
 - Type: task
 - Actor: ai:claude-code
 
