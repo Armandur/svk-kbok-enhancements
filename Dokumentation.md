@@ -679,8 +679,10 @@ personnummer normaliserat till tolv siffror. Inga träffar i verifikatsökningen
 ger `204` utan kropp, inte en tom lista. Svaren sidas med `skip` och
 `limit`; verifikatsvaret säger `total`, pålysningssvaret `totalt`.
 
-Verifikatet bär inget dödsdatum. Kolumnen fylls ur pålysningen när en finns.
-Statusfiltret utelämnas med flit: ett dödsfallsverifikat går från Nytt till
+Verifikatet bär inget dödsdatum. Kolumnen fylls ur pålysningen när en finns,
+annars ur personakten (`POST Person/FetchPersonakt {personId}`, fältet
+`avregistreringsdatum` när orsaken är `AV`). Uppmätt att det anropet inte
+lägger personen i startsidans Senaste personer. Statusfiltret utelämnas med flit: ett dödsfallsverifikat går från Nytt till
 Åtgärdat så snart någon öppnat det (`SetVerifikatAsViewed`), och lästa
 verifikat ska med i avstämningen.
 
@@ -706,9 +708,22 @@ appens paneler får en döljande klass. Klick på en appflik återställer. Allt
 körs om i `uppdatera()`, eftersom React sätter tillbaka sin markering vid
 nästa omritning.
 
-Verifikatet har ingen egen adress i appen - det öppnas i en ruta från
-listan. Raden länkar därför till personakten (`personId` finns i
-verifikatraden) och till pålysningen (`/palysning/<id>`).
+Verifikatet har ingen egen adress i appen. Startsidan läser däremot ett
+`openVerifikatId` ur navigeringens tillstånd och öppnar rutan - det är så
+appen själv gör efter en registrering. Routern lyssnar på `popstate` och
+läser `history.state.usr`, så länken Verifikat gör ett `pushState` till `/`
+med `{usr: {openVerifikatId}}` och skickar ett eget popstate-event.
+Verifierat i Utbildningsmiljön: rutan öppnas på startsidan. Raden länkar
+också till personakten (`personId` finns i verifikatraden) och till
+pålysningen (`/palysning/<id>`).
+
+Kboks knappar Skapa, Ta bort markerade och Rapporter hör till appens lista
+och döljs medan fliken Avstämning är vald.
+
+Församlingsbyte via API (`GET SwitchEnhetForUser?newEnhetId=N`, det appen
+anropar från dialogen Välj församling) gav `500` när det anropades direkt,
+så avstämning över flera församlingar i ett svep är inte byggd. Verifikaten
+följer den inloggade församlingen.
 
 ### Lagringen
 

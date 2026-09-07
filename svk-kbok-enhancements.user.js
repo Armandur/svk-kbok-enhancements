@@ -2857,6 +2857,27 @@
                 p.dodsdatum = p.datum;
             }
         });
+        rader.forEach((r) => {
+            r.dodsdatum = [...new Set(r.palysningar.map((p) => visaDatum(p.dodsdatum))
+                .filter(Boolean))].join(', ');
+        });
+
+        // Verifikatet bär inget dödsdatum. Saknas pålysning hämtas det ur
+        // personakten, där avregistreringsdatumet är dödsdagen. Uppmätt att
+        // anropet inte hamnar i startsidans Senaste personer.
+        const utanDatum = rader.filter((r) => !r.dodsdatum && r.personId);
+        if (utanDatum.length) status(`Hämtar dödsdatum för ${utanDatum.length} avlidna…`);
+        await parallellt(utanDatum, 4, async (r) => {
+            try {
+                const akt = await apiAnrop('POST', 'Person/FetchPersonakt', { personId: r.personId });
+                const person = akt.kyrkoperson || {};
+                if ((person.avregistreringsorsak || {}).kod === 'AV') {
+                    r.dodsdatum = visaDatum(person.avregistreringsdatum);
+                }
+            } catch (e) {
+                // Kolumnen blir tom, resten av raden står kvar.
+            }
+        });
 
         return { aktiv, antalEnheter: enheter.length, rader, skyddade };
     }
@@ -3125,9 +3146,7 @@
             avliden.appendChild(el('div', 'svk-kbok-dampad', r.personnummer));
             tr.appendChild(avliden);
 
-            const dodsdatum = [...new Set(r.palysningar.map((p) => visaDatum(p.dodsdatum || p.datum))
-                .filter(Boolean))];
-            tr.appendChild(el('td', null, dodsdatum.join(', ')));
+            tr.appendChild(el('td', null, r.dodsdatum || ''));
             tr.appendChild(el('td', null, visaDatum(r.aviserat)));
 
             const palysning = el('td');
@@ -3178,10 +3197,18 @@
             tr.appendChild(hanterad);
 
             const oppna = el('td');
+            const verifikatlank = el('a', null, 'Verifikat');
+            verifikatlank.href = '/';
+            verifikatlank.title = 'Öppnar verifikatet på startsidan';
+            verifikatlank.addEventListener('click', (e) => {
+                e.preventDefault();
+                oppnaVerifikat(r.verifikatId);
+            });
+            oppna.appendChild(verifikatlank);
             if (r.personId) {
+                oppna.appendChild(el('span', 'svk-kbok-dampad', ' · '));
                 const lank = el('a', null, 'Personakt');
                 lank.href = personaktUrl(r.personId);
-                lank.title = 'Verifikatet hittar du under Verifikat > Sökning på aviseringsdagen';
                 oppna.appendChild(lank);
             }
             tr.appendChild(oppna);
@@ -3189,6 +3216,21 @@
         });
         tabell.appendChild(kropp);
         return tabell;
+    }
+
+    /* Verifikatet har ingen egen adress. Startsidan läser däremot ett
+     * openVerifikatId ur navigeringens tillstånd och öppnar rutan - det är så
+     * appen själv gör efter en registrering. Routern (react-router) lyssnar
+     * på popstate och läser history.state.usr, så ett pushState följt av ett
+     * eget popstate-event tar samma väg. Verifierat i Utbildningsmiljön. */
+    function oppnaVerifikat(verifikatId) {
+        const state = {
+            usr: { openVerifikatId: Number(verifikatId), markInfoAsViewedOnClose: false },
+            key: Math.random().toString(36).slice(2, 10),
+            idx: ((history.state && history.state.idx) || 0) + 1,
+        };
+        history.pushState(state, '', '/');
+        dispatchEvent(new PopStateEvent('popstate', { state }));
     }
 
     /* Utskriften går samma väg som verifikatutskriften: en kopia av listan
@@ -3265,6 +3307,20 @@
         });
         if (indikator) indikator.style.visibility = vald ? 'hidden' : '';
         appPaneler.forEach((p) => p.classList.toggle(DOLJ_KLASS, vald));
+        // Skapa, Ta bort markerade och Rapporter hör till appens lista och
+        // gör inget för vår. Raden de står i döljs medan vår flik är vald.
+        const knapprad = appensKnapprad(tablist);
+        if (knapprad) knapprad.classList.toggle(DOLJ_KLASS, vald);
+    }
+
+    function appensKnapprad(tablist) {
+        const knappar = [...document.querySelectorAll('main button')]
+            .filter((b) => /^(Skapa|Ta bort markerade|Rapporter)\b/.test((b.textContent || '').trim()));
+        if (knappar.length < 2) return null;
+        // Närmaste gemensamma förälder som inte också rymmer flikraden.
+        let rad = knappar[0].parentElement;
+        while (rad && !knappar.every((k) => rad.contains(k))) rad = rad.parentElement;
+        return rad && !rad.contains(tablist) ? rad : null;
     }
 
     function taBortAvstamningsflik() {
