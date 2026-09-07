@@ -3161,8 +3161,9 @@
                     lank.href = `/palysning/${p.palysningsId}`;
                     palysning.appendChild(el('div')).appendChild(lank);
                     const artrad = el('div');
+                    // Löpnumret säger självt att pålysningen är knuten.
                     if (p.knuten === true) {
-                        artrad.textContent = p.lopnr ? `Knuten · löpnr ${p.lopnr}` : 'Knuten';
+                        artrad.textContent = p.lopnr || 'Knuten';
                     } else if (p.knuten === false) {
                         artrad.appendChild(el('span', 'svk-kbok-fristaende', 'Fristående'));
                     } else {
@@ -3200,16 +3201,20 @@
             const oppna = el('td');
             const verifikatlank = el('a', null, 'Verifikat');
             verifikatlank.href = '/';
-            verifikatlank.title = 'Öppnar verifikatet på startsidan';
+            verifikatlank.title = 'Öppnar verifikatet';
             verifikatlank.addEventListener('click', (e) => {
                 e.preventDefault();
-                oppnaVerifikat(r.verifikatId);
+                // Flikraden är appens eget element och bär en React-fiber;
+                // vår tabell gör det inte.
+                oppnaVerifikat(r.verifikatId, document.querySelector('[role="tablist"]'));
             });
             oppna.appendChild(verifikatlank);
             if (r.personId) {
                 oppna.appendChild(el('span', 'svk-kbok-dampad', ' · '));
                 const lank = el('a', null, 'Personakt');
                 lank.href = personaktUrl(r.personId);
+                lank.target = '_blank';
+                lank.rel = 'noopener';
                 oppna.appendChild(lank);
             }
             tr.appendChild(oppna);
@@ -3219,12 +3224,36 @@
         return tabell;
     }
 
-    /* Verifikatet har ingen egen adress. Startsidan läser däremot ett
-     * openVerifikatId ur navigeringens tillstånd och öppnar rutan - det är så
-     * appen själv gör efter en registrering. Routern (react-router) lyssnar
-     * på popstate och läser history.state.usr, så ett pushState följt av ett
-     * eget popstate-event tar samma väg. Verifierat i Utbildningsmiljön. */
-    function oppnaVerifikat(verifikatId) {
+    /* Verifikatet har ingen egen adress. Rutan styrs av en React-kontext
+     * (VerifikatWindowProvider) som ligger runt hela appen, och dess värde
+     * går att nå från vilket element som helst genom att följa fiberns
+     * föräldrakedja uppåt: Provider-fibern bär värdet i memoizedProps.value.
+     * Anropet öppnar rutan på plats, på den sida man står. Löftet det
+     * returnerar infrias först när rutan stängs, så det inväntas inte.
+     *
+     * Reserv: startsidan läser ett openVerifikatId ur navigeringens
+     * tillstånd - så gör appen själv efter en registrering. Routern lyssnar
+     * på popstate och läser history.state.usr, så ett pushState följt av
+     * ett eget popstate-event tar samma väg, men byter sida.
+     * Båda vägarna verifierade i Utbildningsmiljön. */
+    function verifikatfonster(fran) {
+        const nyckel = Object.keys(fran).find((k) => k.startsWith('__reactFiber$'));
+        let fiber = nyckel && fran[nyckel];
+        for (let steg = 0; fiber && steg < 500; steg++) {
+            const varde = fiber.memoizedProps && fiber.memoizedProps.value;
+            if (varde && typeof varde.openVerifikatWindow === 'function') return varde;
+            fiber = fiber.return;
+        }
+        return null;
+    }
+
+    function oppnaVerifikat(verifikatId, fran) {
+        const fonster = fran && verifikatfonster(fran);
+        if (fonster) {
+            fonster.openVerifikatWindow(Number(verifikatId), { markInfoAsViewedOnClose: false })
+                .catch(() => {});
+            return;
+        }
         const state = {
             usr: { openVerifikatId: Number(verifikatId), markInfoAsViewedOnClose: false },
             key: Math.random().toString(36).slice(2, 10),

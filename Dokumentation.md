@@ -708,14 +708,23 @@ appens paneler får en döljande klass. Klick på en appflik återställer. Allt
 körs om i `uppdatera()`, eftersom React sätter tillbaka sin markering vid
 nästa omritning.
 
-Verifikatet har ingen egen adress i appen. Startsidan läser däremot ett
-`openVerifikatId` ur navigeringens tillstånd och öppnar rutan - det är så
-appen själv gör efter en registrering. Routern lyssnar på `popstate` och
-läser `history.state.usr`, så länken Verifikat gör ett `pushState` till `/`
-med `{usr: {openVerifikatId}}` och skickar ett eget popstate-event.
-Verifierat i Utbildningsmiljön: rutan öppnas på startsidan. Raden länkar
-också till personakten (`personId` finns i verifikatraden) och till
-pålysningen (`/palysning/<id>`).
+Verifikatet har ingen egen adress i appen. Rutan styrs av en React-kontext,
+`VerifikatWindowProvider`, som ligger runt hela appen. Dess värde nås från
+vilket appelement som helst genom att följa React-fiberns föräldrakedja
+(`__reactFiber$…`, sedan `.return` uppåt) tills en fiber bär
+`memoizedProps.value.openVerifikatWindow`. Anropet öppnar rutan på plats,
+på Pålysningsboken, utan sidbyte. Löftet det returnerar infrias först när
+rutan stängs, så det inväntas inte. Verifierat i Utbildningsmiljön: rutan
+öppnas över fliken, och efter stängning står fliken kvar vald med raderna.
+
+Reserv om kontexten inte hittas: startsidan läser ett `openVerifikatId` ur
+navigeringens tillstånd, så gör appen själv efter en registrering. Routern
+lyssnar på `popstate` och läser `history.state.usr`, så ett `pushState` till
+`/` med `{usr: {openVerifikatId}}` och ett eget popstate-event tar samma väg,
+men byter sida. Också verifierat.
+
+Raden länkar dessutom till personakten i ny flik (`personId` finns i
+verifikatraden) och till pålysningen (`/palysning/<id>`).
 
 Kboks knappar Skapa, Ta bort markerade och Rapporter hör till appens lista
 och döljs medan fliken Avstämning är vald.
