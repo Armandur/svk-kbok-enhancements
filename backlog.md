@@ -16,7 +16,7 @@ Klart när: Ctrl+P på Pålysningsboken utan öppen ruta skriver ut sidan som va
 
 ---
 
-## [P2][doing] [svk-kbok-enhancements] Avstämning av tacksägelser: flik i Pålysningsboken som ställer dödsfallsverifikat mot pålysningar
+## [P2][done] [svk-kbok-enhancements] Avstämning av tacksägelser: flik i Pålysningsboken som ställer dödsfallsverifikat mot pålysningar
 
 ## Context
 
