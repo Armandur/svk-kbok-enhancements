@@ -1,5 +1,47 @@
 # Backlog Export
 
+## [P2][todo] [svk-kbok-enhancements] Avstämning av tacksägelser: flik i Pålysningsboken som ställer dödsfallsverifikat mot pålysningar
+
+## Context
+
+Kyrkoordningen 24 kap. 6 §: efter ett dödsfall ska tacksägelse hållas, oavsett om det blir en begravning i Svenska kyrkans ordning. En avliden utan begravningspost får ingen knuten pålysning av sig själv, och Kbok visar ingenstans vem som saknar tacksägelse. Dödsfallen kommer som verifikat (ärendetyp Dödsfall), pålysningarna ligger i Pålysningsboken.
+
+Fullständig spec med alla beslut, API-kroppar, svarsfält och mätningar: backlog doc "Spec: Avstämning av tacksägelser (dödsfall mot pålysningar)" (id 01M1X8HKF0TCA8EB9D68YX2QRR), version 7 eller senare. Läs den först; det här är sammanfattningen.
+
+Beslut som är tagna (ändra inte utan att fråga Rasmus):
+- Flik "Avstämning" i Pålysningsboken (MUI Tabs, id palysning-tab-N). Knapp och ruta som reservplan.
+- Period = verifikatets datum, förvald föregående kalendermånad.
+- Verifikat för inloggad församling, pålysningar i ALLA användarens församlingar (GetUserSession permissions.enheter).
+- Art (Knuten/Fristående) ur detaljanropet FetchOrCreatePalysning, kyrklighandlingsId 0 = fristående. Löpnumret i listan är buggigt för fristående (rapporterat till Kanslistöd 2026-09-07) och visas bara för knutna.
+- Ingen Skapa pålysning, ingen lista över pålysningar utan verifikat i v1.
+- Inget hämtat sparas. Markeringen Hanterad sparas i localStorage som {verifikatId, datum}, gallras efter 12 månader, knapp Rensa sparade markeringar i vyn och panelen.
+- Ny inställning avstamningTacksagelser (på), ny panelgrupp Pålysningsbok.
+
+## Acceptance criteria
+
+1. I Pålysningsboken finns fliken Avstämning. Den öppnas med föregående kalendermånad förvald och går att stega månad för månad eller ange fritt intervall.
+2. Summeringen skriver ut församlingens namn, antal dödsfall i perioden, antal utan pålysning, antal markerade Hanterad och hur många församlingar pålysningarna söktes i.
+3. Listan har en rad per dödsfallsverifikat med Avliden (namn, personnummer), Dödsdatum (ur pålysningen, tomt annars), Aviserat, Pålysning (datum, kyrka, församling, en rad per pålysning, "Saknas" i rött), Art (Knuten med löpnr / Fristående, "N församlingar" vid fler), Hanterad-kryssruta och länkar till verifikatet och pålysningen (/palysning/<id>). Rader utan pålysning först, Hanterad sist och nedtonade.
+4. Skyddade personer (arskyddadperson) listas separat som "kan inte stämmas av här", utan detaljhämtning.
+5. Anropen görs med XMLHttpRequest, withCredentials, mot API-basen avläst ur ett passerande anrop (aldrig hårdkodad). Alla svar sidas igenom. Verifikatsökningen går utan statusfilter.
+6. Hanterad överlever omladdning, försvinner med Rensa, och localStorage innehåller bara id och datum, inga namn eller personnummer.
+7. Skriv ut ger listan utan tomma ark, via samma utskriftsväg som verifikatutskriften.
+8. @version och VERSION höjda. README-rad plus skärmdump, CHANGELOG-rad för användaren, Dokumentation.md-avsnitt om anropen, lagringen och löpnummerbuggen.
+
+## Verification
+
+- Utbildningsmiljön (enhet 18 Lukas församling) har ett dödsfallsverifikat (2025-12-30, personId 18382, fiktiv person) men inga pålysningar; skapa en knuten pålysning via en begravningspost (kbok-web verktyg _begravning_palysning_test.py som förebild) för att få en match. Miljön nollas nattetid.
+- testmiljön har 250+ dödsfallspålysningar och en testperson med en knuten och en fristående pålysning i olika församlingar. utdata från testmiljön maskeras, inget committas.
+- Kontrollera att FetchVerifikatByVerifikatsId inte ändrar verifikatets status från Nytt (morgon efter nollställning i Utbildningsmiljön).
+- Inloggning i Utbildningsmiljön: kbok-web TASK-1665, verktyget faller. Mätskripten i den här sessionen hade en egen login_utb med miljöval på inloggningssidan och klick på "Logga in ändå".
+- Browser-verifiering vid 1280 px, flikklick verifierat (inte bara renderat), skärmdumpar lästa innan commit. Slutprov av Rasmus i produktion mot en månad med känt facit.
+
+- ID: `01M1XF64EQQFHB492B2JDCJAN8`
+- Type: feature
+- Actor: ai:claude-fable-5-1
+
+---
+
 ## [P2][done] [svk-kbok-enhancements] Auto-hämta utlöses inte när personnumret skrivs för hand
 
 Rasmus 2026-07-29, efter att kryssknappsbuggen rättats i 0.9.
