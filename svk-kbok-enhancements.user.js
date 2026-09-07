@@ -2911,6 +2911,8 @@
                 text-align: left; vertical-align: top; padding: .45rem .6rem;
                 border-bottom: 1px solid #e5e2dc; }
             .svk-kbok-avstamningstabell th { font-weight: 600; white-space: nowrap; }
+            .svk-kbok-avstamningstabell .svk-kbok-mitt { text-align: center; }
+            .svk-kbok-avstamningstabell .svk-kbok-mitt input { vertical-align: middle; }
             .svk-kbok-avstamningstabell .svk-kbok-saknas { color: #b3261e; font-weight: 600; }
             .svk-kbok-avstamningstabell .svk-kbok-fristaende { color: ${ACCENT}; font-weight: 600; }
             .svk-kbok-avstamningstabell tr.svk-kbok-hanterad td { opacity: .5; }
@@ -3132,7 +3134,7 @@
         const huvud = el('thead');
         const hr = el('tr');
         ['Avliden', 'Dödsdatum', 'Aviserat', 'Pålysning', 'Art', 'Hanterad', 'Öppna']
-            .forEach((t) => hr.appendChild(el('th', null, t)));
+            .forEach((t) => hr.appendChild(el('th', t === 'Hanterad' ? 'svk-kbok-mitt' : null, t)));
         huvud.appendChild(hr);
         tabell.appendChild(huvud);
         const kropp = el('tbody');
@@ -3179,7 +3181,7 @@
             tr.appendChild(palysning);
             tr.appendChild(art);
 
-            const hanterad = el('td');
+            const hanterad = el('td', 'svk-kbok-mitt');
             const kryss = document.createElement('input');
             kryss.type = 'checkbox';
             kryss.checked = r.hanterad;
