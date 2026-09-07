@@ -1,6 +1,22 @@
 # Backlog Export
 
-## [P2][todo] [svk-kbok-enhancements] Avstämning av tacksägelser: flik i Pålysningsboken som ställer dödsfallsverifikat mot pålysningar
+## [P2][todo] [svk-kbok-enhancements] Utskriftsstilbladet döljer hela sidan vid Ctrl+P även när ingen verifikatruta är öppen
+
+Hittad 2026-09-07 under TASK-1667, i Utbildningsmiljön med skriptet 0.46 injicerat.
+
+Stilbladet från Skriv ut-ikonen (0.45, laggTillUtskriftsstil) läggs på vid varje uppdatera() så länge inställningen skrivUtVerifikat är på. Regeln body > *:not(.svk-kbok-utskriftsrot) { display: none } gäller då på ALLA Kbok-sidor i print-media, inte bara när en verifikatruta är öppen. Uppmätt på /palysningsbok utan dialog: body-barnen NOSCRIPT och #root har display none i print-media. Ctrl+P på en vanlig Kbok-sida ger alltså tomt papper för alla som har inställningen på (standard).
+
+Förslag: låt regeln gälla bara när en rot faktiskt bär klassen, till exempel genom att sätta en klass på body när utskriftsroten läggs på och ta bort den när rutan stängs, och skriv reglerna som body.svk-kbok-skriver > *:not(...). Avstämningsutskriften i TASK-1667 (skrivUtAvstamning) går samma väg och måste då sätta samma body-klass medan kopian finns.
+
+Klart när: Ctrl+P på Pålysningsboken utan öppen ruta skriver ut sidan som vanligt, verifikatutskriften fortfarande ger en sida med bara verifikatet, och avstämningsutskriften fortfarande fungerar.
+
+- ID: `01M1XG339JR9WFE5EGTH8K4EYV`
+- Type: bug
+- Actor: ai:claude-fable-5-1
+
+---
+
+## [P2][doing] [svk-kbok-enhancements] Avstämning av tacksägelser: flik i Pålysningsboken som ställer dödsfallsverifikat mot pålysningar
 
 ## Context
 
@@ -21,7 +37,7 @@ Beslut som är tagna (ändra inte utan att fråga Rasmus):
 
 1. I Pålysningsboken finns fliken Avstämning. Den öppnas med föregående kalendermånad förvald och går att stega månad för månad eller ange fritt intervall.
 2. Summeringen skriver ut församlingens namn, antal dödsfall i perioden, antal utan pålysning, antal markerade Hanterad och hur många församlingar pålysningarna söktes i.
-3. Listan har en rad per dödsfallsverifikat med Avliden (namn, personnummer), Dödsdatum (ur pålysningen, tomt annars), Aviserat, Pålysning (datum, kyrka, församling, en rad per pålysning, "Saknas" i rött), Art (Knuten med löpnr / Fristående, "N församlingar" vid fler), Hanterad-kryssruta och länkar till verifikatet och pålysningen (/palysning/<id>). Rader utan pålysning först, Hanterad sist och nedtonade.
+3. Listan har en rad per dödsfallsverifikat med Avliden (namn, personnummer), Dödsdatum (ur pålysningen, tomt annars), Aviserat, Pålysning (datum, kyrka, församling, en rad per pålysning, "Saknas" i rött), Art (Knuten med löpnr / Fristående, "N församlingar" vid fler), Hanterad-kryssruta och länkar till personakten (/personakt/<personId>) och pålysningen (/palysning/<id>). Verifikatet har ingen egen adress i appen - det öppnas i en ruta från listan (openVerifikatWindow i JS-bunten, ingen route), så personakten är närmaste länkmål. Rader utan pålysning först, Hanterad sist och nedtonade.
 4. Skyddade personer (arskyddadperson) listas separat som "kan inte stämmas av här", utan detaljhämtning.
 5. Anropen görs med XMLHttpRequest, withCredentials, mot API-basen avläst ur ett passerande anrop (aldrig hårdkodad). Alla svar sidas igenom. Verifikatsökningen går utan statusfilter.
 6. Hanterad överlever omladdning, försvinner med Rensa, och localStorage innehåller bara id och datum, inga namn eller personnummer.
@@ -30,7 +46,7 @@ Beslut som är tagna (ändra inte utan att fråga Rasmus):
 
 ## Verification
 
-- Utbildningsmiljön (enhet 18 Lukas församling) har ett dödsfallsverifikat (2025-12-30, personId 18382, fiktiv person) men inga pålysningar; skapa en knuten pålysning via en begravningspost (kbok-web verktyg _begravning_palysning_test.py som förebild) för att få en match. Miljön nollas nattetid.
+- Utbildningsmiljön (enhet 18 Lukas församling) har ett dödsfallsverifikat (2025-12-30, personId 18382, fiktiv person) men inga pålysningar. Personens dödsdatum från Skatteverket ligger i framtiden (2027-05-07) och är låst, så varken begravningspost eller pålysning går att skapa för personen - matchningen testas i testmiljön i stället.
 - testmiljön har 250+ dödsfallspålysningar och en testperson med en knuten och en fristående pålysning i olika församlingar. utdata från testmiljön maskeras, inget committas.
 - Kontrollera att FetchVerifikatByVerifikatsId inte ändrar verifikatets status från Nytt (morgon efter nollställning i Utbildningsmiljön).
 - Inloggning i Utbildningsmiljön: kbok-web TASK-1665, verktyget faller. Mätskripten i den här sessionen hade en egen login_utb med miljöval på inloggningssidan och klick på "Logga in ändå".
@@ -133,6 +149,20 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 - ID: `01KYNCHTA80GCT91Z0JGH6VJEY`
 - Type: task
 - Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Kör hela skriptet inklusive kommentarer genom klarspråksverktyget när avstämningsmodulen är klar
+
+Rasmus 2026-09-07, under bygget av TASK-1667 (avstämning av tacksägelser).
+
+När hela avstämningsmodulen är färdig ska hela svk-kbok-enhancements.user.js, inklusive kodkommentarerna, köras genom klarspråksverktyget (klarsprak-skrivning-skillen och klarsprak_lint.py). Inte bara den nya modulen: hela filen.
+
+Klart när: lintern körd på filen, kommentarer och användartexter omskrivna där den slår ut, och beteendet oförändrat (ingen kodändring utöver text).
+
+- ID: `01M1XFYY7VX4VWMDS5TWKGXJ1B`
+- Type: chore
+- Actor: ai:claude-fable-5-1
 
 ---
 

@@ -641,6 +641,102 @@ Verifierat i tre steg: vid öppning är fältet tomt och felet dolt, efter
 egen inmatning finns inget fel alls, och rensar användaren själv fältet
 visas felet som det ska.
 
+## Om avstämningen av tacksägelser
+
+Kyrkoordningen 24 kap. 6 §: efter ett dödsfall ska tacksägelse hållas i en
+församlings gudstjänst, oavsett om det blir en begravning i Svenska kyrkans
+ordning. En avliden utan begravningspost får ingen knuten pålysning av sig
+själv, och Kbok visar ingenstans vem som saknar en. Fliken Avstämning i
+Pålysningsboken ställer därför dödsfallsverifikaten för en period mot
+dödsfallspålysningarna. Specen med alla beslut ligger som backlog doc
+"Spec: Avstämning av tacksägelser".
+
+### Anropen
+
+Skriptet frågar Kboks API direkt, med appens egen session. API:t ligger på
+en annan värd än appen (`kbok-utb-api.ksys.se` för Utbildningsmiljön,
+`testmiljöns API` för testmiljön), och produktionens adress är inte känd, så
+basen läses ur appens första anrop när det passerar XHR-patchen.
+Autentiseringen är en cookie (`.AspNetCore.Cookies` på `.ksys.se`), ingen
+header, så anropen görs med `withCredentials`.
+
+| Steg | Anrop | Ger |
+| --- | --- | --- |
+| 1 | `GET GetUserSession` | `permissions.enheter` (användarens församlingar) och `aktivEnhetId` |
+| 2 | `POST Verifikat/FetchVerifikatBySearchlist`, `arendeTypsID: 5` (Dödsfall), utan statusfilter | en rad per verifikat: `verifikatsId`, `datum`, `personId`, `arskyddadperson` |
+| 3 | `POST Palysning/SearchByAttribute`, `kodtypPALYSNING: "DL"`, alla enheter, från periodens start till ett år fram | en rad per pålysning: `palysningsId`, `palysningsdatum`, `kyrka`, `forsamling`, `datum`, `personnummer`, `lopnr` |
+| 4 | `GET Verifikat/FetchVerifikatByVerifikatsId`, ett per verifikat | `rows` med Namn och Personnummer |
+| 5 | `POST Palysning/FetchOrCreatePalysning {palysningsId}`, ett per matchad pålysning | `kyrklighandlingsId` (0 = fristående), `dodsdatum` |
+
+Verifikatsökningen gäller den inloggade församlingen. Enhetsparametrar i
+kroppen ignoreras tyst, så för ett pastorat byter man församling och kör om.
+Pålysningssökningen tar däremot `enhetsIds`, och skriptet skickar alla
+användarens enheter så att en tacksägelse i grannförsamlingen räknas.
+
+Steg 4 behövs för att verifikatlistan bär `personId` men inte personnummer,
+och pålysningsraden personnummer men inte `personId`. Matchningen görs på
+personnummer normaliserat till tolv siffror. Inga träffar i verifikatsökningen
+ger `204` utan kropp, inte en tom lista. Svaren sidas med `skip` och
+`limit`; verifikatsvaret säger `total`, pålysningssvaret `totalt`.
+
+Verifikatet bär inget dödsdatum. Kolumnen fylls ur pålysningen när en finns.
+Statusfiltret utelämnas med flit: ett dödsfallsverifikat går från Nytt till
+Åtgärdat så snart någon öppnat det (`SetVerifikatAsViewed`), och lästa
+verifikat ska med i avstämningen.
+
+### Löpnummerbuggen
+
+Pålysningslistans kolumn Löpnr är begravningsblankettens löpnummer och borde
+vara tom för en fristående pålysning. Men servern fyller den med ett värde
+från en annan rad i samma träfflista. Uppmätt i testmiljön 2026-09-07 mot en
+nyskapad fristående pålysning, i Kboks eget gränssnitt: sökt på personnummer
+fick den den knutna pålysningens löpnummer, sökt på efternamn en annan
+persons, sökt på datum som ensam träff tomt. Rapporterat till Kanslistöd
+samma dag. Därför avgörs arten med steg 5 i stället, och löpnumret visas
+bara för knutna. Rättas buggen kan steg 5 strykas.
+
+### Fliken
+
+Pålysningsbokens flikar är MUI Tabs, `button[role=tab]` med id
+`palysning-tab-0` till `-3`, och panelerna `div[role=tabpanel]` som syskon
+med attributet `hidden`. Fliken Avstämning är en femte knapp med grannens
+klasser, och en egen panel efter appens. Vald-läget är skriptets: när vår
+flik är vald tas `Mui-selected` bort från appens flikar, indikatorn döljs och
+appens paneler får en döljande klass. Klick på en appflik återställer. Allt
+körs om i `uppdatera()`, eftersom React sätter tillbaka sin markering vid
+nästa omritning.
+
+Verifikatet har ingen egen adress i appen - det öppnas i en ruta från
+listan. Raden länkar därför till personakten (`personId` finns i
+verifikatraden) och till pålysningen (`/palysning/<id>`).
+
+### Lagringen
+
+Inget hämtat sparas. Kryssrutan Hanterad sparas i `localStorage` under
+`svk-kbok-hanterade` som `[{verifikatId, datum}]`, utan namn eller
+personnummer. Poster äldre än ett år gallras vid varje läsning, och knappen
+Rensa sparade markeringar finns både i fliken och i panelen.
+
+### Utskriften
+
+Skriv ut klonar tabellen till en behållare direkt under body med samma
+klass som verifikatutskriften använder, så stilbladet från 0.45 döljer allt
+annat. Kryssrutorna skrivs som text och länkarna som vanlig text. Behållaren
+tas bort vid `afterprint`.
+
+### Verifierat och kvar
+
+Verifierat 2026-09-07: i Utbildningsmiljön (ett dödsfall i december 2025,
+Saknas, Hanterad sparad och kvar efter omladdning, flikväxling åt båda håll,
+utskriftskopian) och i testmiljön (maj 2025 med 15 dödsfall, alla knutna; september
+2025 med 9, varav en person med både knuten och fristående pålysning).
+
+Kvar: att `FetchVerifikatByVerifikatsId` inte ändrar verifikatets status
+från Nytt. Appen gör det anropet skilt från `SetVerifikatAsViewed`, så det
+bör inte, men testet kräver en morgon efter nattens nollställning i
+Utbildningsmiljön. Och vilka som får dödsfallsverifikat, bara tillhöriga
+eller även antecknade, får produktionen visa.
+
 ## Kartlagda fällor
 
 Underlaget kommer från arbetet med användarmanualen 2026-07-25 till

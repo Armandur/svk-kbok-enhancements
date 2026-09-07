@@ -3,6 +3,14 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.46
+
+- **Avstämning av tacksägelser** i Pålysningsboken: en ny flik visar vilka
+  avlidna som saknar pålysning för vald månad, förvalt den föregående.
+  Pålysningarna söks i alla dina församlingar, och det syns om de är knutna
+  till en begravning eller fristående. Kryssa Hanterad för det som är
+  omhändertaget på annat sätt. Listan går att skriva ut.
+
 ## 0.45
 
 - **Skriv ut-ikon på ett öppnat verifikat**, som i desktopklienten.

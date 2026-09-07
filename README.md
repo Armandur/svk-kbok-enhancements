@@ -38,6 +38,7 @@ till höger, tillsammans med Byt församling och Inställningar.
 | Adress krävs för verifikat | Stoppar **Skapa verifikat** när adressen saknas i konfirmation, vigsel, välsignelse eller begravning. Kbok kräver den bara i dop. | På |
 | Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. | **Av** |
 | Skriv ut verifikat | Utskriftsikon på ett öppnat verifikat, och utskrift på en sida i stället för flera med tomma ark. Gäller även webbläsarens Ctrl+P. | På |
+| Avstämning av tacksägelser | Fliken **Avstämning** i Pålysningsboken visar vilka avlidna som saknar pålysning för vald månad, med länk till varje pålysning som finns. Förvald månad är den föregående. | På |
 | Tangentbordsgenvägar | Se nästa avsnitt. Varje genväg går att spela in på nytt i inställningarna. | På |
 | Fokus på Bekräfta verifikat | Sätter fokus på knappen när verifikatdialogen öppnas, så Enter bekräftar - som i desktopklienten. | **Av** |
 
@@ -52,6 +53,14 @@ Skriv ut och Ladda ner. Namnet högst upp är det filen får om du laddar ner
 den:
 
 ![Visningsrutan med en dopblankett](skarmdumpar/visningsruta.png)
+
+Fliken **Avstämning** i Pålysningsboken ställer månadens dödsfallsverifikat
+mot pålysningarna i alla dina församlingar. Den som saknar pålysning står
+först. Kryssa **Hanterad** när något är omhändertaget på annat sätt, till
+exempel att anhöriga avböjt tacksägelse - markeringen sparas i din egen
+webbläsare och rensas efter ett år:
+
+![Fliken Avstämning i Pålysningsboken](skarmdumpar/avstamning.png)
 
 ## Genvägar
 

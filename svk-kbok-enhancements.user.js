@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.45
-// @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
+// @version      0.46
+// @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
 // @match        https://testmiljön/*
@@ -49,7 +49,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.45';
+    const VERSION = '0.46';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -82,6 +82,7 @@
         // desktopklientens flöde slår på det medvetet.
         fokusBekraftaVerifikat: false,
         skrivUtVerifikat: true,
+        avstamningTacksagelser: true,
         genvagarPa: true,
         kollaUppdatering: true,
     };
@@ -101,6 +102,7 @@
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar',
         skrivUtVerifikat: 'Skriv ut-ikon på öppnade verifikat, och utskrift på en sida',
+        avstamningTacksagelser: 'Fliken Avstämning i Pålysningsboken - dödsfall som saknar pålysning',
         genvagarPa: 'Genvägarna är på',
         kollaUppdatering: 'Säg till när en ny version finns - frågar GitHub en gång per dygn',
     };
@@ -117,6 +119,8 @@
               'fokusDatum', 'kravAdress', 'tomPalysningsdatum'] },
         { rubrik: 'Blanketter och rapporter',
           nycklar: ['blankettnamn', 'visaBlankett', 'skrivUtVerifikat'] },
+        { rubrik: 'Pålysningsbok',
+          nycklar: ['avstamningTacksagelser'] },
         { rubrik: 'Utbildningsmiljön',
           nycklar: ['minnsMiljo'] },
         { rubrik: 'Tillägget',
@@ -358,6 +362,7 @@
     function fangaPersonid() {
         const original = XMLHttpRequest.prototype.open;
         XMLHttpRequest.prototype.open = function (metod, url, ...resten) {
+            kommIhagApiBas(url);
             // Bara ministerialbokens sökning. Andra sökanrop returnerar också
             // paginatedResults - FetchVerifikatBySearchlist och
             // SearchKyrkoperson - men med andra id-rymder, och en träff där
@@ -2304,6 +2309,22 @@
         GRUPPER.forEach((grupp) => {
             flikInstallningar.appendChild(gruppRubrik(grupp.rubrik));
             grupp.nycklar.forEach((n) => flikInstallningar.appendChild(kryssrad(n)));
+            if (grupp.rubrik === 'Pålysningsbok') {
+                // Markeringarna bor i den här webbläsaren, så här är stället
+                // att bli av med dem också.
+                const rensa = document.createElement('button');
+                rensa.type = 'button';
+                rensa.textContent = 'Rensa sparade Hanterad-markeringar';
+                rensa.style.cssText = 'margin:.2rem 0 0 1.6rem;font:inherit;font-size:.82rem;'
+                    + `padding:.3rem .8rem;border:1px solid ${ACCENT};border-radius:999px;`
+                    + `background:#fff;color:${ACCENT};cursor:pointer`;
+                rensa.addEventListener('click', () => {
+                    rensaHanterade();
+                    rensa.textContent = 'Markeringarna är borttagna';
+                    rensa.disabled = true;
+                });
+                flikInstallningar.appendChild(rensa);
+            }
         });
 
         flikInstallningar.appendChild(gruppRubrik('Går inte att ångra'));
@@ -2590,6 +2611,671 @@
         else rubrik.appendChild(knapp);
     }
 
+    /* ---------- Avstämning av tacksägelser ----------
+     *
+     * Kyrkoordningen 24 kap. 6 §: efter ett dödsfall ska tacksägelse hållas
+     * i en församlings gudstjänst, oavsett om det blir en begravning i
+     * Svenska kyrkans ordning. Kbok visar ingenstans vem som saknar en. Den
+     * här fliken i Pålysningsboken ställer dödsfallsverifikaten för en
+     * period mot dödsfallspålysningarna och listar dem som saknar.
+     *
+     * Verifikaten söks för den inloggade församlingen - sökningen har ingen
+     * enhetsparameter, den ignoreras tyst. Pålysningarna söks i alla
+     * församlingar användaren har behörighet till, så en tacksägelse i
+     * grannförsamlingen räknas.
+     *
+     * Fyra anrop, alla mot Kboks API med appens egen cookie:
+     *
+     *   Verifikat/FetchVerifikatBySearchlist   arendeTypsID 5 = Dödsfall
+     *   Palysning/SearchByAttribute            kodtypPALYSNING DL = Dödsfall
+     *   Verifikat/FetchVerifikatByVerifikatsId ett per verifikat - listan bär
+     *                                          bara personId, inte personnummer
+     *   Palysning/FetchOrCreatePalysning       ett per matchad pålysning -
+     *                                          kyrklighandlingsId 0 = fristående
+     *
+     * Löpnumret i pålysningslistan går inte att använda för arten: för en
+     * fristående pålysning fylls det med ett värde från en annan rad i
+     * träfflistan (Kbok-bugg, rapporterad 2026-09-07). Därför detaljanropet.
+     *
+     * Inget hämtat sparas. Kryssrutan Hanterad sparas i webbläsaren som
+     * verifikatets id och dagens datum, inget mer, och gallras efter ett år.
+     */
+
+    const HANTERADE_NYCKEL = 'svk-kbok-hanterade';
+    const AVSTAMNING_ID = 'svk-kbok-avstamning';
+    const DOLJ_KLASS = 'svk-kbok-dold-av-avstamning';
+    const ARENDETYP_DODSFALL = 5;
+    const PALYSNINGSTYP_DODSFALL = 'DL';
+    const MANADER = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli',
+        'augusti', 'september', 'oktober', 'november', 'december'];
+
+    /* API:t ligger på en annan värd än appen (kbok-utb-api.ksys.se för
+     * Utbildningsmiljön, testmiljöns API för testmiljön) och produktionens adress
+     * är inte känd. Basen läses därför ur appens egna anrop när de passerar
+     * XHR-patchen, aldrig ur en lista. */
+    let apiBas = null;
+
+    function kommIhagApiBas(url) {
+        if (apiBas) return;
+        const m = String(url).match(
+            /^(https?:\/\/[^/]+)\/(GetUserSession|Verifikat|Palysning|Enhet|Misc|Person)\b/);
+        if (m) apiBas = m[1];
+    }
+
+    function apiAnrop(metod, sokvag, kropp) {
+        return new Promise((klar, fel) => {
+            if (!apiBas) {
+                fel(new Error('Kbok har inte hämtat något ännu. Ladda om sidan och försök igen.'));
+                return;
+            }
+            const xhr = new XMLHttpRequest();
+            xhr.open(metod, `${apiBas}/${sokvag}`);
+            xhr.withCredentials = true;
+            if (kropp !== undefined) xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.addEventListener('load', () => {
+                if (xhr.status < 200 || xhr.status >= 300) {
+                    fel(new Error(`${sokvag} svarade ${xhr.status}`));
+                    return;
+                }
+                // Inga träffar ger 204 utan kropp, inte en tom lista.
+                if (xhr.status === 204 || !xhr.responseText) {
+                    klar({});
+                    return;
+                }
+                try {
+                    klar(JSON.parse(xhr.responseText));
+                } catch (e) {
+                    fel(new Error(`${sokvag} gav ett svar som inte gick att läsa`));
+                }
+            });
+            xhr.addEventListener('error', () => fel(new Error(`${sokvag} gick inte att nå`)));
+            xhr.send(kropp === undefined ? null : JSON.stringify(kropp));
+        });
+    }
+
+    /* Sidar igenom ett sökanrop. Verifikatsvaret säger total, pålysningssvaret
+     * totalt. Servern får kapa sidstorleken - loopen räknar på det som kom. */
+    async function hamtaAlla(sokvag, kropp, sidstorlek) {
+        const alla = [];
+        let skip = 0;
+        for (;;) {
+            const svar = await apiAnrop('POST', sokvag, { ...kropp, skip, limit: sidstorlek });
+            const poster = Array.isArray(svar.paginatedResults) ? svar.paginatedResults : [];
+            alla.push(...poster);
+            skip += poster.length;
+            const totalt = Number(svar.totalt ?? svar.total ?? 0);
+            if (!poster.length || skip >= totalt) break;
+        }
+        return alla;
+    }
+
+    // Högst n anrop i luften samtidigt, resultaten i ursprunglig ordning.
+    async function parallellt(poster, n, gor) {
+        const ut = new Array(poster.length);
+        let nasta = 0;
+        async function arbetare() {
+            while (nasta < poster.length) {
+                const i = nasta++;
+                ut[i] = await gor(poster[i]);
+            }
+        }
+        await Promise.all(Array.from({ length: Math.min(n, poster.length) }, arbetare));
+        return ut;
+    }
+
+    function normaliseratPnr(v) {
+        return String(v || '').replace(/\D/g, '');
+    }
+
+    // Pålysningens datum kommer som 20250906, verifikatets som 2025-09-06.
+    function visaDatum(v) {
+        const s = String(v || '').trim();
+        return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6)}` : s;
+    }
+
+    function isoDatum(d) {
+        const tva = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${tva(d.getMonth() + 1)}-${tva(d.getDate())}`;
+    }
+
+    function manadsgranser(ar, manad) {
+        return [isoDatum(new Date(ar, manad, 1)), isoDatum(new Date(ar, manad + 1, 0))];
+    }
+
+    /* --- Hanterad-markeringarna --- */
+
+    function lasHanterade() {
+        let lista;
+        try {
+            lista = JSON.parse(localStorage.getItem(HANTERADE_NYCKEL)) || [];
+        } catch (e) {
+            lista = [];
+        }
+        if (!Array.isArray(lista)) lista = [];
+        const grans = Date.now() - 365 * DYGN;
+        const kvar = lista.filter((p) => p && p.verifikatId && Date.parse(p.datum) > grans);
+        if (kvar.length !== lista.length) skrivHanterade(kvar);
+        return kvar;
+    }
+
+    function skrivHanterade(lista) {
+        if (lista.length) localStorage.setItem(HANTERADE_NYCKEL, JSON.stringify(lista));
+        else localStorage.removeItem(HANTERADE_NYCKEL);
+    }
+
+    function sattHanterad(verifikatId, ja) {
+        const utan = lasHanterade().filter((p) => String(p.verifikatId) !== String(verifikatId));
+        if (ja) utan.push({ verifikatId: String(verifikatId), datum: idagsDatum() });
+        skrivHanterade(utan);
+    }
+
+    function rensaHanterade() {
+        localStorage.removeItem(HANTERADE_NYCKEL);
+    }
+
+    /* --- Hämtningen --- */
+
+    async function stamAv(fran, till, status) {
+        status('Hämtar församlingar…');
+        const session = await apiAnrop('GET', 'GetUserSession');
+        const behorighet = session.permissions || {};
+        const enheter = (behorighet.enheter || []).filter((e) => !e.isUpphord);
+        const aktiv = (behorighet.enheter || [])
+            .find((e) => e.enhetsId === behorighet.aktivEnhetId) || null;
+
+        status('Hämtar dödsfallsverifikat…');
+        const verifikat = await hamtaAlla('Verifikat/FetchVerifikatBySearchlist', {
+            sortBy: 'datum',
+            order: 'desc',
+            objectSearchParameters: {
+                form: 'vfk001',
+                initieradAvEnhet: false,
+                datumFrom: fran,
+                datumTom: till,
+                arendeTypsID: ARENDETYP_DODSFALL,
+            },
+        }, 50);
+
+        // Pålysningen görs veckor efter aviseringen och kan ligga långt fram,
+        // på en minnesgudstjänst. Fönstret sträcker sig därför ett år framåt.
+        const ettArFram = new Date();
+        ettArFram.setFullYear(ettArFram.getFullYear() + 1);
+        status('Hämtar pålysningar…');
+        const palysningar = await hamtaAlla('Palysning/SearchByAttribute', {
+            sortBy: 'palysningsdatum',
+            order: 'desc',
+            objectSearchParameters: {
+                enhetsIds: enheter.map((e) => e.enhetsId),
+                personnummer: null,
+                fornamn: '',
+                efternamn: '',
+                kodtypPALYSNING: PALYSNINGSTYP_DODSFALL,
+                fromDatum: fran,
+                tomDatum: isoDatum(ettArFram),
+                kyrka: null,
+            },
+        }, 200);
+
+        const perPnr = new Map();
+        palysningar.forEach((p) => {
+            const nyckel = normaliseratPnr(p.personnummer);
+            if (!nyckel) return;
+            if (!perPnr.has(nyckel)) perPnr.set(nyckel, []);
+            perPnr.get(nyckel).push(p);
+        });
+
+        const skyddade = verifikat.filter((v) => v.arskyddadperson);
+        const oppna = verifikat.filter((v) => !v.arskyddadperson);
+
+        status(`Hämtar uppgifter om ${oppna.length} avlidna…`);
+        const rader = await parallellt(oppna, 4, async (v) => {
+            const detalj = await apiAnrop('GET',
+                `Verifikat/FetchVerifikatByVerifikatsId?verifikatsId=${encodeURIComponent(v.verifikatsId)}`);
+            const falt = {};
+            (detalj.rows || []).forEach((r) => { falt[r.label] = r.text; });
+            const pnr = normaliseratPnr(falt.Personnummer);
+            return {
+                verifikatId: v.verifikatsId,
+                personId: v.personId,
+                aviserat: v.datum,
+                namn: falt.Namn || '',
+                personnummer: falt.Personnummer || '',
+                palysningar: (pnr && perPnr.get(pnr)) || [],
+            };
+        });
+
+        const matchade = rader.flatMap((r) => r.palysningar);
+        status(`Kontrollerar ${matchade.length} pålysningar…`);
+        await parallellt(matchade, 4, async (p) => {
+            try {
+                const d = await apiAnrop('POST', 'Palysning/FetchOrCreatePalysning',
+                    { palysningsId: p.palysningsId });
+                p.knuten = !!d.kyrklighandlingsId;
+                p.dodsdatum = d.dodsdatum || p.datum;
+            } catch (e) {
+                p.knuten = null;
+                p.dodsdatum = p.datum;
+            }
+        });
+
+        return { aktiv, antalEnheter: enheter.length, rader, skyddade };
+    }
+
+    /* --- Vyn --- */
+
+    // Ett objekt per sidladdning av Pålysningsboken: flikknappen, panelen
+    // och om vår flik är den valda.
+    let avstamning = null;
+
+    function laggTillAvstamningsstil() {
+        if (document.getElementById('svk-kbok-avstamningsstil')) return;
+        const stil = document.createElement('style');
+        stil.id = 'svk-kbok-avstamningsstil';
+        stil.textContent = `
+            .${DOLJ_KLASS} { display: none !important; }
+            #${AVSTAMNING_ID} { padding: 1rem 0; font-size: 14px; }
+            #${AVSTAMNING_ID} .svk-kbok-rad { display: flex; flex-wrap: wrap; gap: .6rem;
+                align-items: center; margin-bottom: .8rem; }
+            #${AVSTAMNING_ID} .svk-kbok-manad { font-weight: 600; min-width: 9.5rem;
+                text-align: center; text-transform: capitalize; }
+            #${AVSTAMNING_ID} .svk-kbok-pil { border: 1px solid #c9c5bd; background: #fff;
+                border-radius: 6px; width: 2rem; height: 2rem; cursor: pointer; font: inherit; }
+            #${AVSTAMNING_ID} input[type=date] { font: inherit; padding: .3rem .5rem;
+                border: 1px solid #c9c5bd; border-radius: 6px; }
+            #${AVSTAMNING_ID} .svk-kbok-summering { margin: .2rem 0 .8rem; }
+            #${AVSTAMNING_ID} .svk-kbok-status { color: #6b6862; }
+            #${AVSTAMNING_ID} .svk-kbok-status.svk-kbok-fel { color: #b3261e; }
+            .svk-kbok-avstamningstabell { border-collapse: collapse; width: 100%; }
+            .svk-kbok-avstamningstabell th, .svk-kbok-avstamningstabell td {
+                text-align: left; vertical-align: top; padding: .45rem .6rem;
+                border-bottom: 1px solid #e5e2dc; }
+            .svk-kbok-avstamningstabell th { font-weight: 600; white-space: nowrap; }
+            .svk-kbok-avstamningstabell .svk-kbok-saknas { color: #b3261e; font-weight: 600; }
+            .svk-kbok-avstamningstabell .svk-kbok-fristaende { color: ${ACCENT}; font-weight: 600; }
+            .svk-kbok-avstamningstabell tr.svk-kbok-hanterad td { opacity: .5; }
+            .svk-kbok-avstamningstabell a { color: ${ACCENT}; }
+            .svk-kbok-avstamningstabell .svk-kbok-dampad { color: #6b6862; font-size: .9em; }
+            .svk-kbok-avstamningsutskrift { display: none; }
+            @media print {
+                .svk-kbok-avstamningsutskrift { display: block; font: 11pt/1.4 sans-serif; }
+                .svk-kbok-avstamningsutskrift h2 { font-size: 14pt; margin: 0 0 .3rem; }
+                .svk-kbok-avstamningsutskrift .svk-kbok-avstamningstabell tr { break-inside: avoid; }
+            }
+        `;
+        document.head.appendChild(stil);
+    }
+
+    function el(tagg, klass, text) {
+        const e = document.createElement(tagg);
+        if (klass) e.className = klass;
+        if (text !== undefined) e.textContent = text;
+        return e;
+    }
+
+    function byggAvstamning(tablist) {
+        laggTillAvstamningsstil();
+        laggTillKnappstil();
+
+        /* Flikknappen får appens egna MUI-klasser från en granne, så den
+         * ser ut som de andra. Klassen Mui-selected sätts och tas bort av
+         * skriptet självt - React känner inte till knappen. */
+        const granne = tablist.querySelector('[role="tab"]');
+        const flik = document.createElement('button');
+        flik.type = 'button';
+        flik.setAttribute('role', 'tab');
+        flik.id = `${AVSTAMNING_ID}-flik`;
+        flik.className = (granne ? granne.className : '')
+            .split(/\s+/).filter((k) => k && k !== 'Mui-selected').join(' ');
+        flik.textContent = 'Avstämning';
+        tablist.appendChild(flik);
+
+        const panel = document.createElement('div');
+        panel.id = AVSTAMNING_ID;
+        panel.setAttribute('role', 'tabpanel');
+        panel.setAttribute('aria-labelledby', flik.id);
+        panel.hidden = true;
+
+        const tillstand = { flik, panel, vald: false, fran: null, till: null, resultat: null };
+
+        // Föregående kalendermånad är förvald: avstämningen görs månaden
+        // efter, när aviseringarna hunnit komma.
+        const nu = new Date();
+        let ar = nu.getFullYear();
+        let manad = nu.getMonth() - 1;
+        if (manad < 0) { manad = 11; ar -= 1; }
+
+        const rad = el('div', 'svk-kbok-rad');
+        const bakat = el('button', 'svk-kbok-pil', '‹');
+        bakat.type = 'button';
+        bakat.title = 'Föregående månad';
+        const manadstext = el('span', 'svk-kbok-manad');
+        const framat = el('button', 'svk-kbok-pil', '›');
+        framat.type = 'button';
+        framat.title = 'Nästa månad';
+        const franFalt = document.createElement('input');
+        franFalt.type = 'date';
+        franFalt.setAttribute('aria-label', 'Aviserat fr.o.m.');
+        const tillFalt = document.createElement('input');
+        tillFalt.type = 'date';
+        tillFalt.setAttribute('aria-label', 'Aviserat t.o.m.');
+        const kor = el('button', KNAPP_KLASS, 'Stäm av');
+        kor.type = 'button';
+        const skrivUt = el('button', `${KNAPP_KLASS} svk-kbok-sekundar`, 'Skriv ut');
+        skrivUt.type = 'button';
+        const rensa = el('button', `${KNAPP_KLASS} svk-kbok-sekundar`, 'Rensa sparade markeringar');
+        rensa.type = 'button';
+        rad.append(bakat, manadstext, framat, franFalt, el('span', null, 'till'), tillFalt,
+            kor, skrivUt, rensa);
+        panel.appendChild(rad);
+
+        const summering = el('p', 'svk-kbok-summering');
+        panel.appendChild(summering);
+        const status = el('p', 'svk-kbok-status');
+        panel.appendChild(status);
+        const yta = el('div');
+        panel.appendChild(yta);
+
+        function sattManad() {
+            [tillstand.fran, tillstand.till] = manadsgranser(ar, manad);
+            franFalt.value = tillstand.fran;
+            tillFalt.value = tillstand.till;
+            manadstext.textContent = `${MANADER[manad]} ${ar}`;
+        }
+
+        function egetIntervall() {
+            tillstand.fran = franFalt.value;
+            tillstand.till = tillFalt.value;
+            manadstext.textContent = 'Eget intervall';
+        }
+
+        bakat.addEventListener('click', () => {
+            manad -= 1;
+            if (manad < 0) { manad = 11; ar -= 1; }
+            sattManad();
+            korAvstamning();
+        });
+        framat.addEventListener('click', () => {
+            manad += 1;
+            if (manad > 11) { manad = 0; ar += 1; }
+            sattManad();
+            korAvstamning();
+        });
+        franFalt.addEventListener('change', egetIntervall);
+        tillFalt.addEventListener('change', egetIntervall);
+        kor.addEventListener('click', korAvstamning);
+        skrivUt.addEventListener('click', () => skrivUtAvstamning(tillstand, summering.textContent));
+        rensa.addEventListener('click', () => {
+            if (!window.confirm('Ta bort alla sparade Hanterad-markeringar i den här webbläsaren?')) return;
+            rensaHanterade();
+            if (tillstand.resultat) rita();
+        });
+
+        let pagar = false;
+        async function korAvstamning() {
+            if (pagar) return;
+            if (!tillstand.fran || !tillstand.till) {
+                status.classList.add('svk-kbok-fel');
+                status.textContent = 'Ange både från- och till-datum.';
+                return;
+            }
+            pagar = true;
+            kor.disabled = true;
+            status.classList.remove('svk-kbok-fel');
+            yta.textContent = '';
+            summering.textContent = '';
+            try {
+                tillstand.resultat = await stamAv(tillstand.fran, tillstand.till, (t) => {
+                    status.textContent = t;
+                });
+                status.textContent = '';
+                rita();
+            } catch (e) {
+                console.warn('svk-kbok-enhancements: avstämningen misslyckades', e);
+                status.classList.add('svk-kbok-fel');
+                status.textContent = `Avstämningen gick inte att göra: ${e.message}`;
+            } finally {
+                pagar = false;
+                kor.disabled = false;
+            }
+        }
+
+        function rita() {
+            const { aktiv, antalEnheter, rader, skyddade } = tillstand.resultat;
+            const hanterade = new Set(lasHanterade().map((p) => String(p.verifikatId)));
+            rader.forEach((r) => { r.hanterad = hanterade.has(String(r.verifikatId)); });
+
+            const saknar = rader.filter((r) => !r.palysningar.length);
+            const period = manadstext.textContent === 'Eget intervall'
+                ? `${tillstand.fran} till ${tillstand.till}`
+                : `i ${manadstext.textContent}`;
+            summering.textContent = `${aktiv ? aktiv.enhetsNamn : 'Vald församling'}: `
+                + `${rader.length + skyddade.length} dödsfall aviserade ${period}, `
+                + `${saknar.length} utan pålysning, `
+                + `${rader.filter((r) => r.hanterad).length} markerade som hanterade. `
+                + `Pålysningar sökta i ${antalEnheter} ${antalEnheter === 1 ? 'församling' : 'församlingar'}.`;
+
+            yta.textContent = '';
+            if (!rader.length && !skyddade.length) {
+                yta.appendChild(el('p', 'svk-kbok-status', 'Inga dödsfallsverifikat i perioden.'));
+                return;
+            }
+
+            // Utan pålysning först, hanterade sist, annars senast aviserad först.
+            const ordning = (r) => (r.hanterad ? 2 : r.palysningar.length ? 1 : 0);
+            rader.sort((a, b) => ordning(a) - ordning(b) || (a.aviserat < b.aviserat ? 1 : -1));
+
+            yta.appendChild(byggTabell(rader, tillstand));
+
+            if (skyddade.length) {
+                const p = el('p', 'svk-kbok-status');
+                p.style.marginTop = '.8rem';
+                p.textContent = `${skyddade.length} ${skyddade.length === 1 ? 'verifikat' : 'verifikat'} `
+                    + 'gäller skyddade personer och kan inte stämmas av här. Aviserat: '
+                    + skyddade.map((v) => visaDatum(v.datum)).join(', ') + '.';
+                yta.appendChild(p);
+            }
+        }
+
+        placeraAvstamningspanel(tablist, panel);
+
+        flik.addEventListener('click', () => {
+            tillstand.vald = true;
+            synkaAvstamningsflik();
+            if (!tillstand.resultat && !pagar) korAvstamning();
+        });
+        // Klick på någon av appens flikar lämnar vår.
+        tablist.addEventListener('click', (e) => {
+            const t = e.target.closest('[role="tab"]');
+            if (t && t !== flik) {
+                tillstand.vald = false;
+                synkaAvstamningsflik();
+            }
+        });
+
+        sattManad();
+        return tillstand;
+    }
+
+    /* Panelen läggs efter appens egna paneler, som är syskon till
+     * flikraden och växlar med attributet hidden. Finns de inte än hamnar
+     * den direkt efter flikradens rot. */
+    function placeraAvstamningspanel(tablist, panel) {
+        const appPanel = [...document.querySelectorAll('[role="tabpanel"]')]
+            .filter((p) => /^palysning-tab-panel/.test(p.id)).pop();
+        const rot = tablist.closest('.MuiTabs-root') || tablist.parentElement;
+        (appPanel || rot).insertAdjacentElement('afterend', panel);
+    }
+
+    function byggTabell(rader, tillstand) {
+        const tabell = el('table', 'svk-kbok-avstamningstabell');
+        const huvud = el('thead');
+        const hr = el('tr');
+        ['Avliden', 'Dödsdatum', 'Aviserat', 'Pålysning', 'Art', 'Hanterad', 'Öppna']
+            .forEach((t) => hr.appendChild(el('th', null, t)));
+        huvud.appendChild(hr);
+        tabell.appendChild(huvud);
+        const kropp = el('tbody');
+
+        rader.forEach((r) => {
+            const tr = el('tr', r.hanterad ? 'svk-kbok-hanterad' : '');
+            tr.dataset.verifikatId = r.verifikatId;
+
+            const avliden = el('td');
+            avliden.appendChild(el('div', null, r.namn || '(namn saknas)'));
+            avliden.appendChild(el('div', 'svk-kbok-dampad', r.personnummer));
+            tr.appendChild(avliden);
+
+            const dodsdatum = [...new Set(r.palysningar.map((p) => visaDatum(p.dodsdatum || p.datum))
+                .filter(Boolean))];
+            tr.appendChild(el('td', null, dodsdatum.join(', ')));
+            tr.appendChild(el('td', null, visaDatum(r.aviserat)));
+
+            const palysning = el('td');
+            const art = el('td');
+            if (!r.palysningar.length) {
+                palysning.appendChild(el('span', 'svk-kbok-saknas', 'Saknas'));
+            } else {
+                r.palysningar.forEach((p) => {
+                    const lank = el('a', null,
+                        [visaDatum(p.palysningsdatum), p.kyrka, p.forsamling].filter(Boolean).join(' · '));
+                    lank.href = `/palysning/${p.palysningsId}`;
+                    palysning.appendChild(el('div')).appendChild(lank);
+                    const artrad = el('div');
+                    if (p.knuten === true) {
+                        artrad.textContent = p.lopnr ? `Knuten · löpnr ${p.lopnr}` : 'Knuten';
+                    } else if (p.knuten === false) {
+                        artrad.appendChild(el('span', 'svk-kbok-fristaende', 'Fristående'));
+                    } else {
+                        artrad.textContent = 'Art okänd';
+                    }
+                    art.appendChild(artrad);
+                });
+                const forsamlingar = new Set(r.palysningar.map((p) => p.forsamling));
+                if (forsamlingar.size > 1) {
+                    art.appendChild(el('div', 'svk-kbok-dampad', `${forsamlingar.size} församlingar`));
+                }
+            }
+            tr.appendChild(palysning);
+            tr.appendChild(art);
+
+            const hanterad = el('td');
+            const kryss = document.createElement('input');
+            kryss.type = 'checkbox';
+            kryss.checked = r.hanterad;
+            kryss.setAttribute('aria-label', `Hanterad: ${r.namn}`);
+            kryss.style.cssText = `accent-color:${ACCENT};width:16px;height:16px;cursor:pointer`;
+            kryss.addEventListener('change', () => {
+                sattHanterad(r.verifikatId, kryss.checked);
+                r.hanterad = kryss.checked;
+                tr.classList.toggle('svk-kbok-hanterad', kryss.checked);
+                // Summeringen räknar om, raden flyttar först vid nästa ritning.
+                const antal = tillstand.resultat.rader.filter((x) => x.hanterad).length;
+                const summering = tillstand.panel.querySelector('.svk-kbok-summering');
+                summering.textContent = summering.textContent
+                    .replace(/\d+ markerade som hanterade/, `${antal} markerade som hanterade`);
+            });
+            hanterad.appendChild(kryss);
+            tr.appendChild(hanterad);
+
+            const oppna = el('td');
+            if (r.personId) {
+                const lank = el('a', null, 'Personakt');
+                lank.href = personaktUrl(r.personId);
+                lank.title = 'Verifikatet hittar du under Verifikat > Sökning på aviseringsdagen';
+                oppna.appendChild(lank);
+            }
+            tr.appendChild(oppna);
+            kropp.appendChild(tr);
+        });
+        tabell.appendChild(kropp);
+        return tabell;
+    }
+
+    /* Utskriften går samma väg som verifikatutskriften: en kopia av listan
+     * läggs direkt under body med utskriftsklassen, stilbladet döljer allt
+     * annat, och kopian tas bort när utskriftsdialogen stängts. */
+    function skrivUtAvstamning(tillstand, summering) {
+        if (!tillstand.resultat) return;
+        laggTillUtskriftsstil();
+        const kopia = el('div', `${UTSKRIFT_KLASS} svk-kbok-avstamningsutskrift`);
+        kopia.appendChild(el('h2', null, 'Avstämning av tacksägelser'));
+        kopia.appendChild(el('p', null, summering));
+        const tabell = tillstand.panel.querySelector('.svk-kbok-avstamningstabell');
+        if (tabell) {
+            const klon = tabell.cloneNode(true);
+            // Kryssrutans läge följer inte med i en klon - skriv det som text.
+            klon.querySelectorAll('input[type=checkbox]').forEach((k, i) => {
+                const original = tabell.querySelectorAll('input[type=checkbox]')[i];
+                k.replaceWith(document.createTextNode(original && original.checked ? 'Ja' : ''));
+            });
+            klon.querySelectorAll('a').forEach((a) => {
+                a.replaceWith(document.createTextNode(a.textContent));
+            });
+            kopia.appendChild(klon);
+        } else {
+            kopia.appendChild(el('p', null, 'Inga dödsfallsverifikat i perioden.'));
+        }
+        document.body.appendChild(kopia);
+        window.addEventListener('afterprint', () => kopia.remove(), { once: true });
+        window.print();
+    }
+
+    /* Körs vid varje DOM-ändring. Ser till att fliken finns när
+     * Pålysningsboken visas, och att vald-läget håller trots att React ritar
+     * om flikraden - React sätter tillbaka Mui-selected på sin egen flik och
+     * visar sin panel, så båda tas om hand här. */
+    function synkaAvstamningsflik() {
+        const forsta = document.getElementById('palysning-tab-0');
+        const tablist = forsta && forsta.closest('[role="tablist"]');
+        if (!tablist) {
+            avstamning = null;
+            return;
+        }
+        if (!avstamning) {
+            avstamning = byggAvstamning(tablist);
+        } else {
+            // React kan ha ritat om flikraden eller panelernas förälder;
+            // samma knapp och panel sätts då tillbaka med sitt innehåll.
+            if (!tablist.contains(avstamning.flik)) tablist.appendChild(avstamning.flik);
+            if (!document.body.contains(avstamning.panel)) {
+                placeraAvstamningspanel(tablist, avstamning.panel);
+            }
+        }
+        const { flik, panel, vald } = avstamning;
+        const appFlikar = [...tablist.querySelectorAll('[role="tab"]')].filter((t) => t !== flik);
+        const appPaneler = [...document.querySelectorAll('[role="tabpanel"]')]
+            .filter((p) => /^palysning-tab-panel/.test(p.id));
+        const indikator = tablist.parentElement.querySelector('.MuiTabs-indicator');
+
+        flik.classList.toggle('Mui-selected', vald);
+        flik.setAttribute('aria-selected', String(vald));
+        flik.style.boxShadow = vald ? 'inset 0 -2px 0 currentColor' : '';
+        panel.hidden = !vald;
+        appFlikar.forEach((t) => {
+            if (vald) {
+                t.classList.remove('Mui-selected');
+                t.setAttribute('aria-selected', 'false');
+            } else if (t.dataset.svkKbokVald === 'true') {
+                t.classList.add('Mui-selected');
+                t.setAttribute('aria-selected', 'true');
+            }
+            // Minns vilken appflik som var vald när vi tog över, så den kan
+            // återfå markeringen innan React hunnit rita om.
+            if (!vald) t.dataset.svkKbokVald = String(t.classList.contains('Mui-selected'));
+        });
+        if (indikator) indikator.style.visibility = vald ? 'hidden' : '';
+        appPaneler.forEach((p) => p.classList.toggle(DOLJ_KLASS, vald));
+    }
+
+    function taBortAvstamningsflik() {
+        if (!avstamning) return;
+        avstamning.vald = false;
+        synkaAvstamningsflik();
+        avstamning.flik.remove();
+        avstamning.panel.remove();
+        avstamning = null;
+    }
+
     /* ---------- Menypost i användarmenyn ----------
      *
      * Avatarmenyn är en NAV.MuiList-root med posterna Byt församling,
@@ -2761,6 +3447,11 @@
             });
         }
         sakert('miljövalet', hanteraMiljoval);
+        if (installningar.avstamningTacksagelser) {
+            sakert('avstämningen', synkaAvstamningsflik);
+        } else {
+            sakert('avstämningen', taBortAvstamningsflik);
+        }
         sakert('pålysningsdatum', tomPalysningsdatum);
         sakert('fokus på Bekräfta', fokuseraBekrafta);
     }
