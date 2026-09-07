@@ -2894,7 +2894,7 @@
         stil.id = 'svk-kbok-avstamningsstil';
         stil.textContent = `
             .${DOLJ_KLASS} { display: none !important; }
-            #${AVSTAMNING_ID} { padding: 1rem 0; font-size: 14px; }
+            #${AVSTAMNING_ID} { padding: 1rem 0 1.5rem; font-size: 14px; }
             #${AVSTAMNING_ID} .svk-kbok-rad { display: flex; flex-wrap: wrap; gap: .6rem;
                 align-items: center; margin-bottom: .8rem; }
             #${AVSTAMNING_ID} .svk-kbok-manad { font-weight: 600; min-width: 9.5rem;
@@ -3294,6 +3294,16 @@
         flik.setAttribute('aria-selected', String(vald));
         flik.style.boxShadow = vald ? 'inset 0 -2px 0 currentColor' : '';
         panel.hidden = !vald;
+        if (vald) {
+            // Samma inre luft som appens egna flikar: innehållet börjar i
+            // linje med flikraden, hur kortet än är byggt i den här miljön.
+            panel.style.paddingLeft = '0px';
+            panel.style.paddingRight = '0px';
+            const luft = Math.max(0, Math.round(
+                tablist.getBoundingClientRect().left - panel.getBoundingClientRect().left));
+            panel.style.paddingLeft = `${luft}px`;
+            panel.style.paddingRight = `${luft}px`;
+        }
         appFlikar.forEach((t) => {
             if (vald) {
                 t.classList.remove('Mui-selected');
