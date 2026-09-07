@@ -3155,8 +3155,9 @@
                 palysning.appendChild(el('span', 'svk-kbok-saknas', 'Saknas'));
             } else {
                 r.palysningar.forEach((p) => {
+                    // Datum och församling räcker här - kyrkan står i pålysningen.
                     const lank = el('a', null,
-                        [visaDatum(p.palysningsdatum), p.kyrka, p.forsamling].filter(Boolean).join(' · '));
+                        [visaDatum(p.palysningsdatum), p.forsamling].filter(Boolean).join(' · '));
                     lank.href = `/palysning/${p.palysningsId}`;
                     palysning.appendChild(el('div')).appendChild(lank);
                     const artrad = el('div');
