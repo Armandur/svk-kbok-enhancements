@@ -664,7 +664,7 @@ header, så anropen görs med `withCredentials`.
 | --- | --- | --- |
 | 1 | `GET GetUserSession` | `permissions.enheter` (användarens församlingar) och `aktivEnhetId` |
 | 2 | `POST Verifikat/FetchVerifikatBySearchlist`, `arendeTypsID: 5` (Dödsfall), utan statusfilter | en rad per verifikat: `verifikatsId`, `datum`, `personId`, `arskyddadperson` |
-| 3 | `POST Palysning/SearchByAttribute`, `kodtypPALYSNING: "DL"`, alla enheter, från periodens start till ett år fram | en rad per pålysning: `palysningsId`, `palysningsdatum`, `kyrka`, `forsamling`, `datum`, `personnummer`, `lopnr` |
+| 3 | `POST Palysning/SearchByAttribute`, `kodtypPALYSNING: "DL"`, alla enheter, från sex månader före periodens start till ett år efter dess slut | en rad per pålysning: `palysningsId`, `palysningsdatum`, `kyrka`, `forsamling`, `datum`, `personnummer`, `lopnr` |
 | 4 | `GET Verifikat/FetchVerifikatByVerifikatsId`, ett per verifikat | `rows` med Namn och Personnummer |
 | 5 | `POST Palysning/FetchOrCreatePalysning {palysningsId}`, ett per matchad pålysning | `kyrklighandlingsId` (0 = fristående), `dodsdatum` |
 
@@ -675,9 +675,24 @@ användarens enheter så att en tacksägelse i grannförsamlingen räknas.
 
 Steg 4 behövs för att verifikatlistan bär `personId` men inte personnummer,
 och pålysningsraden personnummer men inte `personId`. Matchningen görs på
-personnummer normaliserat till tolv siffror. Inga träffar i verifikatsökningen
-ger `204` utan kropp, inte en tom lista. Svaren sidas med `skip` och
-`limit`; verifikatsvaret säger `total`, pålysningssvaret `totalt`.
+personnumret som tolv siffror utan bindestreck, den form Kbok levererar i
+båda listorna. Ett verifikat vars personnummer saknas eller har annan längd
+visas som "kan inte stämmas av här", inte som Saknas. Inga träffar i
+verifikatsökningen ger `204` utan kropp, inte en tom lista. Svaren sidas med
+`skip` och `limit`; verifikatsvaret säger `total`, pålysningssvaret
+`totalt`. Kom en full sida fortsätter sidningen även om `totalt` säger stopp.
+
+Pålysningsfönstret sträcker sig sex månader före periodens start: aviseringen
+kommer dagar efter dödsfallet, så en tacksägelse söndagen efter kan ligga
+före verifikatets datum. Dör någon 28 augusti, pålyses 31 augusti och
+aviseras 3 september hör pålysningen till septemberavstämningen. Framåt
+räcker fönstret ett år, för minnesgudstjänsterna.
+
+Varje körning låser sin period och får ett löpnummer. Byter användaren
+månad medan hämtningen pågår kastas resultatet och en ny körning startar,
+så en augustilista aldrig visas under septembers rubrik. Ett enda
+verifikat som inte går att hämta fäller inte månaden: raden visas med
+"Verifikatet gick inte att hämta". Anropen har 30 sekunders timeout.
 
 Verifikatet bär inget dödsdatum. Kolumnen fylls ur pålysningen när en finns,
 annars ur personakten (`POST Person/FetchPersonakt {personId}`, fältet
@@ -727,7 +742,9 @@ Raden länkar dessutom till personakten i ny flik (`personId` finns i
 verifikatraden) och till pålysningen (`/palysning/<id>`).
 
 Kboks knappar Skapa, Ta bort markerade och Rapporter hör till appens lista
-och döljs medan fliken Avstämning är vald.
+och döljs medan fliken Avstämning är vald. Klick på appens flikar fångas av
+en lyssnare på `document`, inte på flikraden: React byter ut flikraden vid
+omritning, och en lyssnare på det gamla elementet hade följt med.
 
 Församlingsbyte via API (`GET SwitchEnhetForUser?newEnhetId=N`, det appen
 anropar från dialogen Välj församling) gav `500` när det anropades direkt,
@@ -755,11 +772,14 @@ Saknas, Hanterad sparad och kvar efter omladdning, flikväxling åt båda håll,
 utskriftskopian) och i testmiljön (maj 2025 med 15 dödsfall, alla knutna; september
 2025 med 9, varav en person med både knuten och fristående pålysning).
 
-Kvar: att `FetchVerifikatByVerifikatsId` inte ändrar verifikatets status
-från Nytt. Appen gör det anropet skilt från `SetVerifikatAsViewed`, så det
-bör inte, men testet kräver en morgon efter nattens nollställning i
-Utbildningsmiljön. Och vilka som får dödsfallsverifikat, bara tillhöriga
-eller även antecknade, får produktionen visa.
+Kontrollerat 2026-09-08 efter nattens nollställning: `FetchVerifikatByVerifikatsId`
+ändrar inte verifikatets status, det stod som Nytt före och efter. Inte
+heller öppningen via länken Verifikat (`markInfoAsViewedOnClose: false`)
+ändrade den. Kvar: vilka som får dödsfallsverifikat, bara tillhöriga eller
+även antecknade, får produktionen visa.
+
+Granskad adversariellt 2026-09-08 av en Claude-subagent och Codex, se
+`CODE-REVIEWS.md`.
 
 ## Kartlagda fällor
 

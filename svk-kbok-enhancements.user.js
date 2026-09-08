@@ -2689,12 +2689,18 @@
                 }
             });
             xhr.addEventListener('error', () => fel(new Error(`${sokvag} gick inte att nå`)));
+            // Ett anrop som aldrig svarar får inte låsa knappen för evigt.
+            xhr.timeout = 30000;
+            xhr.addEventListener('timeout', () => fel(new Error(`${sokvag} svarade inte i tid`)));
             xhr.send(kropp === undefined ? null : JSON.stringify(kropp));
         });
     }
 
     /* Sidar igenom ett sökanrop. Verifikatsvaret säger total, pålysningssvaret
-     * totalt. Servern får kapa sidstorleken - loopen räknar på det som kom. */
+     * totalt. Servern får kapa sidstorleken - loopen räknar på det som kom.
+     * Kom en full sida fortsätter den även om totalt säger att allt är
+     * hämtat: samma API-familj räknar bevisligen fel på löpnumret, och en
+     * tyst trunkering hade gett falska Saknas. */
     async function hamtaAlla(sokvag, kropp, sidstorlek) {
         const alla = [];
         let skip = 0;
@@ -2704,7 +2710,9 @@
             alla.push(...poster);
             skip += poster.length;
             const totalt = Number(svar.totalt ?? svar.total ?? 0);
-            if (!poster.length || skip >= totalt) break;
+            if (!poster.length) break;
+            if (skip >= totalt && poster.length < sidstorlek) break;
+            if (skip > 5000) break;
         }
         return alla;
     }
@@ -2723,8 +2731,12 @@
         return ut;
     }
 
+    /* Kbok levererar personnumret som tolv siffror med bindestreck i båda
+     * listorna (mätt). Bara den formen blir en nyckel - ett tiosiffrigt eller
+     * saknat nummer går inte att para ihop säkert och räknas som okänt. */
     function normaliseratPnr(v) {
-        return String(v || '').replace(/\D/g, '');
+        const siffror = String(v || '').replace(/\D/g, '');
+        return siffror.length === 12 ? siffror : '';
     }
 
     // Pålysningens datum kommer som 20250906, verifikatets som 2025-09-06.
@@ -2775,7 +2787,10 @@
 
     /* --- Hämtningen --- */
 
-    async function stamAv(fran, till, status) {
+    async function stamAv(fran, till, status, avbruten) {
+        // Efter varje väntan: har användaren bytt period eller lämnat vyn
+        // slutar vi hämta. Det som redan hämtats kastas av anroparen.
+        const kolla = () => { if (avbruten()) throw new Error('avbruten'); };
         status('Hämtar församlingar…');
         const session = await apiAnrop('GET', 'GetUserSession');
         const behorighet = session.permissions || {};
@@ -2796,10 +2811,17 @@
             },
         }, 50);
 
-        // Pålysningen görs veckor efter aviseringen och kan ligga långt fram,
-        // på en minnesgudstjänst. Fönstret sträcker sig därför ett år framåt.
-        const ettArFram = new Date();
-        ettArFram.setFullYear(ettArFram.getFullYear() + 1);
+        kolla();
+        /* Pålysningsfönstret är bredare än perioden åt båda håll. Bakåt:
+         * aviseringen från Skatteverket kommer dagar efter dödsfallet, och
+         * en tacksägelse söndagen efter kan alltså ligga före verifikatets
+         * datum - dör någon 28 augusti, pålyses 31 augusti och aviseras 3
+         * september hör pålysningen till septemberavstämningen. Framåt:
+         * pålysningen kan ligga på en minnesgudstjänst ett år senare. */
+        const fonsterFran = new Date(fran);
+        fonsterFran.setMonth(fonsterFran.getMonth() - 6);
+        const fonsterTill = new Date(till > isoDatum(new Date()) ? till : isoDatum(new Date()));
+        fonsterTill.setFullYear(fonsterTill.getFullYear() + 1);
         status('Hämtar pålysningar…');
         const palysningar = await hamtaAlla('Palysning/SearchByAttribute', {
             sortBy: 'palysningsdatum',
@@ -2810,16 +2832,17 @@
                 fornamn: '',
                 efternamn: '',
                 kodtypPALYSNING: PALYSNINGSTYP_DODSFALL,
-                fromDatum: fran,
-                tomDatum: isoDatum(ettArFram),
+                fromDatum: isoDatum(fonsterFran),
+                tomDatum: isoDatum(fonsterTill),
                 kyrka: null,
             },
         }, 200);
 
+        kolla();
         const perPnr = new Map();
         palysningar.forEach((p) => {
             const nyckel = normaliseratPnr(p.personnummer);
-            if (!nyckel) return;
+            if (!nyckel || !p.palysningsId) return;
             if (!perPnr.has(nyckel)) perPnr.set(nyckel, []);
             perPnr.get(nyckel).push(p);
         });
@@ -2829,22 +2852,36 @@
 
         status(`Hämtar uppgifter om ${oppna.length} avlidna…`);
         const rader = await parallellt(oppna, 4, async (v) => {
-            const detalj = await apiAnrop('GET',
-                `Verifikat/FetchVerifikatByVerifikatsId?verifikatsId=${encodeURIComponent(v.verifikatsId)}`);
-            const falt = {};
-            (detalj.rows || []).forEach((r) => { falt[r.label] = r.text; });
-            const pnr = normaliseratPnr(falt.Personnummer);
-            return {
+            const rad = {
                 verifikatId: v.verifikatsId,
                 personId: v.personId,
                 aviserat: v.datum,
-                namn: falt.Namn || '',
-                personnummer: falt.Personnummer || '',
-                palysningar: (pnr && perPnr.get(pnr)) || [],
+                namn: '',
+                personnummer: '',
+                // null = kunde inte stämmas av: uppgiften saknas eller gick
+                // inte att hämta. Skiljs från en tom lista, som betyder Saknas.
+                palysningar: null,
+                fel: '',
             };
+            try {
+                const detalj = await apiAnrop('GET',
+                    `Verifikat/FetchVerifikatByVerifikatsId?verifikatsId=${encodeURIComponent(v.verifikatsId)}`);
+                const falt = {};
+                (detalj.rows || []).forEach((r) => { falt[r.label] = r.text; });
+                rad.namn = falt.Namn || '';
+                rad.personnummer = falt.Personnummer || '';
+                const pnr = normaliseratPnr(falt.Personnummer);
+                if (pnr) rad.palysningar = perPnr.get(pnr) || [];
+                else rad.fel = 'Personnummer saknas - kan inte stämmas av här';
+            } catch (e) {
+                // Ett enda glapp får inte fälla hela månaden.
+                rad.fel = 'Verifikatet gick inte att hämta';
+            }
+            return rad;
         });
 
-        const matchade = rader.flatMap((r) => r.palysningar);
+        kolla();
+        const matchade = rader.flatMap((r) => r.palysningar || []);
         status(`Kontrollerar ${matchade.length} pålysningar…`);
         await parallellt(matchade, 4, async (p) => {
             try {
@@ -2858,9 +2895,10 @@
             }
         });
         rader.forEach((r) => {
-            r.dodsdatum = [...new Set(r.palysningar.map((p) => visaDatum(p.dodsdatum))
+            r.dodsdatum = [...new Set((r.palysningar || []).map((p) => visaDatum(p.dodsdatum))
                 .filter(Boolean))].join(', ');
         });
+        kolla();
 
         // Verifikatet bär inget dödsdatum. Saknas pålysning hämtas det ur
         // personakten, där avregistreringsdatumet är dödsdagen. Uppmätt att
@@ -2958,7 +2996,10 @@
         panel.setAttribute('aria-labelledby', flik.id);
         panel.hidden = true;
 
-        const tillstand = { flik, panel, vald: false, fran: null, till: null, resultat: null };
+        const tillstand = {
+            flik, panel, vald: false, fran: null, till: null, resultat: null, period: null,
+            borttagen: false,
+        };
 
         // Föregående kalendermånad är förvald: avstämningen görs månaden
         // efter, när aviseringarna hunnit komma.
@@ -3033,32 +3074,51 @@
             if (tillstand.resultat) rita();
         });
 
+        /* Varje körning får ett eget nummer och låser sin period vid start.
+         * Byter användaren månad medan en hämtning pågår är den gamla
+         * körningen inaktuell: den slutar hämta, ritar ingenting och en ny
+         * körning startar för den valda perioden. Utan det hade en
+         * augustilista kunnat visas under septembers rubrik. */
         let pagar = false;
+        let senasteKorning = 0;
         async function korAvstamning() {
-            if (pagar) return;
+            const korning = ++senasteKorning;
+            if (pagar) return; // den pågående ser att den blivit omsprungen
             if (!tillstand.fran || !tillstand.till) {
                 status.classList.add('svk-kbok-fel');
                 status.textContent = 'Ange både från- och till-datum.';
                 return;
             }
+            const period = {
+                fran: tillstand.fran,
+                till: tillstand.till,
+                text: manadstext.textContent,
+            };
+            const inaktuell = () => korning !== senasteKorning || tillstand.borttagen;
             pagar = true;
             kor.disabled = true;
             status.classList.remove('svk-kbok-fel');
             yta.textContent = '';
             summering.textContent = '';
             try {
-                tillstand.resultat = await stamAv(tillstand.fran, tillstand.till, (t) => {
-                    status.textContent = t;
-                });
+                const resultat = await stamAv(period.fran, period.till, (t) => {
+                    if (!inaktuell()) status.textContent = t;
+                }, inaktuell);
+                if (inaktuell()) return;
+                tillstand.resultat = resultat;
+                tillstand.period = period;
                 status.textContent = '';
                 rita();
             } catch (e) {
+                if (inaktuell()) return;
                 console.warn('svk-kbok-enhancements: avstämningen misslyckades', e);
                 status.classList.add('svk-kbok-fel');
                 status.textContent = `Avstämningen gick inte att göra: ${e.message}`;
             } finally {
                 pagar = false;
                 kor.disabled = false;
+                // Perioden byttes under hämtningen: kör om för den nya.
+                if (korning !== senasteKorning && !tillstand.borttagen) korAvstamning();
             }
         }
 
@@ -3067,13 +3127,14 @@
             const hanterade = new Set(lasHanterade().map((p) => String(p.verifikatId)));
             rader.forEach((r) => { r.hanterad = hanterade.has(String(r.verifikatId)); });
 
-            const saknar = rader.filter((r) => !r.palysningar.length);
-            const period = manadstext.textContent === 'Eget intervall'
-                ? `${tillstand.fran} till ${tillstand.till}`
-                : `i ${manadstext.textContent}`;
+            const saknar = rader.filter((r) => r.palysningar && !r.palysningar.length);
+            const okanda = rader.filter((r) => !r.palysningar);
+            const p = tillstand.period;
+            const period = p.text === 'Eget intervall' ? `${p.fran} till ${p.till}` : `i ${p.text}`;
             summering.textContent = `${aktiv ? aktiv.enhetsNamn : 'Vald församling'}: `
                 + `${rader.length + skyddade.length} dödsfall aviserade ${period}, `
                 + `${saknar.length} utan pålysning, `
+                + (okanda.length ? `${okanda.length} som inte kunde stämmas av, ` : '')
                 + `${rader.filter((r) => r.hanterad).length} markerade som hanterade. `
                 + `Pålysningar sökta i ${antalEnheter} ${antalEnheter === 1 ? 'församling' : 'församlingar'}.`;
 
@@ -3083,8 +3144,9 @@
                 return;
             }
 
-            // Utan pålysning först, hanterade sist, annars senast aviserad först.
-            const ordning = (r) => (r.hanterad ? 2 : r.palysningar.length ? 1 : 0);
+            // Utan pålysning först, sedan de som inte gick att stämma av,
+            // hanterade sist, annars senast aviserad först.
+            const ordning = (r) => (r.hanterad ? 3 : !r.palysningar ? 1 : r.palysningar.length ? 2 : 0);
             rader.sort((a, b) => ordning(a) - ordning(b) || (a.aviserat < b.aviserat ? 1 : -1));
 
             yta.appendChild(byggTabell(rader, tillstand));
@@ -3105,14 +3167,6 @@
             tillstand.vald = true;
             synkaAvstamningsflik();
             if (!tillstand.resultat && !pagar) korAvstamning();
-        });
-        // Klick på någon av appens flikar lämnar vår.
-        tablist.addEventListener('click', (e) => {
-            const t = e.target.closest('[role="tab"]');
-            if (t && t !== flik) {
-                tillstand.vald = false;
-                synkaAvstamningsflik();
-            }
         });
 
         sattManad();
@@ -3144,7 +3198,7 @@
             tr.dataset.verifikatId = r.verifikatId;
 
             const avliden = el('td');
-            avliden.appendChild(el('div', null, r.namn || '(namn saknas)'));
+            avliden.appendChild(el('div', null, r.namn || '(uppgift saknas)'));
             avliden.appendChild(el('div', 'svk-kbok-dampad', r.personnummer));
             tr.appendChild(avliden);
 
@@ -3153,7 +3207,9 @@
 
             const palysning = el('td');
             const art = el('td');
-            if (!r.palysningar.length) {
+            if (!r.palysningar) {
+                palysning.appendChild(el('span', 'svk-kbok-dampad', r.fel || 'Kan inte stämmas av här'));
+            } else if (!r.palysningar.length) {
                 palysning.appendChild(el('span', 'svk-kbok-saknas', 'Saknas'));
             } else {
                 r.palysningar.forEach((p) => {
@@ -3252,9 +3308,17 @@
     function oppnaVerifikat(verifikatId, fran) {
         const fonster = fran && verifikatfonster(fran);
         if (fonster) {
-            fonster.openVerifikatWindow(Number(verifikatId), { markInfoAsViewedOnClose: false })
-                .catch(() => {});
-            return;
+            try {
+                Promise.resolve(fonster.openVerifikatWindow(Number(verifikatId),
+                    { markInfoAsViewedOnClose: false })).catch(() => {});
+                return;
+            } catch (e) {
+                console.warn('svk-kbok-enhancements: verifikatrutan gick inte att öppna på plats', e);
+            }
+        } else {
+            // Syns i konsolen den dag Kbok byter komponentträd, innan någon
+            // användare hinner undra varför klicket byter sida.
+            console.warn('svk-kbok-enhancements: hittade inte verifikatrutans kontext, går via startsidan');
         }
         const state = {
             usr: { openVerifikatId: Number(verifikatId), markInfoAsViewedOnClose: false },
@@ -3302,6 +3366,13 @@
         const forsta = document.getElementById('palysning-tab-0');
         const tablist = forsta && forsta.closest('[role="tablist"]');
         if (!tablist) {
+            // Sidan lämnad, eller flikraden borta för ett ögonblick: ta bort
+            // vårt så en pågående hämtning inte skriver i en lös panel.
+            if (avstamning) {
+                avstamning.borttagen = true;
+                avstamning.panel.remove();
+                avstamning.flik.remove();
+            }
             avstamning = null;
             return;
         }
@@ -3365,10 +3436,22 @@
         return rad && !rad.contains(tablist) ? rad : null;
     }
 
+    /* Klick på någon av appens flikar lämnar vår. Lyssnaren sitter på
+     * document, inte på flikraden - React byter ut flikraden vid omritning,
+     * och en lyssnare på det gamla elementet hade följt med i papperskorgen. */
+    function lamnaAvstamningVidFlikklick(e) {
+        if (!avstamning || !avstamning.vald) return;
+        const t = e.target.closest('[role="tab"]');
+        if (!t || t === avstamning.flik || !/^palysning-tab-/.test(t.id)) return;
+        avstamning.vald = false;
+        synkaAvstamningsflik();
+    }
+
     function taBortAvstamningsflik() {
         if (!avstamning) return;
         avstamning.vald = false;
         synkaAvstamningsflik();
+        avstamning.borttagen = true;
         avstamning.flik.remove();
         avstamning.panel.remove();
         avstamning = null;
@@ -3579,6 +3662,7 @@
         }).observe(document.body, { childList: true, subtree: true });
 
         document.addEventListener('click', kravAdressVidVerifikat, true);
+        document.addEventListener('click', lamnaAvstamningVidFlikklick, true);
         document.addEventListener('mousedown', hindraAutoscroll, true);
         document.addEventListener('auxclick', oppnaViaMittenklick, true);
         document.addEventListener('keydown', hanteraGenvag, true);

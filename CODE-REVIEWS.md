@@ -2,6 +2,35 @@
 
 Nyast först. Varje fynd markerat åtgärdat eller avfärdat med commit-ref.
 
+## 2026-09-08 - avstämningsmodulen (v0.46, före release)
+
+Två oberoende adversariella granskare med samma brief: en Claude-subagent
+(Sonnet, efter att Opus slog i sessionsgränsen) och Codex (gpt-5.6,
+read-only). Tyngdpunkt på fliken Avstämning av tacksägelser, rad 2614-3376.
+Båda namngav lästa filer och commits först. Claude 6 fynd, Codex 13, tre
+överlappande. Alla verifierade mot koden före åtgärd. Åtgärdade i `%SHA%`.
+
+| # | Fynd | Källa | Status |
+| --- | --- | --- | --- |
+| 1 | Pålysningsfönstret började vid periodens start. En tacksägelse söndagen efter dödsfallet ligger ofta före aviseringsdagen och missades, raden visade Saknas. Fönstret går nu sex månader bakåt. | Codex 6 | Åtgärdat |
+| 2 | Månadsbyte under pågående hämtning ritade det gamla resultatet under den nya rubriken. Körningarna har nu löpnummer, låst period och omkörning. | Codex 2, Claude 4 | Åtgärdat |
+| 3 | Verifikat utan personnummer visades som Saknas. Visas nu som "kan inte stämmas av här" och räknas separat. | Codex 3 | Åtgärdat |
+| 4 | Ett enda misslyckat detaljanrop fällde hela månaden. Fångas nu per rad. | Claude 2 | Åtgärdat |
+| 5 | Sidningen litade blint på `totalt`. Fortsätter nu vid full sida. | Claude 3 | Åtgärdat |
+| 6 | Klicklyssnaren satt på flikraden, som React byter ut. Ligger nu på `document`. | Codex 8 | Åtgärdat |
+| 7 | Saknad flikrad nollställde tillståndet men lämnade panelen, och en pågående hämtning kunde skriva i den. Panelen tas bort och körningen märks som borttagen. | Codex 9, Claude 6 | Åtgärdat |
+| 8 | Saknat `palysningsId` hade skickat tom kropp till `FetchOrCreatePalysning`. Rader utan id hoppas över. | Codex 1 | Åtgärdat |
+| 9 | Ingen timeout på anropen. 30 sekunder. | Codex 7 | Åtgärdat |
+| 10 | Verifikatlänken loggade inget när fiberklättringen misslyckades, och fångade inte synkrona fel. Loggar nu, faller tillbaka på startsidevägen. | Claude 5, Codex 10 | Åtgärdat |
+| 11 | Dokumentationen påstod normalisering till tolv siffror som koden inte gjorde. Koden kräver nu tolv siffror för en nyckel, annat blir "kan inte stämmas av". Kbok levererar tolv i båda listorna (mätt). | Claude 1, Codex 4 | Åtgärdat |
+| 12 | Hanterad-markeringarna delas mellan användare på samma webbläsarprofil. | Codex 5 | Avfärdat: avsiktligt och dokumenterat i README, markeringen är per webbläsare och innehåller bara verifikatets id. |
+| 13 | pushState-reserven bygger routertillstånd från ett odokumenterat format. | Codex 11 | Avfärdat: det är en reserv som bara tas när kontexten saknas, och den loggar nu i konsolen när det sker. |
+| 14 | Ändrade API-svar blir tyst tomma resultat. | Codex 12 | Avfärdat delvis: saknade `rows` ger nu "uppgift saknas" per rad (fynd 3 och 4). Fullständig schemavalidering mot ett API utan kontrakt bedöms inte värd sin egen bräcklighet. |
+| 15 | Blankettnamnsfunktionen sparar namn och personnummer i `sessionStorage`. Utanför modulen. | Codex 13 | Kvar: TASK-1714, helhetsgranskningen. |
+
+Kontrollerat samma dag efter nattens nollställning: detaljhämtningen av ett
+verifikat ändrar inte dess status från Nytt.
+
 ## 2026-07-29 - hela svk-kbok-enhancements.user.js (v0.27)
 
 Granskad av en Claude-subagent med eget kontext, efter att filen vuxit från
