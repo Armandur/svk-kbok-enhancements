@@ -1,5 +1,30 @@
 # Backlog Export
 
+## [P2][done] [svk-kbok-enhancements] Gallra tilläggets lagring i webbläsaren: töm namn efter användning och vid utloggning
+
+Rasmus 2026-09-08, efter granskningsrapporten för 0.46.
+
+## Context
+Tillägget sparar tre saker med personuppgifter i webbläsaren: svk-kbok-person (namn + kontrollvärde, sessionStorage), svk-kbok-gruppnamn/-gruppkalla (konfirmationsgruppens namn, sessionStorage) och svk-kbok-hanterade (verifikat-id + datum, localStorage, gallras efter 12 månader). sessionStorage lever tills fliken stängs och överlever utloggning och att en kollega loggar in i samma flik, så ett namn kan ligga kvar en arbetsdag.
+
+## Acceptance criteria
+1. Namn (svk-kbok-person) och gruppnamn (svk-kbok-gruppnamn, svk-kbok-gruppkalla) tas bort så snart de använts till ett filnamn, alltså direkt efter att blanketten döpts.
+2. Alla tilläggets sessionStorage-nycklar (svk-kbok-person, svk-kbok-gruppnamn, svk-kbok-gruppkalla, svk-kbok-onskad-sida, svk-kbok-mal-forsokt) tas bort när användaren loggar ut och när inloggningssidan visas (/utb_login, /utloggad, /logga-in, ADFS-redirect).
+3. Gallringen av svk-kbok-hanterade (äldre än 12 månader) körs även vid utloggning, inte bara vid start.
+4. Blankettnamnen fungerar fortfarande: utträdesbevis från utträdesvyn får personens namn, gemensamma konfirmationsblanketten får gruppens namn, båda verifierade i Utbildningsmiljön eller motsvarande test.
+5. Dokumentation.md får ett avsnitt "Vad tillägget sparar i webbläsaren" med tabell över nycklar, innehåll, lagring och livslängd. README får en mening om att inget med personuppgifter ligger kvar efter utloggning. CHANGELOG-rad.
+
+## Verification
+- node --check
+- Playwright i Utbildningsmiljön med skriptet injicerat: öppna en personakt (sätter svk-kbok-person), gå till utträdesvyn och kontrollera att sessionStorage töms efter att bevis-filnamnet byggts (eller efter simulerad nedladdning); logga ut och kontrollera att alla svk-kbok-*-nycklar i sessionStorage är borta.
+- Kontrollera att miljövalet (svk-kbok-miljo, localStorage) och inställningarna inte påverkas.
+
+- ID: `01M21EB4M810PAR5XPMJRKN5RH`
+- Type: improvement
+- Actor: ai:claude-fable-5-1
+
+---
+
 ## [P2][done] [svk-kbok-enhancements] Adversariell granskning av hela tillägget med Claude och Codex, efter avstämningsgranskningen
 
 Rasmus 2026-09-08. När granskningen av avstämningsmodulen (TASK-1667) är klar och fynden åtgärdade: kör en ny adversariell granskning av HELA svk-kbok-enhancements.user.js med två oberoende granskare, en Claude-subagent och Codex (codex-delegat-skillen, read-only), samma brief-mönster som för modulen (namnge lästa filer först, max 15 fynd med fil:rad, scenario, allvarlighet, åtgärdsförslag). Tyngdpunkt på de äldre delarna: XHR-patchen, auto-hämtningen, adresskravet, blankettnamn och visningsruta (sessionStorage med namn+personnummer - Codex fynd 13 i modulgranskningen), genvägarna (Ctrl+B), uppdateringskontrollen, miljövalet, utskriften (TASK-1670).
