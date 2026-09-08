@@ -12,6 +12,8 @@ byggt framgår av commit-historiken.
   omhändertaget på annat sätt. Listan går att skriva ut.
 - Ctrl+B träffar bara knappen i den öppna rutan, inte en som är på väg
   bort eller ligger bakom inställningarna.
+- Namnet som blanketterna döps efter glöms så snart filen fått sitt namn,
+  och allt sådant rensas när du loggar ut.
 
 ## 0.45
 

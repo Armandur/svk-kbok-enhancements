@@ -1716,6 +1716,27 @@
             });
     }
 
+    /* Namn och gruppnamn ligger i sessionStorage bara för att överleva
+     * sidbytet till den vy där blanketten tas ut. De ska inte ligga kvar en
+     * arbetsdag, och absolut inte till nästa person som loggar in i samma
+     * flik. Därför glöms de efter nedladdningen och vid utloggning. */
+    const NAMNNYCKLAR = [PERSONNYCKEL, GRUPPNYCKEL, GRUPPKALLA];
+    const UTLOGGAD_SIDA = /utb_login|utloggad|logga-in|login/i;
+
+    function glomIhagkomnaNamn() {
+        NAMNNYCKLAR.forEach((nyckel) => sessionStorage.removeItem(nyckel));
+    }
+
+    function gallraVidUtloggning() {
+        const utloggad = UTLOGGAD_SIDA.test(location.pathname)
+            || /adfs/i.test(location.hostname);
+        if (!utloggad) return;
+        glomIhagkomnaNamn();
+        // Hanterad-markeringarna gallras i läsningen; utloggningen är ett
+        // bra tillfälle att låta den köra även om fliken inte öppnats.
+        lasHanterade();
+    }
+
     function dopOmNedladdningar() {
         HTMLAnchorElement.prototype.click = function () {
             try {
@@ -1725,6 +1746,9 @@
                     // Går inget namn att bygga lämnas Kboks eget i fred - ett
                     // igenkännbart filnamn är bättre än ett stympat.
                     if (nytt) this.setAttribute('download', nytt);
+                    // Det ihågkomna namnet har gjort sitt när filen fått
+                    // sitt. Öppnas personakten igen sparas det på nytt.
+                    glomIhagkomnaNamn();
                 }
                 if (ursprung && installningar.visaBlankett && this.href) {
                     visaBlankett(this.href, this.getAttribute('download') || ursprung);
@@ -3704,6 +3728,7 @@
             });
         }
         sakert('miljövalet', hanteraMiljoval);
+        sakert('gallring vid utloggning', gallraVidUtloggning);
         if (installningar.avstamningTacksagelser) {
             sakert('avstämningen', synkaAvstamningsflik);
         } else {

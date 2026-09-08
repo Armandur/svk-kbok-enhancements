@@ -6,6 +6,8 @@ del av det motstånd som webbklienten har och desktopklienten inte hade.
 
 Tillägget ändrar ingenting i Kbok självt. Allt körs i din egen webbläsare
 och går att stänga av, funktion för funktion.
+Det som tillägget behöver minnas sparas i webbläsaren, aldrig någon
+annanstans, och inget med personuppgifter ligger kvar efter att du loggat ut.
 
 ![Inställningarna i Kbok Plus](skarmdumpar/panel.png)
 

@@ -781,6 +781,36 @@ heller öppningen via länken Verifikat (`markInfoAsViewedOnClose: false`)
 Granskad adversariellt 2026-09-08 av en Claude-subagent och Codex, se
 `CODE-REVIEWS.md`. Samma dag granskades hela filen på samma sätt.
 
+## Vad tillägget sparar i webbläsaren
+
+Allt ligger i webbläsarens egen lagring för Kbok-domänen. Inget skickas
+någon annanstans. sessionStorage hör till fliken och försvinner när den
+stängs. localStorage ligger kvar tills tillägget eller användaren tar bort
+det.
+
+| Nyckel | Innehåll | Lagring | Livslängd |
+| --- | --- | --- | --- |
+| `svk-kbok-person` | namn och kontrollvärde för personnumret | sessionStorage | tills blanketten fått sitt filnamn, eller utloggning |
+| `svk-kbok-gruppnamn`, `svk-kbok-gruppkalla` | konfirmationsgruppens namn och gruppvyns adress | sessionStorage | samma |
+| `svk-kbok-onskad-sida`, `svk-kbok-mal-forsokt` | adressen att gå till efter miljövalet i Utbildningsmiljön | sessionStorage | tills miljövalet är gjort |
+| `svk-kbok-hanterade` | verifikat-id och datum för Hanterad-markeringar | localStorage | tolv månader, eller knappen Rensa |
+| `svk-kbok-enhancements` | inställningarna och genvägarna | localStorage | tills användaren ändrar dem |
+| `svk-kbok-miljo` | senast valda miljö i Utbildningsmiljön | localStorage | tills nästa val |
+| `svk-kbok-senaste-version`, `svk-kbok-uppdatering-visad` | uppdateringskontrollens minne | localStorage | ett dygn |
+
+Gallringen sker på tre ställen. Nedladdningspatchen glömmer namn och
+gruppnamn så snart filen fått sitt namn. Öppnas personakten igen sparar
+skriptet namnet på nytt. På inloggnings- och utloggningssidorna (`utb_login`,
+`utloggad`, `logga-in`, ADFS) tar skriptet bort alla namn ur sessionStorage
+och kör Hanterad-gallringen, så nästa person som loggar in i samma flik
+ärver ingenting. Hanterad-poster äldre än tolv månader tas bort vid varje
+läsning.
+
+Verifierat i Utbildningsmiljön 2026-09-08: namnet sparas på personakten,
+följer med till startsidan, försvinner vid en nedladdning där, och alla
+sessionStorage-nycklar är borta på inloggningssidan efter Logga ut. En
+Hanterad-post från 2024 gallrades samtidigt, medan inställningarna stod kvar.
+
 ## Kartlagda fällor
 
 Underlaget kommer från arbetet med användarmanualen 2026-07-25 till
