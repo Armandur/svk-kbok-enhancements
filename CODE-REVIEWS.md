@@ -8,7 +8,7 @@ Två oberoende adversariella granskare med samma brief: en Claude-subagent
 (Sonnet, efter att Opus slog i sessionsgränsen) och Codex (gpt-5.6,
 read-only). Tyngdpunkt på fliken Avstämning av tacksägelser, rad 2614-3376.
 Båda namngav lästa filer och commits först. Claude 6 fynd, Codex 13, tre
-överlappande. Alla verifierade mot koden före åtgärd. Åtgärdade i `%SHA%`.
+överlappande. Alla verifierade mot koden före åtgärd. Åtgärdade i `ce82806`.
 
 | # | Fynd | Källa | Status |
 | --- | --- | --- | --- |
