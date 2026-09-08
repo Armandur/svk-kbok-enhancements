@@ -7,7 +7,7 @@ Nyast först. Varje fynd markerat åtgärdat eller avfärdat med commit-ref.
 Uppföljning av modulgranskningen samma dag, nu på hela filen med tyngdpunkt
 på de äldre delarna. Samma två granskare (Claude Sonnet-subagent, Codex
 gpt-5.6 read-only), samma brief. Claude 8 fynd, Codex 13, sex överlappande.
-Alla verifierade mot koden före åtgärd. Åtgärdade i `%SHA%`.
+Alla verifierade mot koden före åtgärd. Åtgärdade i `328788c`.
 
 | # | Fynd | Källa | Status |
 | --- | --- | --- | --- |
