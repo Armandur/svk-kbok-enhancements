@@ -1,5 +1,17 @@
 # Backlog Export
 
+## [P2][done] [svk-kbok-enhancements] Adversariell granskning av hela tillägget med Claude och Codex, efter avstämningsgranskningen
+
+Rasmus 2026-09-08. När granskningen av avstämningsmodulen (TASK-1667) är klar och fynden åtgärdade: kör en ny adversariell granskning av HELA svk-kbok-enhancements.user.js med två oberoende granskare, en Claude-subagent och Codex (codex-delegat-skillen, read-only), samma brief-mönster som för modulen (namnge lästa filer först, max 15 fynd med fil:rad, scenario, allvarlighet, åtgärdsförslag). Tyngdpunkt på de äldre delarna: XHR-patchen, auto-hämtningen, adresskravet, blankettnamn och visningsruta (sessionStorage med namn+personnummer - Codex fynd 13 i modulgranskningen), genvägarna (Ctrl+B), uppdateringskontrollen, miljövalet, utskriften (TASK-1670).
+
+Klart när: båda rapporterna verifierade mot koden, fynden åtgärdade eller avfärdade i CODE-REVIEWS.md med commit-ref, kvarstående fynd som tasks.
+
+- ID: `01M21CD06X3YQ7R8K5PQMNX7JV`
+- Type: task
+- Actor: ai:claude-fable-5-1
+
+---
+
 ## [P2][todo] [svk-kbok-enhancements] Utskriftsstilbladet döljer hela sidan vid Ctrl+P även när ingen verifikatruta är öppen
 
 Hittad 2026-09-07 under TASK-1667, i Utbildningsmiljön med skriptet 0.46 injicerat.
@@ -149,6 +161,20 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 - ID: `01KYNCHTA80GCT91Z0JGH6VJEY`
 - Type: task
 - Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Avstämningstabellen: paginering och samma utseende som Kboks egna tabeller
+
+Rasmus 2026-09-07, vid produktionstest av 0.46 (TASK-1667).
+
+Avstämningsfliken ritar en egen enkel HTML-tabell. Den ska i stället efterlikna hur Kbok visar tabeller (MUI DataGrid-utseendet i Pålysningsboken: kolumnrubriker, radhöjd, typsnitt, kantlinjer, markering) och få paginering med 'Rader per sida' och sidväxling som Kboks egna listor, så en församling med många dödsfall inte får en oändligt lång sida.
+
+Klart när: tabellen ser ut som Pålysningsbokens grid vid en jämförelse sida vid sida, och en period med fler rader än sidstorleken går att bläddra i.
+
+- ID: `01M1XHPX5T62QM8EGK43X7FFAG`
+- Type: improvement
+- Actor: ai:claude-fable-5-1
 
 ---
 
