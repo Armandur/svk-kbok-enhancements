@@ -7,13 +7,15 @@ byggt framgår av commit-historiken.
 
 - **Avstämning av tacksägelser** i Pålysningsboken: en ny flik visar vilka
   avlidna som saknar pålysning för vald månad, förvalt den föregående.
-  Pålysningarna söks i alla dina församlingar, och det syns om de är knutna
-  till en begravning eller fristående. Kryssa Hanterad för det som är
-  omhändertaget på annat sätt. Listan går att skriva ut.
+  Dödsfallen gäller den församling du är inloggad i, medan tillägget söker
+  pålysningarna i alla dina församlingar. Du ser om varje pålysning är
+  knuten till en begravning eller fristående, och kan öppna verifikatet och
+  personakten direkt från raden. Kryssa Hanterad för det som är omhändertaget
+  på annat sätt. Listan går att skriva ut.
 - Ctrl+B träffar bara knappen i den öppna rutan, inte en som är på väg
   bort eller ligger bakom inställningarna.
-- Namnet som blanketterna döps efter glöms så snart filen fått sitt namn,
-  och allt sådant rensas när du loggar ut.
+- Tillägget glömmer namnet det döper blanketterna efter så snart filen
+  fått sitt namn, och rensar allt sådant när du loggar ut.
 
 ## 0.45
 
@@ -24,7 +26,7 @@ byggt framgår av commit-historiken.
 
 ## 0.44
 
-- **Dopinbjudan döps om med det datum du anger i rutan**, inte med dagens:
+- **Dopinbjudan får det datum du anger i rutan** i filnamnet, inte dagens:
   `2026-09-20 - Dopinbjudan - Andersson, Lena.pdf`.
 
 ## 0.43
@@ -34,36 +36,36 @@ byggt framgår av commit-historiken.
 
 ## 0.42
 
-- **Upptagande- och utträdesbevis får datum även när de hämtas från
-  personakten**, inte bara när de tas ut direkt i in- eller utträdesflödet.
+- **Upptagande- och utträdesbevis får datum även när du hämtar dem från
+  personakten.** Tidigare fick de det bara direkt i in- eller utträdesflödet.
   Datumet är tillhörighetens, alltså samma dag som beviset gäller.
 
 ## 0.41
 
-- Rapporter som tas ur ett verifikats rapportruta får händelsedatumet, inte
+- Rapporter du tar ur ett verifikats rapportruta får händelsedatumet, inte
   dagens datum. Välkomstmeddelandet efter ett inträde hamnar därmed på
   samma datum som upptagandebeviset bredvid det.
 
 ## 0.40
 
-- **Fler rapporter från personakten döps om**, inte bara bevisen -
+- **Tillägget döper om fler rapporter från personakten** än bevisen:
   medlemsbevis, registerutdrag, anmälningar, förfrågningar och
   välkomstmeddelande. De får dagens datum, rapportens namn och personens
   namn: `2026-07-30 - Medlemsbevis - Andersson, Lena.pdf`.
-- Namn- och adresslistorna lämnas som de är. De gäller ett urval, inte en
-  person, och har inget namn att döpas efter.
+- Namn- och adresslistorna behåller Kboks namn. De gäller ett urval, inte en
+  person, och har inget namn att döpa dem efter.
 
 ## 0.39
 
-- Personen hämtas nu automatiskt även i det fristående
-  pålysningsformuläret. Där gjorde den inte det, trots att det är just den
+- Tillägget hämtar nu personen automatiskt även i det fristående
+  pålysningsformuläret. Där gjorde det inte det, trots att det är just den
   vyn där ett glömt namn gör att Spara inte säger något alls.
 
 ## 0.38
 
 - **Inställningarna ligger nu på två flikar**, en för valen och en för
-  genvägarna. Genvägsfliken får plats utan att skrollas, och inställningarna
-  är kortare än förut.
+  genvägarna. Genvägsfliken får plats utan att du behöver skrolla, och
+  inställningarna är kortare än förut.
 - Länk till GitHub längst ned i panelen, där beskrivningen och alla
   ändringar finns samlade.
 
@@ -73,8 +75,8 @@ byggt framgår av commit-historiken.
 
 ## 0.36
 
-- Uppdateringsrutan står kvar tills du tagit ställning. Tidigare försvann den
-  i ett dygn så fort sidan laddades om, även om du inte hunnit läsa den.
+- Uppdateringsrutan står kvar tills du valt. Tidigare försvann den
+  i ett dygn så fort du laddade om sidan, även om du inte hunnit läsa den.
 - Panelen visar alltid det senaste versionsnumret.
 
 ## 0.35
@@ -83,7 +85,7 @@ byggt framgår av commit-historiken.
 
 ## 0.34
 
-- Ändringarna öppnas i en egen ruta och visas med rubriker och listor i
+- Tillägget visar ändringarna i en egen ruta med rubriker och listor i
   stället för rå text.
 
 ## 0.33
@@ -102,43 +104,43 @@ byggt framgår av commit-historiken.
 
 ## 0.30
 
-- Tydligare knappar i blankettrutan.
+- Knapparna i blankettrutan har fått Kboks färger och en tydlig kant.
 
 ## 0.29
 
 - **F9 hämtar blanketten för den handling du står i**, utan att gå via
-  Rapporter-menyn. Rätt blankett väljs efter vilken flik du är på, så vigsel
-  och välsignelse hålls isär.
+  Rapporter-menyn. Tillägget väljer blankett efter vilken flik du är på, så
+  att vigsel och välsignelse inte blandas ihop.
 
 ## 0.28
 
-- Rättningar efter en genomgång av koden. Inget syns utåt.
+- Rättningar efter en kodgranskning. Inget syns utåt.
 
 ## 0.27
 
-- **Kalkylblad visas som tabell i rutan**, precis som blanketterna. Rapporter
+- **Rutan visar kalkylblad som tabell**, precis som blanketterna. Rapporter
   går att växla mellan PDF och kalkylblad högst upp i menyn.
 
 ## 0.26
 
-- Kalkylblad behåller sitt filnamn när de laddas ner.
+- Kalkylblad behåller sitt filnamn när du laddar ner dem.
 
 ## 0.25
 
-- Adresskontrollen missade när gatuadressen tagits bort men postnumret stod
-  kvar.
+- Adresskontrollen missade när någon tagit bort gatuadressen men postnumret
+  stod kvar.
 
 ## 0.24
 
 - Adresskontrollen gäller nu även vigsel och välsignelse.
-- Varningen visas som en ruta med samma text som Kbok själv använder i dop.
+- Varningen är en ruta med samma text som Kbok själv använder i dop.
 
 ## 0.23
 
-- **Adressen måste vara ifylld innan verifikat skapas** i konfirmation,
+- **Adressen måste vara ifylld innan du skapar verifikat** i konfirmation,
   vigsel, välsignelse och begravning. Kbok kräver det bara i dop, trots att
-  adressen ska registreras för varje kyrklig handling. Den preliminära posten
-  får sparas som vanligt.
+  regelverket kräver adress för varje kyrklig handling. Du kan spara den
+  preliminära posten som vanligt.
 
 ## 0.22
 
@@ -151,8 +153,8 @@ byggt framgår av commit-historiken.
 
 ## 0.20
 
-- Bevis får rätt namn även när verifikatet bekräftas senare, via Aktuella på
-  startsidan.
+- Bevis får rätt namn även när du bekräftar verifikatet senare, via Aktuella
+  på startsidan.
 
 ## 0.19
 
@@ -162,7 +164,7 @@ byggt framgår av commit-historiken.
 ## 0.18
 
 - **Ctrl+B bekräftar verifikat.** Den enda genvägen som gör något du inte kan
-  ångra, och märkt som sådan.
+  ångra, och panelen märker ut den.
 
 ## 0.17
 
@@ -170,8 +172,8 @@ byggt framgår av commit-historiken.
 
 ## 0.16
 
-- Länkikonen i Ministerialboken öppnar ministerialboksposten, inte bara
-  personakten.
+- Länkikonen i Ministerialboken öppnar själva ministerialboksposten.
+  Tidigare öppnade den personakten.
 
 ## 0.15
 
@@ -187,19 +189,19 @@ byggt framgår av commit-historiken.
 
 ## 0.12
 
-- **Miljövalet i Utbildningsmiljön kommer ihåg sig.** Det behöver inte göras
-  om i varje ny flik.
+- **Miljövalet i Utbildningsmiljön kommer ihåg sig.** Du behöver inte göra
+  om det i varje ny flik.
 
 ## 0.11
 
-- Länkikonen visas bara i listor där den leder någonstans. Startsidans
+- Länkikonen finns bara i listor där den leder någonstans. Startsidans
   verifikatlistor fick den i onödan.
-- Tydligare ikon.
+- Ikonen är större och lättare att se.
 
 ## 0.10
 
-- **Blanketten kan visas i en ruta** med Skriv ut och Ladda ner, i stället för
-  att laddas ner direkt.
+- **Blanketten kan öppnas i en ruta** med Skriv ut och Ladda ner, i stället
+  för att Kbok laddar ner den direkt.
 
 ## 0.9
 
