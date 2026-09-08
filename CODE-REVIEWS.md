@@ -2,6 +2,36 @@
 
 Nyast först. Varje fynd markerat åtgärdat eller avfärdat med commit-ref.
 
+## 2026-09-08 - hela svk-kbok-enhancements.user.js (v0.46, före release)
+
+Uppföljning av modulgranskningen samma dag, nu på hela filen med tyngdpunkt
+på de äldre delarna. Samma två granskare (Claude Sonnet-subagent, Codex
+gpt-5.6 read-only), samma brief. Claude 8 fynd, Codex 13, sex överlappande.
+Alla verifierade mot koden före åtgärd. Åtgärdade i `%SHA%`.
+
+| # | Fynd | Källa | Status |
+| --- | --- | --- | --- |
+| 1 | Ctrl+B valde första matchande knapp i hela dokumentet, utan synlighetskoll. Kunde träffa en knapp på väg ut i en stängningsanimation eller bakom Kbok Plus-panelen. Nu bara synliga knappar, helst i den sist öppnade dialogen, och aldrig när panelen är öppen. | Claude 3, Codex 1 | Åtgärdat |
+| 2 | Xlsx-tolkningen hade inga gränser: en manipulerad cellreferens eller ett stort arkiv kunde frysa fliken. Tak på arkivstorlek, antal filer, rader och kolumner; överskrids de laddas filen ner i stället. | Claude 5, Codex 2 | Åtgärdat |
+| 3 | Namn och personnummer i klartext i sessionStorage för blankettnamnet. Personnumret ersatt med ett kontrollvärde som bara duger till att känna igen rätt person. Namnet behövs för filnamnet och står kvar. | Claude 2, Codex 5 | Åtgärdat |
+| 4 | Changeloggens markdownlänkar satte href utan schemakontroll; ett javascript:-schema i en komprometterad changelog hade kört i Kboks kontext. Bara http och https blir länkar. | Claude 4, Codex 6 | Åtgärdat |
+| 5 | Id:n ur data-id och API-svar användes i adresser utan validering. Bara heltal accepteras nu, i länkikonen, HANDLING-kartan och avstämningens personaktslänk. | Codex 8 | Åtgärdat |
+| 6 | Gruppnamnet till Konfirmationsblankett-gemensam lästes utan att kontrollera att formuläret hör till den grupp namnet kom från. Adressen måste nu börja med gruppvyns. | Codex 9 | Åtgärdat |
+| 7 | En pågående genvägsinspelning lämnade sin keydown-lyssnare på document om panelen stängdes mitt i. Panelen städar nu alla inspelningar vid stängning. Verifierat i webbläsare. | Codex 10 | Åtgärdat |
+| 8 | Blob-URL:er för kalkylblad och reservnedladdningar återkallades aldrig. Släpps en minut efter klicket. | Codex 12 | Åtgärdat |
+| 9 | HANDLING-kartan växte obegränsat under en arbetsdag. Töms vid 5000 poster. | Claude 7 | Åtgärdat |
+| 10 | API-basen godtog vilken absolut adress som helst. Kräver nu https. En tillåtelselista per miljö avfärdad: produktionens värd är okänd, och den som styr appens XHR-adresser har redan kört kod i sidan. | Codex 7 | Åtgärdat delvis |
+| 11 | Adresskravet avgör med fri text och kan släppa igenom när boxen har en okänd extra rad. | Claude 1, Codex 4 | Avfärdat: kontrollen är verifierad mot alla fem handlingstyperna, och en positiv gatuadress-regex hade varit bräckligare än uteslutningen. Känd begränsning, dokumenterad i avsnittet Om adresskravet. |
+| 12 | Auto-hämtningen godtar varje namnlös knapp utan ClearIcon inom fem föräldranivåer. | Claude 6, Codex 3 | Avfärdat: samma notering som i granskningen 2026-07-29, ingen konkret instans. Hämta-igen-knappen på huvudpersonen har text och stoppas av arHamtaKnapp oavsett sidkontext. |
+| 13 | MutationObserver-loopen gör helsidesskanningar vid varje mutation. | Codex 11 | Avfärdat: rAF-debounce, per-steg spärrar och cache finns; ingen mätt fördröjning. Inkrementell bearbetning är en omskrivning utan påvisat behov. |
+| 14 | Miljövalet i Utbildningsmiljön delas mellan användare på samma webbläsare. | Codex 13 | Avfärdat: gäller bara övningsmiljön och är avsikten med inställningen. |
+| 15 | fokuseraBekraftas per-nod-spärr uteblir om MUI återanvänder dialognoden. | Claude 8 | Avfärdat: felriktningen är för lite fokus, inte fel knapp, och ingen sådan återanvändning har observerats. |
+
+Inga fynd i: XSS via API-data (allt går via textContent), miljöredirect till
+annan origin, XHR-patchen i sig, personuppgifter i konsolen, död kod.
+TASK-1670 (utskriftsstilbladet) bekräftades av båda men ligger kvar som egen
+task.
+
 ## 2026-09-08 - avstämningsmodulen (v0.46, före release)
 
 Två oberoende adversariella granskare med samma brief: en Claude-subagent

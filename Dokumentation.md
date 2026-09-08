@@ -779,7 +779,7 @@ heller öppningen via länken Verifikat (`markInfoAsViewedOnClose: false`)
 även antecknade, får produktionen visa.
 
 Granskad adversariellt 2026-09-08 av en Claude-subagent och Codex, se
-`CODE-REVIEWS.md`.
+`CODE-REVIEWS.md`. Samma dag granskades hela filen på samma sätt.
 
 ## Kartlagda fällor
 

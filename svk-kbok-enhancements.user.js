@@ -230,9 +230,17 @@
         return delar.join('+');
     }
 
+    /* Bara synliga knappar räknas, och ligger någon i en öppen dialog tas
+     * den sist öppnade. Utan det hade Ctrl+B kunnat träffa en knapp som är på
+     * väg ut i en stängningsanimation, eller en som ligger bakom Kbok Plus-
+     * panelen - och Bekräfta verifikat går inte att ångra. */
     function klickaKnappMedText(text) {
-        const knapp = [...document.querySelectorAll('button')].find(
-            (b) => (b.innerText || '').trim() === text && !b.disabled);
+        if (document.getElementById('svk-kbok-panel')) return false;
+        const synliga = [...document.querySelectorAll('button')].filter(
+            (b) => (b.innerText || '').trim() === text && !b.disabled
+                && b.offsetParent !== null && !b.closest('[aria-hidden="true"]'));
+        const iDialog = synliga.filter((b) => b.closest('[role="dialog"]'));
+        const knapp = iDialog.length ? iDialog[iDialog.length - 1] : synliga[0];
         if (knapp) {
             knapp.click();
             return true;
@@ -307,8 +315,14 @@
         localStorage.setItem(NYCKEL, JSON.stringify(installningar));
     }
 
+    // Id:n kommer ur data-id och API-svar. Bara heltal får bli en del av
+    // en adress - annat hade kunnat styra länken någon annanstans.
+    function arId(v) {
+        return /^\d+$/.test(String(v ?? ''));
+    }
+
     function personaktUrl(id) {
-        return `${location.origin}/personakt/${id}`;
+        return arId(id) ? `${location.origin}/personakt/${id}` : null;
     }
 
     /* ---------- Länkikon per rad ----------
@@ -379,8 +393,11 @@
                         return;
                     }
                     if (!Array.isArray(poster)) return;
+                    // Kartan växer med varje sökning under en arbetsdag. Ett
+                    // tak håller den liten; raderna söks om ändå.
+                    if (HANDLING.size > 5000) HANDLING.clear();
                     poster.forEach((post) => {
-                        if (post && post.kyrklighandlingsId && post.personid) {
+                        if (post && arId(post.kyrklighandlingsId) && arId(post.personid)) {
                             HANDLING.set(String(post.kyrklighandlingsId), {
                                 personid: String(post.personid),
                                 kod: (post.handlingstyp || {}).kod,
@@ -395,7 +412,7 @@
 
     function lankmalFor(rad) {
         const id = rad.getAttribute('data-id');
-        if (!id) return null;
+        if (!arId(id)) return null;
         // Sök personer: radens id ÄR personaktens, och där finns ingen
         // handling att öppna.
         if (arPersonlista(rad)) return personaktUrl(id);
@@ -403,9 +420,10 @@
         if (!post) return null;
         const vy = HANDLINGSVY[post.kod];
         // Okänd handlingstyp: personakten är bättre än ingen länk alls.
-        if (!vy) return personaktUrl(post.personid);
+        const bas = personaktUrl(post.personid);
+        if (!bas || !vy) return bas;
         const fraga = post.kod === 'V' ? `?kyrklighandlingsId=${id}` : '';
-        return `${personaktUrl(post.personid)}/${vy}${fraga}`;
+        return `${bas}/${vy}${fraga}`;
     }
 
     function gridArPersonlista(grid) {
@@ -1165,6 +1183,19 @@
 
     const PERSONNYCKEL = 'svk-kbok-person';
 
+    /* Personnumret sparas inte i klartext - bara ett kort kontrollvärde som
+     * räcker för att se att det ihågkomna namnet hör till den person som
+     * visas. Uppgiften ligger i sessionStorage bara för att överleva sidbytet
+     * till utträdesvyn, och ett kontrollvärde går inte att vända tillbaka. */
+    function kontrollvarde(text) {
+        let h = 0x811c9dc5;
+        for (let i = 0; i < text.length; i++) {
+            h ^= text.charCodeAt(i);
+            h = Math.imul(h, 0x01000193) >>> 0;
+        }
+        return h.toString(36);
+    }
+
     function synligtPersonnummer() {
         const rot = document.querySelector('main');
         if (!rot) return null;
@@ -1180,15 +1211,16 @@
         // varje hovring och menyöppning. Samma mönster som kommIhagGruppnamn.
         const pnr = synligtPersonnummer();
         if (!pnr) return;
+        const nyckel = kontrollvarde(pnr);
         try {
             const sparat = JSON.parse(sessionStorage.getItem(PERSONNYCKEL) || 'null');
-            if (sparat && sparat.pnr === pnr) return;
+            if (sparat && sparat.nyckel === nyckel) return;
         } catch (e) {
             // Trasigt värde: skriv över det nedan.
         }
         const namn = personnamnUr(document.querySelector('main'));
         if (namn) {
-            sessionStorage.setItem(PERSONNYCKEL, JSON.stringify({ pnr, namn }));
+            sessionStorage.setItem(PERSONNYCKEL, JSON.stringify({ nyckel, namn }));
         }
     }
 
@@ -1266,8 +1298,9 @@
     function ihagkommetNamn() {
         try {
             const sparat = JSON.parse(sessionStorage.getItem(PERSONNYCKEL) || 'null');
-            if (!sparat) return null;
-            return sparat.pnr === synligtPersonnummer() ? sparat.namn : null;
+            const pnr = synligtPersonnummer();
+            if (!sparat || !pnr) return null;
+            return sparat.nyckel === kontrollvarde(pnr) ? sparat.namn : null;
         } catch (e) {
             return null;
         }
@@ -1310,7 +1343,11 @@
         const sektion = sektionMed('Datum och tid');
         const falt = sektion && sektion.querySelector('input[placeholder="ÅÅÅÅ-MM-DD"]');
         const datum = falt && (falt.value || '').match(/\d{4}-\d{2}-\d{2}/);
-        const gruppnamn = sessionStorage.getItem(GRUPPNYCKEL);
+        // Namnet gäller bara om formuläret nåddes från just den gruppen -
+        // formulärets adress börjar med gruppvyns.
+        const kalla = sessionStorage.getItem(GRUPPKALLA) || '';
+        const gruppnamn = kalla && location.pathname.startsWith(`${kalla}/`)
+            ? sessionStorage.getItem(GRUPPNYCKEL) : null;
         const delar = [];
         if (datum) delar.push(datum[0]);
         // "gemensam" skiljer den från den enskilda blanketten: den här listar
@@ -1404,6 +1441,14 @@
         document.body.appendChild(lank);
         ORIGINALKLICK.call(lank);
         lank.remove();
+    }
+
+    // Vår egen blob-kopia: laddas ner och släpps sedan, så rapporten inte
+    // ligger kvar i flikens minne.
+    function laddaNerBlob(blob, filnamn) {
+        const url = URL.createObjectURL(blob);
+        laddaNer(url, filnamn);
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
 
     function byggBlankettruta(url, filnamn, egenYta, egenNedladdning) {
@@ -1533,7 +1578,15 @@
      * därför bara läsa xl/worksheets/sheet1.xml.
      */
 
+    // Kboks rapporter är små. Större arkiv än så är inte ett kalkylblad vi
+    // ska tolka i sidan - då laddas filen ner i stället.
+    const ZIP_MAX_BYTE = 25 * 1024 * 1024;
+    const ZIP_MAX_FILER = 200;
+    const ARK_MAX_RADER = 20000;
+    const ARK_MAX_KOLUMNER = 256;
+
     async function lasZip(blob) {
+        if (blob.size > ZIP_MAX_BYTE) throw new Error('arkivet är för stort');
         const data = new Uint8Array(await blob.arrayBuffer());
         const vy = new DataView(data.buffer);
         // Katalogen hittas via End of Central Directory, som ligger sist.
@@ -1543,6 +1596,7 @@
         }
         if (eocd < 0) throw new Error('ingen zip-katalog');
         const antal = vy.getUint16(eocd + 10, true);
+        if (antal > ZIP_MAX_FILER) throw new Error('arkivet har för många filer');
         let pos = vy.getUint32(eocd + 16, true);
         const filer = {};
         for (let i = 0; i < antal; i++) {
@@ -1566,6 +1620,9 @@
         const start = post.offset + 30
             + zip.vy.getUint16(post.offset + 26, true)
             + zip.vy.getUint16(post.offset + 28, true);
+        if (post.storlek > ZIP_MAX_BYTE || start + post.storlek > zip.data.length) {
+            throw new Error('filen i arkivet är trasig eller för stor');
+        }
         const rad = zip.data.subarray(start, start + post.storlek);
         if (post.metod === 0) return new TextDecoder().decode(rad);
         return new Response(new Blob([rad]).stream()
@@ -1574,7 +1631,9 @@
 
     function arkTillRader(xml) {
         const doc = new DOMParser().parseFromString(xml, 'application/xml');
-        return [...doc.getElementsByTagName('row')].map((rad) => {
+        const rader = [...doc.getElementsByTagName('row')];
+        if (rader.length > ARK_MAX_RADER) throw new Error('arket har för många rader');
+        return rader.map((rad) => {
             const celler = [];
             [...rad.getElementsByTagName('c')].forEach((c) => {
                 // Cellens r-attribut bär kolumnbokstaven; tomma celler
@@ -1585,6 +1644,7 @@
                 for (let i = 0; i < bokstav.length; i++) {
                     index = index * 26 + (bokstav.charCodeAt(i) - 64);
                 }
+                if (index > ARK_MAX_KOLUMNER) throw new Error('arket har för många kolumner');
                 const text = c.getElementsByTagName('t')[0]
                     || c.getElementsByTagName('v')[0];
                 while (celler.length < index - 1) celler.push('');
@@ -1612,8 +1672,7 @@
         const yta = document.createElement('div');
         yta.style.cssText = 'flex:1;overflow:auto;padding:1rem 1.2rem';
         yta.appendChild(tabell);
-        byggBlankettruta(null, filnamn, yta, () => laddaNer(
-            URL.createObjectURL(blob), filnamn));
+        byggBlankettruta(null, filnamn, yta, () => laddaNerBlob(blob, filnamn));
     }
 
     function visaBlankett(url, filnamn) {
@@ -1639,11 +1698,11 @@
                             // bättre än ingenting.
                             console.warn('svk-kbok-enhancements: kunde inte visa '
                                 + 'kalkylbladet', e);
-                            laddaNer(URL.createObjectURL(blob), filnamn);
+                            laddaNerBlob(blob, filnamn);
                         });
                 }
                 if (blob.type !== 'application/pdf') {
-                    laddaNer(URL.createObjectURL(blob), filnamn);
+                    laddaNerBlob(blob, filnamn);
                     return undefined;
                 }
                 byggBlankettruta(URL.createObjectURL(blob), filnamn);
@@ -1940,6 +1999,12 @@
                 mal.appendChild(kod);
             } else {
                 const delar = bit.match(/\[([^\]]+)\]\(([^)]+)\)/);
+                // Texten kommer från GitHub. Bara vanliga webbadresser blir
+                // länkar; ett javascript:-schema hade kört i Kboks kontext.
+                if (!/^https?:\/\//i.test(delar[2])) {
+                    mal.appendChild(document.createTextNode(delar[1]));
+                    return;
+                }
                 const lank = document.createElement('a');
                 lank.textContent = delar[1];
                 lank.href = delar[2];
@@ -2275,6 +2340,15 @@
         const flikGenvagar = laggTillFlik('Genvägar');
         valjFlik(flikar[0]);
 
+        // Pågående inspelningar av genvägar har en lyssnare på document.
+        // Stängs panelen mitt i måste den bort, annars ändrar nästa
+        // tangenttryckning genvägen i tysthet.
+        const pagaendeInspelningar = new Set();
+        function stangPanel() {
+            [...pagaendeInspelningar].forEach((avsluta) => avsluta());
+            overlay.remove();
+        }
+
         function kryssrad(nyckel, markerad) {
             const rad = document.createElement('label');
             rad.style.cssText = 'display:flex;gap:.6rem;align-items:flex-start;'
@@ -2374,6 +2448,7 @@
             let spelarIn = false;
             const avsluta = () => {
                 spelarIn = false;
+                pagaendeInspelningar.delete(avsluta);
                 knapp.textContent = nuvarande();
                 knapp.style.borderColor = ACCENT;
                 knapp.style.background = '#fff';
@@ -2392,6 +2467,7 @@
             knapp.addEventListener('click', () => {
                 if (spelarIn) return avsluta();
                 spelarIn = true;
+                pagaendeInspelningar.add(avsluta);
                 knapp.textContent = 'tryck…';
                 knapp.style.borderColor = ACCENT;
                 knapp.style.background = '#fbeaea';
@@ -2488,12 +2564,12 @@
             + 'border-radius:999px;padding:.55rem 1.5rem;cursor:pointer;font-weight:600;font-size:.9rem';
         stang.addEventListener('mouseenter', () => { stang.style.background = ACCENT_HOVER; });
         stang.addEventListener('mouseleave', () => { stang.style.background = ACCENT; });
-        stang.addEventListener('click', () => overlay.remove());
+        stang.addEventListener('click', stangPanel);
         knapprad.appendChild(stang);
         ruta.appendChild(knapprad);
 
         overlay.appendChild(ruta);
-        overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) stangPanel(); });
         document.body.appendChild(overlay);
     }
 
@@ -2658,7 +2734,7 @@
     function kommIhagApiBas(url) {
         if (apiBas) return;
         const m = String(url).match(
-            /^(https?:\/\/[^/]+)\/(GetUserSession|Verifikat|Palysning|Enhet|Misc|Person)\b/);
+            /^(https:\/\/[^/]+)\/(GetUserSession|Verifikat|Palysning|Enhet|Misc|Person)\b/);
         if (m) apiBas = m[1];
     }
 
@@ -3267,7 +3343,7 @@
                 oppnaVerifikat(r.verifikatId, document.querySelector('[role="tablist"]'));
             });
             oppna.appendChild(verifikatlank);
-            if (r.personId) {
+            if (personaktUrl(r.personId)) {
                 oppna.appendChild(el('span', 'svk-kbok-dampad', ' · '));
                 const lank = el('a', null, 'Personakt');
                 lank.href = personaktUrl(r.personId);

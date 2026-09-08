@@ -10,6 +10,8 @@ byggt framgår av commit-historiken.
   Pålysningarna söks i alla dina församlingar, och det syns om de är knutna
   till en begravning eller fristående. Kryssa Hanterad för det som är
   omhändertaget på annat sätt. Listan går att skriva ut.
+- Ctrl+B träffar bara knappen i den öppna rutan, inte en som är på väg
+  bort eller ligger bakom inställningarna.
 
 ## 0.45
 
