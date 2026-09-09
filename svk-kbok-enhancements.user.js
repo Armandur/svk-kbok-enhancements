@@ -82,6 +82,7 @@
         // desktopklientens flöde slår på det medvetet.
         fokusBekraftaVerifikat: false,
         skrivUtVerifikat: true,
+        sokbarPlats: true,
         avstamningTacksagelser: true,
         genvagarPa: true,
         kollaUppdatering: true,
@@ -102,6 +103,7 @@
         tomPalysningsdatum: 'Förifyll inte nästa söndag som pålysningsdatum - lämna fältet tomt',
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar',
         skrivUtVerifikat: 'Skriv ut-ikon på öppnade verifikat, och utskrift på en sida',
+        sokbarPlats: 'Platslistan visar bara de kyrkor som matchar det du skriver',
         avstamningTacksagelser: 'Fliken Avstämning i Pålysningsboken - dödsfall som saknar pålysning',
         genvagarPa: 'Genvägarna är på',
         kollaUppdatering: 'Säg till när en ny version finns - frågar GitHub en gång per dygn',
@@ -116,7 +118,7 @@
           nycklar: ['nyflikLank', 'mittenklick', 'markerbartPersonnummer'] },
         { rubrik: 'Formulär',
           nycklar: ['autoHamta', 'hoppaOverDatumvaljare', 'dagensDatum',
-              'fokusDatum', 'kravAdress', 'tomPalysningsdatum'] },
+              'fokusDatum', 'kravAdress', 'tomPalysningsdatum', 'sokbarPlats'] },
         { rubrik: 'Blanketter och rapporter',
           nycklar: ['blankettnamn', 'visaBlankett', 'skrivUtVerifikat'] },
         { rubrik: 'Pålysningsbok',
@@ -2711,6 +2713,130 @@
         else rubrik.appendChild(knapp);
     }
 
+    /* ---------- Sökbar plats ----------
+     *
+     * Fältet Välj plats i handlingsformulären och Pålyses i kyrka i
+     * pålysningsformuläret är en MUI Autocomplete med fritext, men utan
+     * filter: listan visar alla församlingens kyrkor oavsett vad man skriver.
+     * Mätt i Utbildningsmiljön med fyra kyrkor - "hopp" visade alla fyra.
+     * Med sjutton kyrkor i en församling blir det bläddring varje gång.
+     *
+     * Skriptet lägger ett filter ovanpå Kboks egen lista: alternativ som inte
+     * innehåller det skrivna döljs, piltangenterna flyttar en egen markering
+     * bland de synliga, Enter klickar det markerade alternativet så MUI
+     * själv sätter värdet. Tab lämnar fältet som förut, med fritexten kvar.
+     * Kboks egen tangentnavigering stoppas bara medan listan är öppen och
+     * bara i de här fälten - den hade annars gått igenom dolda rader.
+     */
+
+    const PLATSFALT = /^(Välj plats|Pålyses i kyrka|Pålysningsplats)$/;
+    const PLATS_DOLD = 'svk-kbok-plats-dold';
+    const PLATS_VALD = 'svk-kbok-plats-vald';
+    const PLATS_NOT = 'svk-kbok-plats-not';
+
+    function laggTillPlatsstil() {
+        if (document.getElementById('svk-kbok-platsstil')) return;
+        const stil = document.createElement('style');
+        stil.id = 'svk-kbok-platsstil';
+        stil.textContent = `
+            .${PLATS_DOLD} { display: none !important; }
+            .${PLATS_VALD} { background: rgba(125, 0, 55, .08) !important; }
+            .${PLATS_NOT} { padding: 6px 16px; color: #6b6862; font-size: .9em; }
+        `;
+        document.head.appendChild(stil);
+    }
+
+    function arPlatsfalt(input) {
+        if (!input || input.getAttribute('role') !== 'combobox' || !input.id) return false;
+        const etikett = document.querySelector(`label[for="${CSS.escape(input.id)}"]`);
+        return !!etikett && PLATSFALT.test((etikett.textContent || '').replace(/\s*\*$/, '').trim());
+    }
+
+    function platslista(input) {
+        // MUI döper listrutan efter fältets id. aria-controls sätts bara
+        // medan den är öppen, så id:t är den säkra vägen.
+        return document.getElementById(`${input.id}-listbox`);
+    }
+
+    function synligaPlatser(lista) {
+        return [...lista.querySelectorAll('[role="option"]')]
+            .filter((o) => !o.classList.contains(PLATS_DOLD));
+    }
+
+    function filtreraPlatslistor() {
+        document.querySelectorAll('input[role="combobox"]').forEach((input) => {
+            if (!arPlatsfalt(input)) return;
+            const lista = platslista(input);
+            if (!lista) return;
+            laggTillPlatsstil();
+            const sokt = (input.value || '').trim().toLowerCase();
+            let traffar = 0;
+            lista.querySelectorAll('[role="option"]').forEach((o) => {
+                const traff = !sokt || (o.textContent || '').toLowerCase().includes(sokt);
+                o.classList.toggle(PLATS_DOLD, !traff);
+                if (!traff) o.classList.remove(PLATS_VALD);
+                if (traff) traffar += 1;
+            });
+            let not = lista.querySelector(`.${PLATS_NOT}`);
+            if (!traffar) {
+                if (!not) {
+                    not = document.createElement('li');
+                    not.className = PLATS_NOT;
+                    not.setAttribute('aria-hidden', 'true');
+                    lista.appendChild(not);
+                }
+                not.textContent = 'Ingen kyrka i listan matchar. Texten står kvar som den är.';
+            } else if (not) {
+                not.remove();
+            }
+        });
+    }
+
+    function flyttaPlatsmarkering(lista, steg) {
+        const synliga = synligaPlatser(lista);
+        if (!synliga.length) return;
+        const nu = synliga.findIndex((o) => o.classList.contains(PLATS_VALD));
+        const nasta = nu < 0
+            ? (steg > 0 ? 0 : synliga.length - 1)
+            : (nu + steg + synliga.length) % synliga.length;
+        synliga.forEach((o, i) => o.classList.toggle(PLATS_VALD, i === nasta));
+        synliga[nasta].scrollIntoView({ block: 'nearest' });
+    }
+
+    function hanteraPlatstangent(e) {
+        if (!installningar.sokbarPlats) return;
+        const input = e.target;
+        if (!(input instanceof HTMLInputElement) || !arPlatsfalt(input)) return;
+        const lista = platslista(input);
+        if (!lista) return;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            e.stopPropagation();
+            flyttaPlatsmarkering(lista, e.key === 'ArrowDown' ? 1 : -1);
+            return;
+        }
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            const synliga = synligaPlatser(lista);
+            const vald = synliga.find((o) => o.classList.contains(PLATS_VALD))
+                || (synliga.length === 1 ? synliga[0] : null);
+            if (vald) {
+                // Klicket går till MUI:s egen hanterare, som sätter värdet i
+                // det React-kontrollerade fältet och stänger listan.
+                vald.click();
+                return;
+            }
+            /* Ingen träff: fritexten står kvar och listan stängs. Utan det
+             * hade Enter gått vidare till Kbok, där Enter i platsfältet
+             * skickar hela formuläret och skapar posten - mätt i
+             * Utbildningsmiljön, med och utan skriptet. Ett Enter för att
+             * "bekräfta" ett eget kyrknamn ska inte spara en begravning. */
+            input.dispatchEvent(new KeyboardEvent('keydown',
+                { key: 'Escape', code: 'Escape', bubbles: true }));
+        }
+    }
+
     /* ---------- Avstämning av tacksägelser ----------
      *
      * Kyrkoordningen 24 kap. 6 §: efter ett dödsfall ska tacksägelse hållas
@@ -3747,6 +3873,7 @@
         }
         sakert('miljövalet', hanteraMiljoval);
         sakert('gallring vid utloggning', gallraVidUtloggning);
+        if (installningar.sokbarPlats) sakert('sökbar plats', filtreraPlatslistor);
         if (installningar.avstamningTacksagelser) {
             sakert('avstämningen', synkaAvstamningsflik);
         } else {
@@ -3785,6 +3912,14 @@
         document.addEventListener('mousedown', hindraAutoscroll, true);
         document.addEventListener('auxclick', oppnaViaMittenklick, true);
         document.addEventListener('keydown', hanteraGenvag, true);
+        document.addEventListener('keydown', hanteraPlatstangent, true);
+        // Att skriva ändrar fältets värde men inte DOM:en, så MutationObserver
+        // ser det inte. Filtret körs därför även vid varje tecken.
+        document.addEventListener('input', (e) => {
+            if (installningar.sokbarPlats && arPlatsfalt(e.target)) {
+                sakert('sökbar plats', filtreraPlatslistor);
+            }
+        }, true);
         document.addEventListener('keydown', hanteraDagensDatum, true);
         uppdatera();
         // Efter uppdatera(), så inställningarna hunnit läsas in.

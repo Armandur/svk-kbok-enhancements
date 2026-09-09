@@ -38,6 +38,7 @@ till höger, tillsammans med Byt församling och Inställningar.
 | Minns miljövalet | Fyller i senast valda miljön i Utbildningsmiljön, så den inte behöver väljas om i varje ny flik. | På |
 | Visa blanketten i stället | Visar PDF:en i en ruta med Skriv ut och Ladda ner, i stället för att ladda ner den direkt. | **Av** |
 | Adress krävs för verifikat | Stoppar **Skapa verifikat** när adressen saknas i konfirmation, vigsel, välsignelse eller begravning. Kbok kräver den bara i dop. | På |
+| Sökbar plats | Platslistan i handlingsformulären och pålysningsformuläret visar bara de kyrkor som matchar det du skriver. Pil ned och Enter väljer, fritext står kvar. | På |
 | Tomt pålysningsdatum | Låter bli att förifylla nästa söndag, så datumet skrivs in själv. Desktopklienten lät en välja. | **Av** |
 | Skriv ut verifikat | Utskriftsikon på ett öppnat verifikat, och utskrift på en sida i stället för flera med tomma ark. Gäller även webbläsarens Ctrl+P. | På |
 | Avstämning av tacksägelser | Fliken **Avstämning** i Pålysningsboken visar vilka avlidna som saknar pålysning för vald månad, med länk till varje pålysning som finns. Förvald månad är den föregående. | På |

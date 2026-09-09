@@ -13,6 +13,10 @@ byggt framgår av commit-historiken.
   personakten direkt från raden. Kryssa Hanterad för det som är omhändertaget
   på annat sätt. Klicka på månaden för att hoppa direkt till en annan
   månad och ett annat år. Listan går att skriva ut.
+- **Platslistan är sökbar.** Skriv några bokstäver i Välj plats eller
+  Pålyses i kyrka, så visar listan bara de kyrkor som matchar. Pil ned och
+  Enter väljer, och ett eget namn står kvar som förut. Enter på ett eget
+  namn stänger bara listan i stället för att spara posten.
 - Ctrl+B träffar bara knappen i den öppna rutan, inte en som är på väg
   bort eller ligger bakom inställningarna.
 - Tillägget glömmer namnet det döper blanketterna efter så snart filen

@@ -641,6 +641,41 @@ Verifierat i tre steg: vid öppning är fältet tomt och felet dolt, efter
 egen inmatning finns inget fel alls, och rensar användaren själv fältet
 visas felet som det ska.
 
+## Om den sökbara platsen
+
+Fältet Välj plats i handlingsformulären, och Pålyses i kyrka i
+pålysningsformuläret, är en MUI Autocomplete med fritext: `input` med
+`role="combobox"`, `aria-autocomplete="list"` och en Clear-knapp. Listan
+kommer från `GET Enhet/FetchKyrkorByEnhetsId?enhetsIds=<id>` och är den
+församlingens kyrkor under Administrera > Kyrkor. Men den filtrerar inte:
+mätt i Utbildningsmiljön med fyra kyrkor visade "hopp" alla fyra, och med
+sjutton kyrkor i en församling blir det bläddring varje gång.
+
+Skriptet lägger ett filter ovanpå Kboks lista i stället för att bygga en
+egen. Listrutan heter `<fältets id>-listbox`, och alternativen är
+`li[role="option"]`. Alternativ som inte innehåller det skrivna får en
+döljande klass, piltangenterna flyttar en egen markering bland de synliga,
+och Enter klickar det markerade alternativet, så MUI själv sätter värdet i
+det React-kontrollerade fältet. Att skriva ändrar inte DOM:en, så filtret
+körs även på `input`-händelsen, inte bara i `uppdatera()`.
+
+Fältet känns igen på etiketten (`label[for]`): Välj plats, Pålyses i kyrka
+och Pålysningsplats. Välj församling och Välj präst rörs inte.
+
+Verifierat 2026-09-09 i begravningsformuläret: "hopp" gav bara Hoppets
+kapell, pil ned och Enter satte värdet, "kyrk" gav tre av fyra och två pil
+ned plus Enter valde den andra, ett eget namn gav noten "Ingen kyrka i
+listan matchar" och stod kvar efter Tab.
+
+### Fällan: Enter i platsfältet sparar posten
+
+Utan skriptet skickar Enter i platsfältet hela formuläret. I
+begravningsformuläret skapades posten direkt, med dialogen "Begravning
+skapad med Blankettnummer …", utan dödsdatum och utan att användaren
+klickat Spara. Mätt med och utan skriptet 2026-09-09. Skriptet stoppar
+därför Enter i fältet medan listan är öppen: finns en träff väljs den,
+annars stängs listan och fritexten står kvar.
+
 ## Om avstämningen av tacksägelser
 
 Kyrkoordningen 24 kap. 6 §: efter ett dödsfall ska tacksägelse hållas i en
