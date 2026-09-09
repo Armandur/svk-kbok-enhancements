@@ -63,7 +63,7 @@ Klart när: båda rapporterna verifierade mot koden, fynden åtgärdade eller av
 
 ---
 
-## [P2][todo] [svk-kbok-enhancements] Utskriftsstilbladet döljer hela sidan vid Ctrl+P även när ingen verifikatruta är öppen
+## [P2][done] [svk-kbok-enhancements] Utskriftsstilbladet döljer hela sidan vid Ctrl+P även när ingen verifikatruta är öppen
 
 Hittad 2026-09-07 under TASK-1667, i Utbildningsmiljön med skriptet 0.46 injicerat.
 
