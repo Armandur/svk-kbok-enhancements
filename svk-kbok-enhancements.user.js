@@ -2619,6 +2619,12 @@
 
     const UTSKRIFT_KLASS = 'svk-kbok-utskriftsrot';
     const EJ_UTSKRIFT_KLASS = 'svk-kbok-ej-utskrift';
+    /* Reglerna gäller bara medan body bär den här klassen, alltså medan en
+     * verifikatruta är öppen eller avstämningens utskriftskopia finns. Utan
+     * spärren dolde stilbladet hela sidan vid Ctrl+P på alla Kbok-sidor så
+     * länge inställningen var på - tomt papper i Pålysningsboken, mätt
+     * 2026-09-07. */
+    const UTSKRIFT_AKTIV = 'svk-kbok-skriver';
 
     function laggTillUtskriftsstil() {
         if (document.getElementById('svk-kbok-utskriftsstil')) return;
@@ -2626,7 +2632,7 @@
         stil.id = 'svk-kbok-utskriftsstil';
         stil.textContent = `
             @media print {
-                body > *:not(.${UTSKRIFT_KLASS}) { display: none !important; }
+                body.${UTSKRIFT_AKTIV} > *:not(.${UTSKRIFT_KLASS}) { display: none !important; }
                 .${UTSKRIFT_KLASS} .MuiBackdrop-root { display: none !important; }
                 .${UTSKRIFT_KLASS} .MuiDialog-container {
                     display: block !important; height: auto !important; }
@@ -2660,6 +2666,10 @@
     function laggTillUtskriftsknapp() {
         const dialog = [...document.querySelectorAll('[role="dialog"]')]
             .find(arVerifikatruta);
+        // Spärren på body följer rutan: på medan den är öppen, av annars,
+        // så Ctrl+P på en vanlig sida skriver ut sidan som vanligt.
+        const kopia = document.querySelector('.svk-kbok-avstamningsutskrift');
+        document.body.classList.toggle(UTSKRIFT_AKTIV, !!dialog || !!kopia);
         if (!dialog) return;
 
         // Portalroten bär klassen, inte dialogen: stilbladet döljer allt
@@ -3598,7 +3608,11 @@
             kopia.appendChild(el('p', null, 'Inga dödsfallsverifikat i perioden.'));
         }
         document.body.appendChild(kopia);
-        window.addEventListener('afterprint', () => kopia.remove(), { once: true });
+        document.body.classList.add(UTSKRIFT_AKTIV);
+        window.addEventListener('afterprint', () => {
+            kopia.remove();
+            document.body.classList.remove(UTSKRIFT_AKTIV);
+        }, { once: true });
         window.print();
     }
 

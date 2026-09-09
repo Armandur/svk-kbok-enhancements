@@ -576,6 +576,12 @@ avgörande skillnaden: hade knappen byggt en egen ruta att skriva ut hade
 `Ctrl + P` fortsatt ge tre sidor för den som trycker av gammal vana. Nu ger
 båda vägarna samma resultat, **en sida**.
 
+Reglerna gäller bara medan `body` bär klassen `svk-kbok-skriver`, som
+skriptet sätter när en verifikatruta är öppen och tar bort när den stängs.
+Utan den spärren dolde stilbladet hela sidan vid Ctrl+P på alla Kbok-sidor
+så länge inställningen var på (TASK-1670, rättad 2026-09-09).
+Avstämningens utskrift sätter samma klass medan dess kopia finns.
+
 Reglerna hänger på en klass som sätts på verifikatrutans portalrot, alltså
 den direkta barnnoden till `body` som rymmer dialogen. Vid utskrift döljs
 allt annat under `body`, överlägget tas bort, och rutan får statisk

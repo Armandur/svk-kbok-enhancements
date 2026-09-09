@@ -19,6 +19,8 @@ byggt framgår av commit-historiken.
   namn stänger bara listan i stället för att spara posten.
 - Ctrl+B träffar bara knappen i den öppna rutan, inte en som är på väg
   bort eller ligger bakom inställningarna.
+- Ctrl+P på en vanlig Kbok-sida skriver ut sidan igen. Sedan 0.45 blev det
+  tomt papper om inget verifikat var öppet.
 - Tillägget glömmer namnet det döper blanketterna efter så snart filen
   fått sitt namn, och rensar allt sådant när du loggar ut.
 
