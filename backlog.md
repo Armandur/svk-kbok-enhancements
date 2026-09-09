@@ -1,5 +1,31 @@
 # Backlog Export
 
+## [P2][done] [svk-kbok-enhancements] Sökbar plats i handlingsformulären: förslag ur församlingens kyrkor medan man skriver
+
+Rasmus 2026-09-09.
+
+## Context
+Fältet Välj plats i formulären för kyrklig handling (dop, konfirmation, vigsel, välsignelse, begravning) och Pålyses i kyrka i pålysningsformuläret hämtar sina alternativ från Administrera > Kyrkor för församlingen. Listan går att skriva i fritt, men ger inte förslag utifrån det man skriver: man måste bläddra i hela listan eller skriva hela namnet. Önskat: skriv några bokstäver och få de kyrkor som matchar som förslag, välj ett med pil/Enter/klick, eller fortsätt skriva in ett eget namn som förut.
+
+Mätning i Utbildningsmiljön 2026-09-09: fältet är ett MUI Autocomplete (input role=combobox, aria-autocomplete=list, fritext tillåten, Clear-knapp). Utbildningsmiljön har bara en kyrka, så filtreringen måste mätas i testmiljön (se kommentarer på tasken).
+
+## Acceptance criteria
+1. När användaren skriver i Välj plats visas bara de kyrkor i församlingens lista som matchar det skrivna (skiftlägesokänsligt, matchning på ordbörjan eller delsträng, avgörs efter mätning), i samma listruta som Kbok använder.
+2. Ett förslag går att välja med piltangenter + Enter och med klick, och värdet hamnar i fältet så att Kbok registrerar det (React-kontrollerat fält).
+3. Fritext fungerar som förut: skriver användaren ett namn som inte finns i listan står det kvar och sparas.
+4. Samma beteende i alla fem handlingsformulären och i pålysningsformulärets Pålyses i kyrka, om det fältet har samma brist.
+5. Ny inställning, på som standard, i panelens grupp Formulär. README-rad, CHANGELOG-rad, Dokumentation.md-avsnitt med mätningen.
+
+## Verification
+- Mätning i testmiljön (flera kyrkor): skriv en delsträng, lista alternativen före/efter, verifiera att Kboks egen lista inte filtrerar (annars är tasken onödig).
+- Playwright i Utbildningsmiljön eller testmiljön med skriptet injicerat: skriv 'dom', kontrollera förslagen, välj med Enter, läs fältets värde och att Spara-flödet inte klagar. utdata från testmiljön maskeras, inga poster sparas i testmiljön.
+
+- ID: `01M22JZGC9FF0SRW1JNY099Z4Y`
+- Type: feature
+- Actor: ai:claude-fable-5-1
+
+---
+
 ## [P2][done] [svk-kbok-enhancements] Gallra tilläggets lagring i webbläsaren: töm namn efter användning och vid utloggning
 
 Rasmus 2026-09-08, efter granskningsrapporten för 0.46.
@@ -186,6 +212,20 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 - ID: `01KYNCHTA80GCT91Z0JGH6VJEY`
 - Type: task
 - Actor: ai:claude-code
+
+---
+
+## [P3][todo] [svk-kbok-enhancements] Gå igenom githistorik, docs och backlog och ta bort hänvisningar till testmiljön-miljön
+
+Rasmus 2026-09-09 (todo).
+
+Gå igenom githistoriken (commit-meddelanden), Dokumentation.md, CODE-REVIEWS.md, backlog.md, README och kommentarer i skriptet och ta bort hänvisningar till testmiljön-miljön (testmiljön, testmiljöns API, 'testmiljön') och det som mätts där. Bestäm först vad som ska vara kvar: skriptets @match-rad för testmiljön-domänen behövs för att tillägget ska fungera där. Att skriva om committade commit-meddelanden kräver history rewrite och force-push till main, vilket bryter mot repots regler - avgör med Rasmus om det räcker att rensa filerna framåt, eller om historiken ska skrivas om innan 0.46 pushas (inget av det är pushat än, så en lokal omskrivning är fortfarande möjlig utan force-push mot origin för de opushade commitsen).
+
+Klart när: grep -i 'gt' i repot (utom @match) ger inga träffar som pekar ut miljön, och Rasmus beslutat om historiken.
+
+- ID: `01M22K51H6Z9AFV0SW02101FJP`
+- Type: chore
+- Actor: ai:claude-fable-5-1
 
 ---
 
