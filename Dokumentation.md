@@ -1002,8 +1002,7 @@ Innan repot publicerades fanns en egen installationssida i hemnätet
 oavsett var de är. Vill den ha tillbaka finns den i git-historiken.
 
 Skriptet är begränsat med `@match` till Kbok-domänerna. Produktionsadressen
-`kbok.svenskakyrkan.se` är en gissning efter mönstret från
-`kob.svenskakyrkan.se` och behöver bekräftas.
+är `kbok.svenskakyrkan.se`, bekräftad 2026-09-09.
 
 ## Skärmdumparna i README
 
