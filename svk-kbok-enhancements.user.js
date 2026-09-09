@@ -3035,8 +3035,9 @@
             #${AVSTAMNING_ID} { padding: 1rem 0 1.5rem; font-size: 14px; }
             #${AVSTAMNING_ID} .svk-kbok-rad { display: flex; flex-wrap: wrap; gap: .6rem;
                 align-items: center; margin-bottom: .8rem; }
-            #${AVSTAMNING_ID} .svk-kbok-manad { font-weight: 600; min-width: 9.5rem;
-                text-align: center; text-transform: capitalize; }
+            #${AVSTAMNING_ID} .svk-kbok-manad { font: inherit; font-weight: 600; min-width: 10rem;
+                text-align: center; text-transform: capitalize; border: 1px solid #c9c5bd;
+                border-radius: 6px; padding: .3rem .5rem; background: #fff; cursor: pointer; }
             #${AVSTAMNING_ID} .svk-kbok-pil { border: 1px solid #c9c5bd; background: #fff;
                 border-radius: 6px; width: 2rem; height: 2rem; cursor: pointer; font: inherit; }
             #${AVSTAMNING_ID} input[type=date] { font: inherit; padding: .3rem .5rem;
@@ -3112,7 +3113,14 @@
         const bakat = el('button', 'svk-kbok-pil', '‹');
         bakat.type = 'button';
         bakat.title = 'Föregående månad';
-        const manadstext = el('span', 'svk-kbok-manad');
+        // Månaden är ett månadsfält: klicka på den och välj månad och år
+        // direkt, i stället för att stega. Webbläsaren visar den på svenska.
+        const manadstext = document.createElement('input');
+        manadstext.type = 'month';
+        manadstext.className = 'svk-kbok-manad';
+        manadstext.setAttribute('aria-label', 'Månad');
+        let egetIntervallValt = false;
+        const periodtext = () => (egetIntervallValt ? 'Eget intervall' : `${MANADER[manad]} ${ar}`);
         const framat = el('button', 'svk-kbok-pil', '›');
         framat.type = 'button';
         framat.title = 'Nästa månad';
@@ -3143,13 +3151,15 @@
             [tillstand.fran, tillstand.till] = manadsgranser(ar, manad);
             franFalt.value = tillstand.fran;
             tillFalt.value = tillstand.till;
-            manadstext.textContent = `${MANADER[manad]} ${ar}`;
+            egetIntervallValt = false;
+            manadstext.value = `${ar}-${String(manad + 1).padStart(2, '0')}`;
         }
 
         function egetIntervall() {
             tillstand.fran = franFalt.value;
             tillstand.till = tillFalt.value;
-            manadstext.textContent = 'Eget intervall';
+            egetIntervallValt = true;
+            manadstext.value = '';
         }
 
         bakat.addEventListener('click', () => {
@@ -3161,6 +3171,14 @@
         framat.addEventListener('click', () => {
             manad += 1;
             if (manad > 11) { manad = 0; ar += 1; }
+            sattManad();
+            korAvstamning();
+        });
+        manadstext.addEventListener('change', () => {
+            const traff = manadstext.value.match(/^(\d{4})-(\d{2})$/);
+            if (!traff) return;
+            ar = Number(traff[1]);
+            manad = Number(traff[2]) - 1;
             sattManad();
             korAvstamning();
         });
@@ -3192,7 +3210,7 @@
             const period = {
                 fran: tillstand.fran,
                 till: tillstand.till,
-                text: manadstext.textContent,
+                text: periodtext(),
             };
             const inaktuell = () => korning !== senasteKorning || tillstand.borttagen;
             pagar = true;

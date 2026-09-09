@@ -11,7 +11,8 @@ byggt framgår av commit-historiken.
   pålysningarna i alla dina församlingar. Du ser om varje pålysning är
   knuten till en begravning eller fristående, och kan öppna verifikatet och
   personakten direkt från raden. Kryssa Hanterad för det som är omhändertaget
-  på annat sätt. Listan går att skriva ut.
+  på annat sätt. Klicka på månaden för att hoppa direkt till en annan
+  månad och ett annat år. Listan går att skriva ut.
 - Ctrl+B träffar bara knappen i den öppna rutan, inte en som är på väg
   bort eller ligger bakom inställningarna.
 - Tillägget glömmer namnet det döper blanketterna efter så snart filen

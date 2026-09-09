@@ -714,6 +714,9 @@ bara för knutna. Rättas buggen kan steg 5 strykas.
 
 ### Fliken
 
+Månadsväljaren är ett `input type="month"`, så webbläsaren visar sin egen
+månadsväljare på svenska när man klickar på månaden. Pilarna stegar den.
+
 Pålysningsbokens flikar är MUI Tabs, `button[role=tab]` med id
 `palysning-tab-0` till `-3`, och panelerna `div[role=tabpanel]` som syskon
 med attributet `hidden`. Fliken Avstämning är en femte knapp med grannens
