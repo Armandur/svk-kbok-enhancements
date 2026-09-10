@@ -3,8 +3,8 @@
 Tre bilder: inställningspanelen, visningsrutan med en blankett och en
 träfflista med länkikonen.
 
-Utbildningsmiljöns personer är fiktiv övningsdata som får publiceras. testmiljön
-får inte användas här - där finns riktiga testpersoner.
+Utbildningsmiljöns personer är fiktiv övningsdata som får publiceras. Andra
+miljöer får inte användas här - där kan finnas riktiga testpersoner.
 
 Skriptet injiceras med add_init_script, som motsvarar @run-at
 document-start. Registreringen måste ske före inloggningens första

@@ -164,9 +164,9 @@ miljöväljare, `/utv_selectDb`, i stället för till adressen som öppnades.
 Det gäller både länkikonen och mittenklicket, och beror inte på skriptet -
 miljön kräver ett databasval per flik.
 
-Verifierat att det bara gäller den miljön: samma klick i testmiljön öppnar rätt
-personakt direkt. Antagligen fungerar testmiljön och produktion som testmiljön, men det är
-inte kontrollerat.
+Verifierat att det bara gäller den miljön: samma klick i en annan miljö
+öppnar rätt personakt direkt. Antagligen fungerar produktion likadant, men
+det är inte kontrollerat.
 
 ## Om vilka listor som får länkikonen
 
@@ -224,8 +224,8 @@ Välsignelse har också kod `V` och samma vy - den lagras som en vigsel.
 Vigsel och välsignelse gäller två personer och delar vy, så handlingens id
 måste med i frågesträngen för att rätt post ska öppnas.
 
-Verifierat mot alla fem typerna, i Utbildningsmiljön och testmiljön (som är enda
-miljön med en välsignelsepost). I Sök personer går länken fortfarande till
+Verifierat mot alla fem typerna, i Utbildningsmiljön och i en miljö som
+har en välsignelsepost. I Sök personer går länken fortfarande till
 personakten - där finns ingen handling att öppna - och ikonens
 hjälptext följer med.
 
@@ -502,8 +502,8 @@ Utträdesbevis med adress    ->  Utträdesbevis - Persson, Emil.pdf
 Kboks egen term behålls - `Upptagandebevis`, inte Inträdesbevis.
 
 Verifierat genom injektion: Dop, Konfirmation, Vigsel och Begravning samt
-bevisen i Utbildningsmiljön, Välsignelse och gruppblanketten i testmiljön (som är
-enda miljön med en välsignelsepost och en konfirmationsgrupp med
+bevisen i Utbildningsmiljön, Välsignelse och gruppblanketten i en miljö
+som har en välsignelsepost och en konfirmationsgrupp med
 innehåll). Dopposten saknade personakt och hade tom topprad - namnet lästes
 då ur sektionen, som avsett.
 
@@ -695,8 +695,8 @@ dödsfallspålysningarna. Specen med alla beslut ligger som backlog doc
 ### Anropen
 
 Skriptet frågar Kboks API direkt, med appens egen session. API:t ligger på
-en annan värd än appen (`kbok-utb-api.ksys.se` för Utbildningsmiljön,
-`testmiljöns API` för testmiljön), och produktionens adress är inte känd, så
+en annan värd än appen (`kbok-utb-api.ksys.se` för Utbildningsmiljön),
+och produktionens adress är inte känd, så
 basen läses ur appens första anrop när det passerar XHR-patchen.
 Autentiseringen är en cookie (`.AspNetCore.Cookies` på `.ksys.se`), ingen
 header, så anropen görs med `withCredentials`.
@@ -746,7 +746,7 @@ verifikat ska med i avstämningen.
 
 Pålysningslistans kolumn Löpnr är begravningsblankettens löpnummer och borde
 vara tom för en fristående pålysning. Men servern fyller den med ett värde
-från en annan rad i samma träfflista. Uppmätt i testmiljön 2026-09-07 mot en
+från en annan rad i samma träfflista. Uppmätt 2026-09-07 mot en
 nyskapad fristående pålysning, i Kboks eget gränssnitt: sökt på personnummer
 fick den den knutna pålysningens löpnummer, sökt på efternamn en annan
 persons, sökt på datum som ensam träff tomt. Rapporterat till Kanslistöd
@@ -813,7 +813,8 @@ tas bort vid `afterprint`.
 
 Verifierat 2026-09-07: i Utbildningsmiljön (ett dödsfall i december 2025,
 Saknas, Hanterad sparad och kvar efter omladdning, flikväxling åt båda håll,
-utskriftskopian) och i testmiljön (maj 2025 med 15 dödsfall, alla knutna; september
+utskriftskopian) och i en miljö med riktiga volymer (maj 2025 med 15
+dödsfall, alla knutna; september
 2025 med 9, varav en person med både knuten och fristående pålysning).
 
 Kontrollerat 2026-09-08 efter nattens nollställning: `FetchVerifikatByVerifikatsId`
@@ -1061,4 +1062,5 @@ webbläsaren ska startas med `channel="chromium"` - standard-headless
 saknar PDF-visaren och ger en tom ram som ser ut som en lyckad bild.
 
 Bilderna tas i Utbildningsmiljön, vars personer är fiktiv övningsdata som
-får publiceras. testmiljön får inte användas - där finns riktiga testpersoner.
+får publiceras. Andra miljöer får inte användas - där kan finnas riktiga
+testpersoner.

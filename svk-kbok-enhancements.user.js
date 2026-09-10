@@ -5,8 +5,6 @@
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
-// @match        https://testmiljön/*
-// @match        https://testmiljön/*
 // @run-at       document-start
 // @grant        none
 // @updateURL    https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
@@ -2886,8 +2884,7 @@
         'augusti', 'september', 'oktober', 'november', 'december'];
 
     /* API:t ligger på en annan värd än appen (kbok-utb-api.ksys.se för
-     * Utbildningsmiljön, testmiljöns API för testmiljön) och produktionens adress
-     * är inte känd. Basen läses därför ur appens egna anrop när de passerar
+     * Utbildningsmiljön) och produktionens adress är inte känd. Basen läses därför ur appens egna anrop när de passerar
      * XHR-patchen, aldrig ur en lista. */
     let apiBas = null;
 

@@ -67,9 +67,9 @@ att något är trasigt förrän cachen hunnit gå ut.
 Verifiera i **Utbildningsmiljön** - dess personer är fiktiv övningsdata som
 får publiceras i commit-meddelanden och skärmdumpar.
 
-**testmiljön innehåller riktiga testpersoner.** Deras namn och personnummer får inte
-committas eller publiceras. Använd testmiljön bara när något saknas i
-Utbildningsmiljön, exempelvis välsignelseposter och konfirmationsgrupper med
+**Andra miljöer kan innehålla riktiga testpersoner.** Deras namn och
+personnummer får inte committas eller publiceras. Använd en annan miljö bara
+när något saknas i Utbildningsmiljön, exempelvis välsignelseposter och konfirmationsgrupper med
 innehåll, och maskera i så fall utdata.
 
 Utbildningsmiljön nollas varje natt, så irreversibla testhandlingar där är
