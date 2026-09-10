@@ -229,7 +229,7 @@ Klart när: grep -i 'gt' i repot (utom @match) ger inga träffar som pekar ut mi
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Avstämningstabellen: paginering och samma utseende som Kboks egna tabeller
+## [P3][doing] [svk-kbok-enhancements] Avstämningstabellen: paginering och samma utseende som Kboks egna tabeller
 
 Rasmus 2026-09-07, vid produktionstest av 0.46 (TASK-1667).
 
@@ -294,7 +294,7 @@ Klart när: pålysningsrader har länkikon som öppnar /palysning/<id>, verifier
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Enter öppnar markerad rad i en träfflista
+## [P3][done] [svk-kbok-enhancements] Enter öppnar markerad rad i en träfflista
 
 Föreslogs 2026-07-29, aldrig reggat förrän nu.
 
@@ -320,7 +320,7 @@ Klart när: Enter på en markerad rad i Sök personer och Ministerialboken öppn
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Klicka Hämta grupper automatiskt när församlingen byts i Konfirmationsgrupper
+## [P3][done] [svk-kbok-enhancements] Klicka Hämta grupper automatiskt när församlingen byts i Konfirmationsgrupper
 
 Föreslogs 2026-07-29 i genomgången av vad mer tillägget kan göra, aldrig reggat förrän nu.
 
