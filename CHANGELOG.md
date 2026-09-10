@@ -3,11 +3,17 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.47
+
+- **Konfirmationsgrupper hämtas när du byter församling**, så gamla grupper
+  inte står kvar och ser ut som den nya församlingens.
+- **Länkikonen finns nu även i Pålysningsboken** och öppnar pålysningen i ny
+  flik.
+- Avstämningens lista ser ut som Kboks andra listor och bläddras sidvis, 50
+  rader per sida som förval.
+
 ## 0.46
 
-- Avstämningens lista ser ut som Kboks andra listor och bläddras sidvis, 50 rader per sida som förval.
-- **Konfirmationsgrupper hämtas när du byter församling**, så gamla grupper inte står kvar och ser ut som den nya församlingens.
-- Länkikonen finns nu även i Pålysningsboken och öppnar pålysningen i ny flik.
 - **Avstämning av tacksägelser** i Pålysningsboken: en ny flik visar vilka
   avlidna som saknar pålysning för vald månad, förvalt den föregående.
   Dödsfallen gäller den församling du är inloggad i, medan tillägget söker
