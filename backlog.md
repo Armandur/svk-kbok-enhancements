@@ -229,7 +229,7 @@ Klart när: grep -i 'gt' i repot (utom @match) ger inga träffar som pekar ut mi
 
 ---
 
-## [P3][doing] [svk-kbok-enhancements] Avstämningstabellen: paginering och samma utseende som Kboks egna tabeller
+## [P3][done] [svk-kbok-enhancements] Avstämningstabellen: paginering och samma utseende som Kboks egna tabeller
 
 Rasmus 2026-09-07, vid produktionstest av 0.46 (TASK-1667).
 
