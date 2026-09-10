@@ -84,6 +84,7 @@
         fokusBekraftaVerifikat: false,
         skrivUtVerifikat: true,
         sokbarPlats: true,
+        hamtaGrupper: true,
         avstamningTacksagelser: true,
         genvagarPa: true,
         kollaUppdatering: true,
@@ -105,6 +106,7 @@
         fokusBekraftaVerifikat: 'Sätt fokus på Bekräfta verifikat när dialogen öppnas, så Enter bekräftar',
         skrivUtVerifikat: 'Skriv ut-ikon på öppnade verifikat, och utskrift på en sida',
         sokbarPlats: 'Platslistan visar bara de kyrkor som matchar det du skriver',
+        hamtaGrupper: 'Hämta grupper automatiskt när församlingen byts i Konfirmationsgrupper',
         avstamningTacksagelser: 'Fliken Avstämning i Pålysningsboken - dödsfall som saknar pålysning',
         genvagarPa: 'Genvägarna är på',
         kollaUppdatering: 'Säg till när en ny version finns - frågar GitHub en gång per dygn',
@@ -119,7 +121,8 @@
           nycklar: ['nyflikLank', 'mittenklick', 'markerbartPersonnummer'] },
         { rubrik: 'Formulär',
           nycklar: ['autoHamta', 'hoppaOverDatumvaljare', 'dagensDatum',
-              'fokusDatum', 'kravAdress', 'tomPalysningsdatum', 'sokbarPlats'] },
+              'fokusDatum', 'kravAdress', 'tomPalysningsdatum', 'sokbarPlats',
+              'hamtaGrupper'] },
         { rubrik: 'Blanketter och rapporter',
           nycklar: ['blankettnamn', 'visaBlankett', 'skrivUtVerifikat'] },
         { rubrik: 'Pålysningsbok',
@@ -320,9 +323,27 @@
     }
 
     let installningar = lasInstallningar();
+    let senastSeddGruppEnhet = null;
 
     function sparaInstallningar() {
         localStorage.setItem(NYCKEL, JSON.stringify(installningar));
+    }
+
+    function hamtaGrupperVidForsamlingsbyte() {
+        const enhetsfalt = document.querySelector('input[name="enhetsId"]');
+        if (!enhetsfalt) {
+            senastSeddGruppEnhet = null;
+            return;
+        }
+
+        const enhetsId = (enhetsfalt.value || '').trim();
+        if (senastSeddGruppEnhet === null) {
+            senastSeddGruppEnhet = enhetsId;
+            return;
+        }
+        if (enhetsId === senastSeddGruppEnhet) return;
+        senastSeddGruppEnhet = enhetsId;
+        if (enhetsId) klickaKnappMedText('Hämta grupper');
     }
 
     // Id:n kommer ur data-id och API-svar. Bara heltal får bli en del av
@@ -4023,6 +4044,12 @@
         sakert('miljövalet', hanteraMiljoval);
         sakert('gallring vid utloggning', gallraVidUtloggning);
         if (installningar.sokbarPlats) sakert('sökbar plats', filtreraPlatslistor);
+        if (installningar.hamtaGrupper
+            && location.pathname.startsWith('/konfirmationsgrupper')) {
+            sakert('grupphämtningen', hamtaGrupperVidForsamlingsbyte);
+        } else {
+            senastSeddGruppEnhet = null;
+        }
         if (installningar.avstamningTacksagelser) {
             sakert('avstämningen', synkaAvstamningsflik);
         } else {

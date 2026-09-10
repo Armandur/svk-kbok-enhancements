@@ -892,7 +892,7 @@ sparar Spara ändå ingenting och säger ingenting. Saknas i stället
 valideringsåterkopplingen finns alltså, men träffar inte allt. Rapporterat
 som kbok-web TASK-534.
 
-### 2. Hämta grupper uppdaterar inte listan automatiskt
+### 2. Hämta grupper uppdaterar inte listan automatiskt (åtgärdad i skriptet)
 
 I Konfirmationsgrupper räcker det inte att välja församling i droplistan -
 listan uppdateras först när man klickar **Hämta grupper**. Byter man
@@ -900,8 +900,9 @@ församling utan att klicka står de gamla grupperna kvar och ser ut som den
 nya församlingens. Verifierat: efter byte från en församling med två
 grupper till en utan visades fortfarande de två.
 
-Kandidat för automatisering: klicka Hämta grupper automatiskt när
-församlingsvalet ändras.
+Skriptet läser den dolda inputens värde vid varje DOM-ändring. När värdet
+ändras klickar skriptet på **Hämta grupper**. Skriptet klickar inte när sidan
+öppnas, eftersom Kbok redan har hämtat grupperna då.
 
 ### 3. Adresskontroll bara i Dop
 
