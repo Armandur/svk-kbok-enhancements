@@ -257,7 +257,7 @@ Klart när: lintern körd på filen, kommentarer och användartexter omskrivna d
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Bygg länkikonen i Pålysningsboken - utredningen är klar
+## [P3][done] [svk-kbok-enhancements] Bygg länkikonen i Pålysningsboken - utredningen är klar
 
 Uppföljning på TASK-530, som utredde frågan och stängdes 2026-07-30.
 
@@ -320,7 +320,7 @@ Klart när: Enter på en markerad rad i Sök personer och Ministerialboken öppn
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Klicka Hämta grupper automatiskt när församlingen byts i Konfirmationsgrupper
+## [P3][doing] [svk-kbok-enhancements] Klicka Hämta grupper automatiskt när församlingen byts i Konfirmationsgrupper
 
 Föreslogs 2026-07-29 i genomgången av vad mer tillägget kan göra, aldrig reggat förrän nu.
 
