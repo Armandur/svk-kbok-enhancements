@@ -788,6 +788,13 @@ och döljs medan fliken Avstämning är vald. Klick på appens flikar fångas av
 en lyssnare på `document`, inte på flikraden: React byter ut flikraden vid
 omritning, och en lyssnare på det gamla elementet hade följt med.
 
+Tabellen följer Kboks DataGrid. Rubrikraden är 42 pixlar hög och har en
+svart underkant på 2 pixlar. Dataraderna är 36 pixlar höga och saknar
+skiljelinjer. Cellerna har 10 pixlars sidpadding och visar texten på en rad.
+En fot på 52 pixlar sköter tabellens egen paginering. Den förvalda
+sidstorleken är 50 rader. Användaren kan välja 25, 50 eller 100 rader.
+Skriptet sparar valet i `localStorage`.
+
 Församlingsbyte via API (`GET SwitchEnhetForUser?newEnhetId=N`, det appen
 anropar från dialogen Välj församling) gav `500` när det anropades direkt,
 så avstämning över flera församlingar i ett svep är inte byggd. Verifikaten
@@ -837,6 +844,7 @@ det.
 | `svk-kbok-gruppnamn`, `svk-kbok-gruppkalla` | konfirmationsgruppens namn och gruppvyns adress | sessionStorage | samma |
 | `svk-kbok-onskad-sida`, `svk-kbok-mal-forsokt` | adressen att gå till efter miljövalet i Utbildningsmiljön | sessionStorage | tills miljövalet är gjort |
 | `svk-kbok-hanterade` | verifikat-id och datum för Hanterad-markeringar | localStorage | tolv månader, eller knappen Rensa |
+| `svk-kbok-avstamning-sidstorlek` | vald sidstorlek för avstämningstabellen | localStorage | tills användaren väljer en annan sidstorlek |
 | `svk-kbok-enhancements` | inställningarna och genvägarna | localStorage | tills användaren ändrar dem |
 | `svk-kbok-miljo` | senast valda miljö i Utbildningsmiljön | localStorage | tills nästa val |
 | `svk-kbok-senaste-version`, `svk-kbok-uppdatering-visad` | uppdateringskontrollens minne | localStorage | ett dygn |

@@ -5,6 +5,7 @@ byggt framgår av commit-historiken.
 
 ## 0.46
 
+- Avstämningens lista ser ut som Kboks andra listor och bläddras sidvis, 50 rader per sida som förval.
 - **Konfirmationsgrupper hämtas när du byter församling**, så gamla grupper inte står kvar och ser ut som den nya församlingens.
 - Länkikonen finns nu även i Pålysningsboken och öppnar pålysningen i ny flik.
 - **Avstämning av tacksägelser** i Pålysningsboken: en ny flik visar vilka

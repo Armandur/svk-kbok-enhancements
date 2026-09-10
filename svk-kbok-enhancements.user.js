@@ -3013,6 +3013,7 @@
      */
 
     const HANTERADE_NYCKEL = 'svk-kbok-hanterade';
+    const AVSTAMNING_SIDSTORLEK_NYCKEL = 'svk-kbok-avstamning-sidstorlek';
     const AVSTAMNING_ID = 'svk-kbok-avstamning';
     const DOLJ_KLASS = 'svk-kbok-dold-av-avstamning';
     const ARENDETYP_DODSFALL = 5;
@@ -3324,11 +3325,17 @@
             #${AVSTAMNING_ID} .svk-kbok-summering { margin: .2rem 0 .8rem; }
             #${AVSTAMNING_ID} .svk-kbok-status { color: #6b6862; }
             #${AVSTAMNING_ID} .svk-kbok-status.svk-kbok-fel { color: #b3261e; }
-            .svk-kbok-avstamningstabell { border-collapse: collapse; width: 100%; }
+            .svk-kbok-avstamningstabell { border-collapse: collapse; table-layout: fixed;
+                width: 100%; color: rgba(0, 0, 0, .87); font: inherit; }
             .svk-kbok-avstamningstabell th, .svk-kbok-avstamningstabell td {
-                text-align: left; vertical-align: top; padding: .45rem .6rem;
-                border-bottom: 1px solid #e5e2dc; }
-            .svk-kbok-avstamningstabell th { font-weight: 600; white-space: nowrap; }
+                box-sizing: border-box; overflow: hidden; padding: 0 10px;
+                text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+            .svk-kbok-avstamningstabell th { height: 42px; border-bottom: 2px solid #000;
+                background: #fff; font-size: 14px; font-weight: 600; line-height: 40px; }
+            .svk-kbok-avstamningstabell tbody tr { height: 36px; }
+            .svk-kbok-avstamningstabell tbody tr:hover { background: rgba(0, 0, 0, .04); }
+            .svk-kbok-avstamningstabell td { height: 36px; border-bottom: 0;
+                font-size: 14px; line-height: 35px; }
             .svk-kbok-avstamningstabell .svk-kbok-mitt { text-align: center; }
             .svk-kbok-avstamningstabell .svk-kbok-mitt input { vertical-align: middle; }
             .svk-kbok-avstamningstabell .svk-kbok-saknas { color: #b3261e; font-weight: 600; }
@@ -3336,6 +3343,18 @@
             .svk-kbok-avstamningstabell tr.svk-kbok-hanterad td { opacity: .5; }
             .svk-kbok-avstamningstabell a { color: ${ACCENT}; }
             .svk-kbok-avstamningstabell .svk-kbok-dampad { color: #6b6862; font-size: .9em; }
+            #${AVSTAMNING_ID} .svk-kbok-paginering { display: flex; align-items: center;
+                justify-content: flex-end; gap: 8px; min-height: 52px;
+                border-top: 1px solid rgb(224, 224, 224); white-space: nowrap; }
+            #${AVSTAMNING_ID} .svk-kbok-paginering select { border: 0; background: transparent;
+                color: inherit; font: inherit; padding: 4px 20px 4px 8px; }
+            #${AVSTAMNING_ID} .svk-kbok-sidknapp { display: inline-flex; align-items: center;
+                justify-content: center; width: 40px; height: 40px; padding: 0; border: 0;
+                border-radius: 50%; background: transparent; color: inherit; font: inherit;
+                font-size: 22px; cursor: pointer; }
+            #${AVSTAMNING_ID} .svk-kbok-sidknapp:hover:not(:disabled) {
+                background: rgba(0, 0, 0, .04); }
+            #${AVSTAMNING_ID} .svk-kbok-sidknapp:disabled { opacity: .38; cursor: default; }
             .svk-kbok-avstamningsutskrift { display: none; }
             @media print {
                 .svk-kbok-avstamningsutskrift { display: block; font: 11pt/1.4 sans-serif; }
@@ -3351,6 +3370,11 @@
         if (klass) e.className = klass;
         if (text !== undefined) e.textContent = text;
         return e;
+    }
+
+    function lasAvstamningssidstorlek() {
+        const sparad = Number(localStorage.getItem(AVSTAMNING_SIDSTORLEK_NYCKEL));
+        return [25, 50, 100].includes(sparad) ? sparad : 50;
     }
 
     function byggAvstamning(tablist) {
@@ -3378,7 +3402,7 @@
 
         const tillstand = {
             flik, panel, vald: false, fran: null, till: null, resultat: null, period: null,
-            borttagen: false,
+            borttagen: false, sida: 0, sidstorlek: lasAvstamningssidstorlek(),
         };
 
         // Föregående kalendermånad är förvald: avstämningen görs månaden
@@ -3492,6 +3516,7 @@
                 text: periodtext(),
             };
             const inaktuell = () => korning !== senasteKorning || tillstand.borttagen;
+            tillstand.sida = 0;
             pagar = true;
             kor.disabled = true;
             status.classList.remove('svk-kbok-fel');
@@ -3547,7 +3572,12 @@
             const ordning = (r) => (r.hanterad ? 3 : !r.palysningar ? 1 : r.palysningar.length ? 2 : 0);
             rader.sort((a, b) => ordning(a) - ordning(b) || (a.aviserat < b.aviserat ? 1 : -1));
 
-            yta.appendChild(byggTabell(rader, tillstand));
+            const antalSidor = Math.max(1, Math.ceil(rader.length / tillstand.sidstorlek));
+            tillstand.sida = Math.min(tillstand.sida, antalSidor - 1);
+            const fran = tillstand.sida * tillstand.sidstorlek;
+            const till = Math.min(fran + tillstand.sidstorlek, rader.length);
+            yta.appendChild(byggTabell(rader, tillstand, fran, till));
+            yta.appendChild(byggPaginering(rader.length, tillstand, rita));
 
             if (skyddade.length) {
                 const p = el('p', 'svk-kbok-status');
@@ -3581,8 +3611,18 @@
         (appPanel || rot).insertAdjacentElement('afterend', panel);
     }
 
-    function byggTabell(rader, tillstand) {
+    function byggTabell(rader, tillstand, fran = 0, till = rader.length) {
         const tabell = el('table', 'svk-kbok-avstamningstabell');
+        // Fast tabellayout klipper långa värden med ellips i stället för att
+        // bryta rad. Bredderna ger namn och pålysning mest plats, datumen
+        // och kryssrutan minst.
+        const kolumner = el('colgroup');
+        [26, 11, 11, 18, 9, 9, 16].forEach((procent) => {
+            const kol = el('col');
+            kol.style.width = `${procent}%`;
+            kolumner.appendChild(kol);
+        });
+        tabell.appendChild(kolumner);
         const huvud = el('thead');
         const hr = el('tr');
         ['Avliden', 'Dödsdatum', 'Aviserat', 'Pålysning', 'Art', 'Hanterad', 'Öppna']
@@ -3591,13 +3631,15 @@
         tabell.appendChild(huvud);
         const kropp = el('tbody');
 
-        rader.forEach((r) => {
+        rader.slice(fran, till).forEach((r) => {
             const tr = el('tr', r.hanterad ? 'svk-kbok-hanterad' : '');
             tr.dataset.verifikatId = r.verifikatId;
 
             const avliden = el('td');
-            avliden.appendChild(el('div', null, r.namn || '(uppgift saknas)'));
-            avliden.appendChild(el('div', 'svk-kbok-dampad', r.personnummer));
+            avliden.appendChild(document.createTextNode(r.namn || '(uppgift saknas)'));
+            if (r.personnummer) {
+                avliden.appendChild(el('span', 'svk-kbok-dampad', ` ${r.personnummer}`));
+            }
             tr.appendChild(avliden);
 
             tr.appendChild(el('td', null, r.dodsdatum || ''));
@@ -3610,26 +3652,28 @@
             } else if (!r.palysningar.length) {
                 palysning.appendChild(el('span', 'svk-kbok-saknas', 'Saknas'));
             } else {
-                r.palysningar.forEach((p) => {
+                r.palysningar.forEach((p, i) => {
                     // Datum och församling räcker här - kyrkan står i pålysningen.
                     const lank = el('a', null,
                         [visaDatum(p.palysningsdatum), p.forsamling].filter(Boolean).join(' · '));
                     lank.href = `/palysning/${p.palysningsId}`;
-                    palysning.appendChild(el('div')).appendChild(lank);
-                    const artrad = el('div');
+                    if (i) palysning.appendChild(document.createTextNode(' · '));
+                    palysning.appendChild(lank);
+                    if (i) art.appendChild(document.createTextNode(' · '));
                     // Löpnumret säger självt att pålysningen är knuten.
                     if (p.knuten === true) {
-                        artrad.textContent = p.lopnr || 'Knuten';
+                        art.appendChild(document.createTextNode(p.lopnr || 'Knuten'));
                     } else if (p.knuten === false) {
-                        artrad.appendChild(el('span', 'svk-kbok-fristaende', 'Fristående'));
+                        art.appendChild(el('span', 'svk-kbok-fristaende', 'Fristående'));
                     } else {
-                        artrad.textContent = 'Art okänd';
+                        art.appendChild(document.createTextNode('Art okänd'));
                     }
-                    art.appendChild(artrad);
                 });
                 const forsamlingar = new Set(r.palysningar.map((p) => p.forsamling));
                 if (forsamlingar.size > 1) {
-                    art.appendChild(el('div', 'svk-kbok-dampad', `${forsamlingar.size} församlingar`));
+                    art.appendChild(document.createTextNode(' · '));
+                    art.appendChild(el('span', 'svk-kbok-dampad',
+                        `${forsamlingar.size} församlingar`));
                 }
             }
             tr.appendChild(palysning);
@@ -3678,6 +3722,52 @@
         });
         tabell.appendChild(kropp);
         return tabell;
+    }
+
+    function byggPaginering(antal, tillstand, rita) {
+        const fot = el('div', 'svk-kbok-paginering');
+        fot.appendChild(el('span', null, 'Rader per sida'));
+
+        const sidstorlek = document.createElement('select');
+        sidstorlek.setAttribute('aria-label', 'Rader per sida');
+        [25, 50, 100].forEach((antalRader) => {
+            const val = el('option', null, String(antalRader));
+            val.value = String(antalRader);
+            val.selected = antalRader === tillstand.sidstorlek;
+            sidstorlek.appendChild(val);
+        });
+        sidstorlek.addEventListener('change', () => {
+            tillstand.sidstorlek = Number(sidstorlek.value);
+            tillstand.sida = 0;
+            localStorage.setItem(AVSTAMNING_SIDSTORLEK_NYCKEL, String(tillstand.sidstorlek));
+            rita();
+        });
+        fot.appendChild(sidstorlek);
+
+        const fran = antal ? tillstand.sida * tillstand.sidstorlek + 1 : 0;
+        const till = Math.min((tillstand.sida + 1) * tillstand.sidstorlek, antal);
+        fot.appendChild(el('span', null, `${fran} - ${till} av ${antal}`));
+
+        const sistaSidan = Math.max(0, Math.ceil(antal / tillstand.sidstorlek) - 1);
+        const laggTillKnapp = (text, etikett, mal, avstangd) => {
+            const knapp = el('button', 'svk-kbok-sidknapp', text);
+            knapp.type = 'button';
+            knapp.setAttribute('aria-label', etikett);
+            knapp.disabled = avstangd;
+            knapp.addEventListener('click', () => {
+                tillstand.sida = mal();
+                rita();
+            });
+            fot.appendChild(knapp);
+        };
+        laggTillKnapp('«', 'Gå till första sidan', () => 0, tillstand.sida === 0);
+        laggTillKnapp('‹', 'Gå till föregående sida', () => tillstand.sida - 1,
+            tillstand.sida === 0);
+        laggTillKnapp('›', 'Gå till nästa sida', () => tillstand.sida + 1,
+            tillstand.sida === sistaSidan);
+        laggTillKnapp('»', 'Gå till sista sidan', () => sistaSidan,
+            tillstand.sida === sistaSidan);
+        return fot;
     }
 
     /* Verifikatet har ingen egen adress. En React-kontext
@@ -3741,18 +3831,15 @@
         const kopia = el('div', `${UTSKRIFT_KLASS} svk-kbok-avstamningsutskrift`);
         kopia.appendChild(el('h2', null, 'Avstämning av tacksägelser'));
         kopia.appendChild(el('p', null, summering));
-        const tabell = tillstand.panel.querySelector('.svk-kbok-avstamningstabell');
-        if (tabell) {
-            const klon = tabell.cloneNode(true);
-            // Kryssrutans läge följer inte med i en klon - skriv det som text.
-            klon.querySelectorAll('input[type=checkbox]').forEach((k, i) => {
-                const original = tabell.querySelectorAll('input[type=checkbox]')[i];
-                k.replaceWith(document.createTextNode(original && original.checked ? 'Ja' : ''));
+        if (tillstand.resultat.rader.length) {
+            const tabell = byggTabell(tillstand.resultat.rader, tillstand);
+            tabell.querySelectorAll('input[type=checkbox]').forEach((k) => {
+                k.replaceWith(document.createTextNode(k.checked ? 'Ja' : ''));
             });
-            klon.querySelectorAll('a').forEach((a) => {
+            tabell.querySelectorAll('a').forEach((a) => {
                 a.replaceWith(document.createTextNode(a.textContent));
             });
-            kopia.appendChild(klon);
+            kopia.appendChild(tabell);
         } else {
             kopia.appendChild(el('p', null, 'Inga dödsfallsverifikat i perioden.'));
         }
