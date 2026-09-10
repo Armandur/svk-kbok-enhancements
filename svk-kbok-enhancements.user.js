@@ -11,17 +11,18 @@
 // @downloadURL  https://raw.githubusercontent.com/armandur/svk-kbok-enhancements/main/svk-kbok-enhancements.user.js
 // ==/UserScript==
 
-/* Kbok är en MUI-app. Tre saker styr hur skriptet är byggt:
+/* Kbok är en MUI-app. Tre saker styr skriptets uppbyggnad:
  *
- * 1. Träfflistorna är MUI DataGrid, som virtualiserar raderna - de skapas
- *    och förstörs vid scroll. Allt som injiceras måste därför läggas på
- *    igen via MutationObserver, inte en gång vid sidladdning.
+ * 1. Träfflistorna är MUI DataGrid, som virtualiserar raderna - MUI skapar
+ *    och förstör dem vid scroll. Skriptet måste därför lägga på allt
+ *    injicerat igen via MutationObserver, i stället för bara en gång vid
+ *    sidladdning.
  *
  * 2. Varje rad bär personaktens id i attributet data-id. Verifierat mot
  *    Sök personer: raden med data-id="21071" öppnar /personakt/21071 vid
- *    dubbelklick. Det gör att en riktig <a href> går att bygga - och en
- *    riktig länk ger vänsterklick, mittenklick och högerklickmenyns
- *    "Öppna i ny flik" utan att skriptet behöver hantera något av dem.
+ *    dubbelklick. Skriptet kan därför bygga en riktig <a href>. En sådan
+ *    länk ger vänsterklick, mittenklick och högerklickmenyns "Öppna i ny
+ *    flik" utan att skriptet själv behöver hantera något av dem.
  *
  * 3. Datumfältens kalenderknapp har tabindex="0" och ligger mellan
  *    datumfältet och nästa fält i tabbordningen. Den som skriver datum för
@@ -35,9 +36,10 @@
      * upp .user.js-filer, så skriptet kan vara aktivt i två tillägg samtidigt.
      * Prototyppatcharna tål det - de är idempotenta - men lyssnarna på
      * document gör det inte: två instanser ger två keydown-lyssnare på samma
-     * tangenttryckning. Ctrl+B är den enda genvägen som gör något
-     * oåterkalleligt, och ett dubbelt klick på Bekräfta verifikat är den
-     * värsta tänkbara följden av en dubblering. */
+     * tangenttryckning. */
+    /* Ctrl+B är den enda genvägen som gör något oåterkalleligt, och ett
+     * dubbelt klick på Bekräfta verifikat är den värsta tänkbara följden
+     * av en dubblering. */
     if (window.__svkKbokEnhancements) return;
     window.__svkKbokEnhancements = true;
 
@@ -107,10 +109,10 @@
         kollaUppdatering: 'Säg till när en ny version finns - frågar GitHub en gång per dygn',
     };
 
-    /* Inställningarna grupperas efter var de märks, i stället för att ligga
-     * i en enda lista. Genvägsbrytaren hör till genvägsrubriken och ligger
-     * där; fokusinställningen står sist, ensam, eftersom den gör Enter till
-     * en slutregistrering. */
+    /* Skriptet grupperar inställningarna efter var de märks, i stället för
+     * att lägga dem i en enda lista. Genvägsbrytaren hör till
+     * genvägsrubriken och ligger där. Fokusinställningen står sist,
+     * ensam, eftersom den gör Enter till en slutregistrering. */
     const GRUPPER = [
         { rubrik: 'Träfflistor',
           nycklar: ['nyflikLank', 'mittenklick', 'markerbartPersonnummer'] },
@@ -130,9 +132,9 @@
     /* ---------- Tangentbordsgenvägar ----------
      *
      * Desktopklientens kortkommandon, flyttade till tangenter som
-     * webbläsaren inte redan använder. Ctrl+W (skapa verifikat) hade
-     * stängt fliken; funktionen ligger därför på Ctrl+Ö, som i gamla Kbok
-     * var "Töm alla fält".
+     * webbläsaren inte redan använder. */
+    /* Ctrl+W (skapa verifikat) hade stängt fliken. Funktionen ligger
+     * därför på Ctrl+Ö, som i gamla Kbok var "Töm alla fält".
      */
 
     const KOMMANDON = {
@@ -166,9 +168,11 @@
             gammal: 'Fanns inte i gamla Kbok',
             kor: hamtaAktuellBlankett,
         },
-        // Den enda genvägen som gör något oåterkalleligt. De övriga går att
-        // backa - ett verifikat kan avvisas, ett formulär stängas - men en
-        // bekräftelse är slutregistrering. Markeras därför i panelen.
+        // Den enda genvägen som gör något oåterkalleligt.
+        //
+        // De övriga går att backa - användaren kan avvisa ett verifikat,
+        // stänga ett formulär - men en bekräftelse är slutregistrering.
+        // Skriptet markerar den därför i panelen.
         bekraftaVerifikat: {
             etikett: 'Bekräfta verifikat',
             standard: 'Ctrl+B',
@@ -178,17 +182,17 @@
         },
     };
 
-    /* Blanketten för den handling man står i.
-     *
-     * Den valda fliken bär handlingens namn med "bok" på slutet - Dopbok,
+    /* Blanketten för den handling man står i. */
+    /* Den valda fliken bär handlingens namn med "bok" på slutet - Dopbok,
      * Vigselbok, Begravningsbok - och blanketten heter samma sak med
      * "blankett" i stället. Det gör att vigsel och välsignelse går att skilja
      * åt, trots att de delar URL: fliken heter Vigselbok respektive
      * Välsignelsebok.
-     *
-     * Blanketten hämtas genom att öppna Rapporter-menyn och klicka posten,
-     * alltså samma väg som för hand. Filnamnsbytet och visningsrutan gäller
-     * därför utan att den här funktionen behöver veta om dem.
+     */
+    /* Skriptet hämtar blanketten genom att öppna Rapporter-menyn och
+     * klicka posten, alltså samma väg som för hand. Filnamnsbytet och
+     * visningsrutan gäller därför utan att den här funktionen behöver
+     * veta om dem.
      */
 
     function aktuellBlankett() {
@@ -230,10 +234,11 @@
         return delar.join('+');
     }
 
-    /* Bara synliga knappar räknas, och ligger någon i en öppen dialog tas
-     * den sist öppnade. Utan det hade Ctrl+B kunnat träffa en knapp som är på
-     * väg ut i en stängningsanimation, eller en som ligger bakom Kbok Plus-
-     * panelen - och Bekräfta verifikat går inte att ångra. */
+    /* Skriptet räknar bara synliga knappar, och ligger någon i en öppen
+     * dialog tar det den sist öppnade. */
+    /* Utan det hade Ctrl+B kunnat träffa en knapp som är på väg ut i en
+     * stängningsanimation, eller en som ligger bakom Kbok Plus-panelen -
+     * och Bekräfta verifikat går inte att ångra. */
     function klickaKnappMedText(text) {
         if (document.getElementById('svk-kbok-panel')) return false;
         const synliga = [...document.querySelectorAll('button')].filter(
@@ -250,9 +255,11 @@
 
     /* Spara-knappen heter olika beroende på formulär: "Spara" i de kyrkliga
      * handlingarna, "Spara inträde" och "Spara anteckning" under Inträden,
-     * "Spara preliminära" i konfirmationsgrupper. Exakt träff först, annars
-     * den som börjar med Spara - men aldrig "Spara preliminära", som skapar
-     * poster för en hel grupp och inte bör gå att utlösa av misstag.
+     * "Spara preliminära" i konfirmationsgrupper.
+     */
+    /* Skriptet söker exakt träff först, annars den som börjar med Spara -
+     * men aldrig "Spara preliminära", som skapar poster för en hel grupp
+     * och inte bör gå att utlösa av misstag.
      */
     function klickaSpara() {
         if (klickaKnappMedText('Spara')) return true;
@@ -325,51 +332,50 @@
         return arId(id) ? `${location.origin}/personakt/${id}` : null;
     }
 
-    /* ---------- Länkikon per rad ----------
-     *
-     * Alla träfflistor är samma sorts DataGrid och bär data-id på raden, men
+    /* ---------- Länkikon per rad ---------- */
+    /* Alla träfflistor är samma sorts DataGrid och bär data-id på raden, men
      * id:t betyder olika saker:
      *
      *   Sök personer     data-id 21070    personaktens id
      *   Ministerialbok   data-id 4318026  blankettnumret
      *   Verifikat        data-id 27708792 verifikatets id
      *   Alla församlingar                 församlingens id
-     *
-     * En länk byggd på fel id pekar på en personakt som inte finns. Att bara
+     */
+    /* En länk byggd på fel id pekar på en personakt som inte finns. Att bara
      * kräva en personnummerkolumn räckte inte - Ministerialboken har en, men
      * dess data-id är blankettnumret, och personaktens id finns inte någon-
      * stans i raden. Där går länken alltså inte att bygga alls.
-     *
-     * Kolumnernas data-field skiljer listorna åt. Sök personer använder
+     */
+    /* Kolumnernas data-field skiljer listorna åt. Sök personer använder
      * versaler (PERSNR, NAMN, ADRESS), Ministerialboken och Pålysningsboken
      * gemener (personnummer, namn). PERSNR betyder alltså att radens data-id
      * är personaktens id och går att länka rakt av.
-     *
-     * För de övriga finns id:t ändå - bara inte i DOM:en. Listans API-svar
+     */
+    /* För de övriga finns id:t ändå - bara inte i DOM:en. Listans API-svar
      * (SearchMinisterialbokPrel) bär personid för varje post, sida vid sida
-     * med kyrklighandlingsId som blir radens data-id:
-     *
-     *   {"namn": "Svensson, Roger", "personid": 21068,
+     * med kyrklighandlingsId som blir radens data-id: */
+    /*   {"namn": "Svensson, Roger", "personid": 21068,
      *    "kyrklighandlingsId": 4318026, ...}
-     *
-     * Svaren fångas därför när de passerar och paras ihop med raderna. Appen
-     * hämtar med XMLHttpRequest, inte fetch, så patchen sitter där.
+     */
+    /* Skriptet fångar därför svaren när de passerar och parar ihop dem med
+     * raderna. Appen hämtar med XMLHttpRequest, inte fetch, så patchen
+     * sitter där.
      */
 
     // kyrklighandlingsId (radens data-id) -> {personid, kod}
     const HANDLING = new Map();
 
     /* Handlingstypens kod ur API-svaret styr vilken vy appen öppnar. Mätt
-     * genom att dubbelklicka en rad av varje typ och läsa URL:en:
-     *
-     *   D  ->  /personakt/<id>/dop
+     * genom att dubbelklicka en rad av varje typ och läsa URL:en: */
+    /*   D  ->  /personakt/<id>/dop
      *   K  ->  /personakt/<id>/konf
      *   B  ->  /personakt/<id>/begravning
      *   V  ->  /personakt/<id>/vigsel?kyrklighandlingsId=<handlingens id>
-     *
-     * Välsignelse har också kod V och samma vy - den lagras som en vigsel.
-     * Vigsel och välsignelse gäller två personer och delar vy, så handlingens
-     * id måste med i frågesträngen för att rätt post ska öppnas.
+     */
+    /* Välsignelse har också kod V och samma vy - Kbok lagrar den som en
+     * vigsel. Vigsel och välsignelse gäller två personer och delar vy, så
+     * handlingens id måste med i frågesträngen för att Kbok ska öppna
+     * rätt post.
      */
     const HANDLINGSVY = { D: 'dop', K: 'konf', B: 'begravning', V: 'vigsel' };
 
@@ -388,13 +394,13 @@
                         poster = JSON.parse(this.responseText).paginatedResults;
                     } catch (e) {
                         // Svaret är inte den JSON vi väntade oss. Patchen ligger
-                        // på varje sökanrop, så andra svarsformer är väntade och
-                        // inte värda ett larm - länkikonen uteblir bara.
+                        // på varje sökanrop, så skriptet förväntar sig andra
+                        // svarsformer och larmar inte - länkikonen uteblir bara.
                         return;
                     }
                     if (!Array.isArray(poster)) return;
                     // Kartan växer med varje sökning under en arbetsdag. Ett
-                    // tak håller den liten; raderna söks om ändå.
+                    // tak håller den liten. Skriptet söker om raderna ändå.
                     if (HANDLING.size > 5000) HANDLING.clear();
                     poster.forEach((post) => {
                         if (post && arId(post.kyrklighandlingsId) && arId(post.personid)) {
@@ -427,8 +433,9 @@
     }
 
     function gridArPersonlista(grid) {
-        // Griden byggs om vid filtrering och sidbyte, men rubrikerna är
-        // desamma - svaret cachas så det inte räknas ut per rad.
+        // Appen bygger om griden vid filtrering och sidbyte, men
+        // rubrikerna är samma. Skriptet cachar svaret så det slipper
+        // räkna ut det per rad.
         if (grid.dataset.svkKbokPersonlista === undefined) {
             const har = [...grid.querySelectorAll('[role="columnheader"]')].some(
                 (h) => h.getAttribute('data-field') === 'PERSNR');
@@ -486,7 +493,7 @@
         a.addEventListener('mouseenter', () => { a.style.opacity = '1'; });
         a.addEventListener('mouseleave', () => { a.style.opacity = '.45'; });
         // Griden lyssnar på klick i raden för att markera och öppna - hindra
-        // att länkklicket också räknas som ett radklick.
+        // att griden också räknar länkklicket som ett radklick.
         ['click', 'mousedown', 'dblclick'].forEach((h) =>
             a.addEventListener(h, (e) => e.stopPropagation()));
 
@@ -523,9 +530,11 @@
     /* ---------- Mittenklick var som helst på raden ----------
      *
      * Två händelser, olika uppgifter. mousedown hindrar bara webbläsarens
-     * autoscroll; det är auxclick som öppnar fliken. Att låta båda öppna
-     * gav två flikar per klick - och när de öppnades samtidigt tappade
-     * appen dessutom sessionen och båda landade på miljöväljaren.
+     * autoscroll. Det är auxclick som öppnar fliken.
+     */
+    /* Att låta båda öppna gav två flikar per klick - och öppnade
+     * webbläsaren båda samtidigt tappade appen dessutom sessionen, och
+     * båda landade på miljöväljaren.
      */
 
     function radUnder(e) {
@@ -547,34 +556,34 @@
         window.open(lankmalFor(rad), '_blank', 'noopener');
     }
 
-    /* ---------- Auto-hämta relationspersoner ----------
-     *
-     * Fälten vardnadshavare1.persnr, vardnadshavare2.persnr,
+    /* ---------- Auto-hämta relationspersoner ---------- */
+    /* Fälten vardnadshavare1.persnr, vardnadshavare2.persnr,
      * relationsperson i Begravning och Person 1 i pålysningsformuläret har
-     * en NAMNLÖS ikonknapp bredvid sig som måste klickas för att namnet ska
-     * hämtas. Skrivs bara personnumret förblir namnet tomt, och i
+     * en NAMNLÖS ikonknapp bredvid sig. Användaren måste klicka den för att
+     * hämta namnet. */
+    /* Skriver användaren bara personnumret förblir namnet tomt, och i
      * pålysningsformuläret misslyckas Spara sedan helt utan felmeddelande.
-     *
-     * Huvudsökningen (searchPersonnummer) och personuppgiftssektionen
-     * (huvudperson.*) lämnas ifred - där är knapparna tydligt märkta
-     * "Hämta" respektive "Hämta uppgifter igen".
+     */
+    /* Skriptet lämnar huvudsökningen (searchPersonnummer) och
+     * personuppgiftssektionen (huvudperson.*) ifred - där märker Kbok
+     * knapparna tydligt som "Hämta" respektive "Hämta uppgifter igen".
      */
 
     const KOMPLETT_PNR = /^(\d{8}|\d{6})-?\d{4}$/;
 
-    /* Att ta första bästa knapp i föräldrakedjan träffar fel i flera vyer.
-     *
-     * Värst: MUI lägger en namnlös kryssknapp inuti fältet så fort det har ett
-     * värde, alltså precis när auto-hämtningen ska gå igång. Den låg närmare
-     * fältet än Hämta-knappen och klickades i stället - vilket rensade fältet
-     * utan att hämta någon. Det syntes på Inträde, där personnumret försvann
-     * och inget namn kom fram.
-     *
-     * Dessutom: startsidan har "Sök" närmast fältet, som navigerar iväg, och
+    /* Att ta första bästa knapp i föräldrakedjan träffar fel i flera vyer. */
+    /* Värst: MUI lägger en namnlös kryssknapp inuti fältet så fort det har ett
+     * värde, alltså precis när auto-hämtningen ska gå igång. */
+    /* Den låg närmare fältet än Hämta-knappen, så skriptet klickade den i
+     * stället - vilket rensade fältet utan att hämta någon. Det syntes på
+     * Inträde, där personnumret försvann och inget namn kom fram.
+     */
+    /* Dessutom: startsidan har "Sök" närmast fältet, som navigerar iväg, och
      * en öppnad handling har "Hämta uppgifter igen från folkbokföringen", som
-     * skriver över redigerade uppgifter. Ingen av dem ska klickas automatiskt.
-     *
-     * Kvar att klicka: knappen med texten Hämta, och relationsfältens namnlösa
+     * skriver över redigerade uppgifter. Skriptet ska inte klicka någon av
+     * dem automatiskt.
+     */
+    /* Kvar att klicka: knappen med texten Hämta, och relationsfältens namnlösa
      * hämtikon.
      */
 
@@ -613,10 +622,11 @@
         //
         // Pålysningsformuläret är undantaget från undantaget: dess Person 1
         // heter också huvudperson1.persnr, men där är knappen en vanlig
-        // hämtning och det finns inga uppgifter att skriva över. Samma
-        // prefix, två betydelser - och just det fältet är det som kostar
-        // mest att missa, eftersom Spara inte säger något när namnet
-        // saknas.
+        // hämtning och det finns inga uppgifter att skriva över.
+        //
+        // Samma prefix, två betydelser - och just det fältet är det som
+        // kostar mest att missa, eftersom Spara inte säger något när
+        // namnet saknas.
         if (/^huvudperson/.test(id) && !arPalysningsformular()) return false;
         return true;
     }
@@ -630,8 +640,8 @@
         falt.dataset.svkKbokKopplad = '1';
         // Lyssnar på input, inte change: change fyrar när fältet tappar fokus,
         // vilket är precis vad ett eget klick på Hämta gör. Skriptets klick
-        // blev då ett andra klick mitt i appens hämtning, och fältet
-        // rensades utan att någon person hämtades.
+        // blev då ett andra klick mitt i appens hämtning, och appen rensade
+        // fältet utan att hämta någon person.
         falt.addEventListener('input', () => {
             if (!installningar.autoHamta) return;
             const varde = (falt.value || '').trim();
@@ -652,15 +662,14 @@
         });
     }
 
-    /* ---------- D fyller i dagens datum ----------
-     *
-     * Fanns i desktopklienten: "D eller d - Dagens datum när markören står
-     * i ett datumfält". Gäller alla fält som tar ett datum, inte bara
-     * handlingsdatum - även Utträdesdatum, dödsdatum och pålysningsdatum.
-     *
-     * Fälten skiljer sig i format: de flesta vill ha ÅÅÅÅ-MM-DD, men
-     * dödsdatum tar ÅÅÅÅMMDD utan bindestreck. Formatet läses därför ur
-     * fältets placeholder i stället för att antas.
+    /* ---------- D fyller i dagens datum ---------- */
+    /* Fanns i desktopklienten: "D eller d - Dagens datum när markören står
+     * i ett datumfält". Gäller alla fält som tar ett datum: handlingsdatum,
+     * men också Utträdesdatum, dödsdatum och pålysningsdatum.
+     */
+    /* Fälten skiljer sig i format: de flesta vill ha ÅÅÅÅ-MM-DD, men
+     * dödsdatum tar ÅÅÅÅMMDD utan bindestreck. Skriptet läser därför
+     * formatet ur fältets placeholder i stället för att anta det.
      */
 
     function arDatumfalt(falt) {
@@ -709,26 +718,30 @@
         if (e.ctrlKey || e.altKey || e.metaKey) return;
         const falt = e.target;
         if (!arDatumfalt(falt)) return;
-        // Bokstaven hör aldrig hemma i ett datum, så den blockeras alltid -
-        // annars hamnade ett "d" i fältet när det redan var ifyllt.
+        // Bokstaven hör aldrig hemma i ett datum, så skriptet blockerar
+        // den alltid - annars hamnade ett "d" i fältet när det redan var
+        // ifyllt.
         e.preventDefault();
 
-        // Fyll bara i tomt fält, annars skrivs ett påbörjat datum över.
+        // Fyll bara i tomt fält, annars skriver skriptet över ett datum
+        // användaren redan börjat skriva.
+        //
         // MUI:s DateField sätter värdet till sin egen mask (ÅÅÅÅ-MM-DD) så
-        // fort fältet får fokus, så ett fält som ser tomt ut har ett värde -
-        // därför räknas "tomt" som "innehåller ingen siffra".
+        // fort fältet blir aktivt, så ett fält som ser tomt ut har ett
+        // värde. Skriptet räknar därför "tomt" som "innehåller ingen
+        // siffra".
         if (/\d/.test(falt.value || '')) return;
         skrivDagensDatum(falt);
     }
 
-    /* ---------- Töm förifyllt pålysningsdatum ----------
-     *
-     * Kbok förifyller Pålysningsdatum med nästa söndag. Rimligt i
+    /* ---------- Töm förifyllt pålysningsdatum ---------- */
+    /* Kbok förifyller Pålysningsdatum med nästa söndag. Rimligt i
      * normalfallet, men fel så fort pålysningen gäller en annan dag - och då
-     * måste värdet skrivas över varje gång. Desktopklienten lät en välja.
-     *
-     * Fältets id är genererat av MUI (:r3d: och liknande), så det hittas via
-     * etiketten i stället.
+     * måste användaren skriva över värdet varje gång. Desktopklienten lät
+     * en välja.
+     */
+    /* MUI genererar fältets id (:r3d: och liknande), så skriptet hittar
+     * det via etiketten i stället.
      */
 
     function faltForEtikett(etikett) {
@@ -751,9 +764,9 @@
         if (!falt.dataset.svkKbokTomt) {
             if (!(falt.value || '').trim()) return;
             falt.dataset.svkKbokTomt = '1';
-            // Tömningen görs med events så att appens eget tillstånd följer
-            // med - annars ser fältet tomt ut medan det förifyllda datumet
-            // ligger kvar internt och sparas i tysthet.
+            // Skriptet tömmer med events så att appens eget tillstånd
+            // följer med - annars ser fältet tomt ut medan det förifyllda
+            // datumet ligger kvar internt och Kbok sparar det i tysthet.
             const setter = Object.getOwnPropertyDescriptor(
                 window.HTMLInputElement.prototype, 'value').set;
             setter.call(falt, '');
@@ -767,8 +780,9 @@
         }
 
         // Tömningen utlöser "Pålysningsdatum måste anges" direkt, innan
-        // användaren hunnit skriva något. Felet döljs tills fältet rörts -
-        // då får appen visa det som vanligt, inklusive när Spara vägrar.
+        // användaren hunnit skriva något. Skriptet döljer felet tills
+        // användaren rör fältet - då får appen visa det som vanligt,
+        // inklusive när Spara vägrar.
         if (falt.dataset.svkKbokRord) return;
         doljFelFor(falt);
     }
@@ -787,40 +801,45 @@
         }
     }
 
-    /* ---------- Adressen obligatorisk i alla kyrkliga handlingar ----------
-     *
-     * Kbok stoppar verifikatet om adressen saknas i Dop, men släpper igenom
-     * Konfirmation, Vigsel, Välsignelse och Begravning - trots att postadress
-     * och folkbokföringsadress ska registreras för varje kyrklig handling
-     * enligt SvKB 2009:9, 3 kap.
-     *
-     * Kontrollen sitter på Skapa verifikat, inte på Spara. Det speglar hur
-     * dopet redan fungerar: den preliminära posten får skapas, men verifikatet
-     * stoppas tills adressen finns. Att blockera Spara hade hindrat själva
-     * registreringen, vilket är ett större ingrepp än Kbok själv gör.
-     *
-     * Adressen visas som en sektion med rubriken "Adress vid <handling>" i
-     * ett h6, följd av gatuadress och postort. Saknas adressen står rubriken
-     * ensam - det är hela signalen, och den är entydig:
-     *
-     *   med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
+    /* ---------- Adressen obligatorisk i alla kyrkliga handlingar ---------- */
+    /* Kbok stoppar verifikatet om adressen saknas i Dop, men släpper igenom
+     * Konfirmation, Vigsel, Välsignelse och Begravning - trots att
+     * församlingen enligt SvKB 2009:9, 3 kap. ska registrera postadress
+     * och folkbokföringsadress för varje kyrklig handling.
+     */
+    /* Kontrollen sitter på Skapa verifikat, inte på Spara. Det speglar hur
+     * dopet redan fungerar: Kbok skapar ändå den preliminära posten, men
+     * stoppar verifikatet tills adressen finns.
+     */
+    /* Att blockera Spara hade hindrat själva registreringen, vilket är ett
+     * större ingrepp än Kbok själv gör.
+     */
+    /* Kbok visar adressen som en sektion med rubriken "Adress vid
+     * <handling>" i ett h6, följd av gatuadress och postort. Saknas
+     * adressen står rubriken ensam - det är hela signalen, och den är
+     * entydig: */
+    /*   med adress:  ['Adress vid begravning', 'Bagarfruv 126', '46290 Hjortnäs']
      *   utan:        ['Adress vid dop']
-     *
-     * Postnumret och orten står kvar även när gatuadressen tagits bort, och
-     * det är gatuadressen Kbok kontrollerar - fältet Adress. En sektion som
-     * bara innehåller ['Adress vid vigsel', '46230 Hjortnäs'] saknar alltså
-     * adress, trots att den har mer än rubriken.
-     *
-     * Hur djupt adressen ligger under rubriken varierar mellan handlingarna:
-     * i vigsel sitter den i rubrikens egen förälder, i begravning fyra
-     * nivåer upp. Sökningen går därför uppåt tills den hittar mer än
-     * rubriken - men stannar så fort personuppgifterna omkring börjar synas,
-     * för då har den gått för långt och skulle räkna dem som adress.
-     *
-     * Dop undantas: där gör Kbok redan kontrollen, och två varningar om samma
-     * sak vore bara förvirrande.
-     *
-     * Att kontrollen sitter på Skapa verifikat gör också att den aldrig kan
+     */
+    /* Postnumret och orten står kvar även när användaren tar bort
+     * gatuadressen, och det är gatuadressen Kbok kontrollerar - fältet
+     * Adress.
+     */
+    /* En sektion som bara innehåller ['Adress vid vigsel', '46230
+     * Hjortnäs'] saknar alltså adress, trots att den har mer än rubriken.
+     */
+    /* Hur djupt adressen ligger under rubriken varierar mellan
+     * handlingarna: i vigsel sitter den i rubrikens egen förälder, i
+     * begravning fyra nivåer upp.
+     */
+    /* Sökningen går därför uppåt tills den hittar mer än rubriken, men
+     * stannar så fort personuppgifterna omkring börjar synas. Går den för
+     * långt räknar den personuppgifter som adress.
+     */
+    /* Skriptet undantar dop, där Kbok redan gör kontrollen. Två varningar
+     * om samma sak vore bara förvirrande.
+     */
+    /* Att kontrollen sitter på Skapa verifikat gör också att den aldrig kan
      * träffa personakten, som inte har någon sådan knapp.
      */
 
@@ -858,15 +877,16 @@
 
     function saknadeAdresser() {
         return adressektioner().filter((rubrik) => {
-            // Dopet sköts av Kbok självt.
+            // Kbok sköter dopet självt.
             if (/^Adress vid dop$/i.test((rubrik.textContent || '').trim())) return false;
             return !harAdress(rubrik);
         });
     }
 
     /* Kbok visar samma sak i Dop som en ruta: "Kan inte skapa verifikat -
-     * Adress måste anges". Den återskapas här i stället för en text vid
-     * fältet, så att de fyra övriga handlingarna beter sig som dopet. */
+     * Adress måste anges". Skriptet återskapar den här i stället för en
+     * text vid fältet, så att de fyra övriga handlingarna beter sig som
+     * dopet. */
 
     function visaAdressruta(antal) {
         if (document.getElementById(ADRESSFEL)) return;
@@ -938,23 +958,25 @@
         if (!knapp || (knapp.innerText || '').trim() !== 'Skapa verifikat') return;
         const saknade = saknadeAdresser();
         if (!saknade.length) return;
-        // Stoppas i capture-fasen, innan appens egen hanterare hinner köra.
+        // Skriptet stoppar den i capture-fasen, innan appens egen
+        // hanterare hinner köra.
         e.preventDefault();
         e.stopImmediatePropagation();
         visaAdressruta(saknade.length);
         saknade[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
     }
 
-    /* ---------- Fokus i datumfältet vid in- och utträde ----------
-     *
-     * Båda flödena är annars helt tangentbordsdrivna: skriv personnumret,
-     * personen hämtas av sig själv, och sedan måste man ta musen för att nå
-     * datumfältet.
-     *
-     * Vyerna skiljer sig. Utträdet har fältet på plats direkt när sidan
-     * laddat, och där finns inget att flytta fokus ifrån. Inträdet visar
-     * Inträdesdatum först när personen hämtats, alltså precis när
-     * personnummerfältet gjort sitt - det är då fokus ska vidare.
+    /* ---------- Fokus i datumfältet vid in- och utträde ---------- */
+    /* Båda flödena är annars helt tangentbordsdrivna: skriv personnumret,
+     * skriptet hämtar personen automatiskt, och sedan måste man ta musen
+     * för att nå datumfältet.
+     */
+    /* Vyerna skiljer sig. Utträdet har fältet på plats direkt när sidan
+     * laddat, och där finns inget att flytta fokus ifrån.
+     */
+    /* Inträdet visar Inträdesdatum först när personen hämtats, alltså
+     * precis när personnummerfältet gjort sitt - det är då fokus ska
+     * vidare.
      */
 
     function fokuseraDatumfalt() {
@@ -1003,40 +1025,44 @@
         });
     }
 
-    /* ---------- Filnamn på nedladdade blanketter ----------
-     *
-     * Kbok döper blanketterna till handlingstypen rakt av - Dopblankett.pdf,
+    /* ---------- Filnamn på nedladdade blanketter ---------- */
+    /* Kbok döper blanketterna till handlingstypen rakt av - Dopblankett.pdf,
      * Upptagandebevis.pdf. Utan datum och person går sparade blanketter inte
      * att skilja åt, och webbläsaren räknar i stället upp dem som (1), (2).
-     *
-     * PDF:en byggs i webbläsaren, inte på servern: appen skapar ett
+     */
+    /* Webbläsaren bygger PDF:en, inte servern: appen skapar ett
      * <a download> mot en blob-URL, klickar det och tar bort det direkt, så
-     * det finns inget element kvar att skriva om i DOM:en. Namnet går
-     * däremot att fånga genom att patcha HTMLAnchorElement.prototype.click -
-     * attributet skrivs om i klicket, innan originalanropet släpps igenom.
-     *
-     * Uppgifterna läses ur handlingspostens egna sektioner, inte ur
-     * personuppgiftsraden högst upp: raden är tom för poster utan personakt,
-     * sektionen är det aldrig. En platt skrapning av hela sidan fungerar
-     * inte heller - den blandar in vårdnadshavare, relationspersoner och
-     * hindersprövningsdatum.
+     * det finns inget element kvar att skriva om i DOM:en.
+     */
+    /* Namnet går däremot att fånga genom att patcha
+     * HTMLAnchorElement.prototype.click - skriptet skriver om attributet
+     * i klicket, innan originalanropet släpps igenom.
+     */
+    /* Skriptet läser uppgifterna ur handlingspostens egna sektioner, inte
+     * ur personuppgiftsraden högst upp: raden är tom för poster utan
+     * personakt, sektionen är det aldrig.
+     */
+    /* Att skrapa hela sidan platt fungerar inte heller - det blandar in
+     * vårdnadshavare, relationspersoner och hindersprövningsdatum.
      */
 
     // Handlingsdatumet hör till blanketterna, som är underlag inför en
-    // handling. Bevisen gäller en händelse som redan är registrerad och får
-    // därför bara typ och namn.
+    // handling. Bevisen gäller en händelse som handläggaren redan
+    // registrerat, och får därför bara typ och namn.
     const BLANKETTER = ['Dopblankett', 'Konfirmationsblankett', 'Vigselblankett',
         'Välsignelseblankett', 'Begravningsblankett'];
     const BEVIS = ['Upptagandebevis', 'Utträdesbevis'];
 
     /* Bevisen finns i två varianter, med och utan adress, och Kbok döper
      * filerna därefter - Upptagandebevis_med_adress.pdf. Varianten säger
-     * inget om vad beviset gäller, bara hur det är utformat, så båda får
-     * grundnamnet. Kboks egen term behålls: Upptagandebevis, inte
+     * inget om vad beviset gäller, bara hur Kbok utformat det, så båda
+     * får grundnamnet.
+     */
+    /* Skriptet behåller Kboks egen term: Upptagandebevis, inte
      * Inträdesbevis.
-     *
-     * Suffixet matchas både med mellanslag och understreck, eftersom
-     * menyposten och filnamnet skrivs olika.
+     */
+    /* Skriptet matchar suffixet både med mellanslag och understreck,
+     * eftersom Kbok skriver menyposten och filnamnet olika.
      */
     function bevisnamn(typ) {
         const utan = typ.replace(/[_ ]med[_ ]adress$/i, '');
@@ -1046,12 +1072,12 @@
     /* Personaktens Rapporter-meny har 29 poster - alla rapportmallar med
      * selectionIdType PersonId. Kbok döper dem till mallens namn rakt av, så
      * två uttag blir Medlemsbevis.pdf och Medlemsbevis (1).pdf.
-     *
-     * Menyetiketten och filnamnet skiljer sig bara på att mellanslag blir
+     */
+    /* Menyetiketten och filnamnet skiljer sig bara på att mellanslag blir
      * understreck - verifierat på sju av dem, inklusive en med bindestreck
      * och en med "på Engelska".
-     *
-     * De fyra Namn- och adresslista-varianterna står medvetet utanför: de är
+     */
+    /* De fyra Namn- och adresslista-varianterna står medvetet utanför: de är
      * urval, inte en person, och har ingen huvudperson att döpa efter.
      * Dopinbjudan är med, men får sitt datum ur rutan den frågar i - se
      * kommIhagDopinbjudan().
@@ -1077,8 +1103,9 @@
     ];
 
     function personrapportnamn(typ) {
-        // Suffixet "med adress" säger hur rapporten är utformad, inte vad den
-        // gäller - samma resonemang som för bevisen, alltså samma grundnamn.
+        // Suffixet "med adress" säger hur Kbok utformat rapporten, inte
+        // vad den gäller - samma resonemang som för bevisen, alltså samma
+        // grundnamn.
         // "med familj" är däremot en egen rapport och får stå kvar.
         const utan = typ.replace(/_/g, ' ').replace(/ med adress$/i, '');
         return PERSONRAPPORTER.indexOf(utan) >= 0 ? utan : null;
@@ -1124,13 +1151,13 @@
             .map((s) => s.trim()).filter(Boolean);
         const i = rader.indexOf(etikett);
         const varde = i >= 0 && rader[i + 1] ? rader[i + 1] : null;
-        // Ett tomt fält visas som bindestreck.
+        // Kbok visar ett tomt fält som bindestreck.
         return varde && varde !== '-' ? varde : null;
     }
 
     // Snedstrecken kommer från Kbok självt: ett barn utan förnamn får
     // efternamnet skrivet som /Efternamn/, och snedstreck går inte att ha i
-    // ett filnamn. Övriga tecken tas med av samma skäl.
+    // ett filnamn. Skriptet tar med övriga tecken av samma skäl.
     function rensaFilnamnsdel(varde) {
         return varde.replace(/[/\\:*?"<>|]/g, '-').trim();
     }
@@ -1142,8 +1169,8 @@
 
     function personnamnUr(rot) {
         if (!rot) return null;
-        // Tilltalsnamnet är det personen faktiskt kallas; förnamnsfältet kan
-        // rymma flera namn.
+        // Tilltalsnamnet är det personen faktiskt kallar sig. Förnamnsfältet
+        // kan rymma flera namn.
         const delar = [
             sektionsfalt(rot, 'Efternamn'),
             sektionsfalt(rot, 'Tilltalsnamn') || sektionsfalt(rot, 'Förnamn'),
@@ -1153,9 +1180,9 @@
 
     function handlingensNamndel() {
         // Vigsel och välsignelse gäller två personer och har sektionerna
-        // Person 1/Person 2 i stället för Personuppgifter. Där tas bara
-        // efternamnen med - båda ska synas, och med förnamnen blir filnamnet
-        // ohanterligt långt.
+        // Person 1/Person 2 i stället för Personuppgifter. Där tar
+        // skriptet bara med efternamnen - båda ska synas, och med
+        // förnamnen blir filnamnet ohanterligt långt.
         const forsta = efternamnI('Person 1');
         if (forsta) {
             const andra = efternamnI('Person 2');
@@ -1164,8 +1191,8 @@
         const enskild = personnamnUr(sektionMed('Personuppgifter'));
         if (enskild) return enskild;
         // Personakten saknar sektionsrubrik - där står namnet i raden högst
-        // upp. Den läses sist: på en handlingspost utan personakt är raden
-        // tom, och då ska sektionen ovan ha fått svara först.
+        // upp. Skriptet läser den sist: på en handlingspost utan personakt
+        // är raden tom, och då ska sektionen ovan ha fått svara först.
         return personnamnUr(document.querySelector('main'))
             || ihagkommetNamn()
             || verifikatnamn();
@@ -1175,18 +1202,19 @@
      * "Tilltalsnamn: Örjan" - utan de fältetiketter resten av appen använder.
      * Att dela en sådan sträng i förnamn och efternamn går inte att göra rätt:
      * "Björn Erik Larsson" kan vara två förnamn eller ett dubbelt efternamn.
-     *
-     * Vyn nås bara via personakten, där namnet står i egna fält. Namnet tas
-     * därför med dit, tillsammans med personnumret så att en kvarglömd post
-     * inte kan sätta fel namn på någon annans bevis.
+     */
+    /* Vyn nås bara via personakten, där namnet står i egna fält. Skriptet
+     * tar därför med namnet dit, tillsammans med personnumret så att en
+     * kvarglömd post inte kan sätta fel namn på någon annans bevis.
      */
 
     const PERSONNYCKEL = 'svk-kbok-person';
 
-    /* Personnumret sparas inte i klartext - bara ett kort kontrollvärde som
-     * räcker för att se att det ihågkomna namnet hör till den person som
-     * visas. Uppgiften ligger i sessionStorage bara för att överleva sidbytet
-     * till utträdesvyn, och ett kontrollvärde går inte att vända tillbaka. */
+    /* Skriptet sparar inte personnumret i klartext - bara ett kort
+     * kontrollvärde som räcker för att se att det ihågkomna namnet hör
+     * till personen skriptet visar. Uppgiften ligger i sessionStorage
+     * bara för att överleva sidbytet till utträdesvyn, och ett
+     * kontrollvärde går inte att vända tillbaka. */
     function kontrollvarde(text) {
         let h = 0x811c9dc5;
         for (let i = 0; i < text.length; i++) {
@@ -1206,9 +1234,12 @@
     function kommIhagPersonnamn() {
         if (!/^\/personakt\/\d+$/.test(location.pathname)) return;
         // Läsningen nedan gör flera fulla genomsökningar av main och tvingar
-        // fram omritningar via innerText. uppdatera() körs vid varje
-        // DOM-ändring, så utan den här spärren skulle samma namn läsas om vid
-        // varje hovring och menyöppning. Samma mönster som kommIhagGruppnamn.
+        // fram omritningar via innerText. MutationObserver kör uppdatera()
+        // vid varje DOM-ändring.
+        //
+        // Utan den här spärren skulle skriptet läsa om samma namn vid
+        // varje hovring och menyöppning. Samma mönster som
+        // kommIhagGruppnamn.
         const pnr = synligtPersonnummer();
         if (!pnr) return;
         const nyckel = kontrollvarde(pnr);
@@ -1224,15 +1255,18 @@
         }
     }
 
-    /* Ett verifikat som bekräftas senare - via Aktuella på startsidan i
-     * stället för direkt när det skapas - har ingen personakt bakom sig att
-     * läsa namnet ur, och inget ihågkommet namn i fliken.
-     *
-     * Verifikatet visar uppgifterna självt, men namnet sammanskrivet som
+    /* Ett verifikat som användaren bekräftar senare - via Aktuella på
+     * startsidan i stället för direkt när hen skapar det - har ingen
+     * personakt bakom sig att läsa namnet ur, och inget ihågkommet namn i
+     * fliken.
+     */
+    /* Verifikatet visar uppgifterna självt, men namnet sammanskrivet som
      * "Tarja Persson" i stället för uppdelat i fält. Det får stå som det
      * står: att dela strängen går inte att göra rätt, och fallet är ett
-     * undantag. Händelsedatumet finns däremot rent och hör till beviset -
-     * det är ju den händelse beviset gäller.
+     * undantag.
+     */
+    /* Händelsedatumet finns däremot rent och hör till beviset - det är ju
+     * den händelse beviset gäller.
      */
 
     function verifikatfalt(etikett) {
@@ -1258,13 +1292,12 @@
 
     /* Tas beviset inte ut i verifikatets rapportruta får man hämta det från
      * personakten i efterhand, och där finns inget Händelsedatum. Akten bär
-     * däremot tillhörighetens datum:
-     *
-     *     Tillhörighetsuppgifter
+     * däremot tillhörighetens datum: */
+    /*     Tillhörighetsuppgifter
      *       Datum            2026-07-01
      *       Aktuell uppgift  Tillhörig
-     *
-     * Det är inträdesdatumet för ett upptagandebevis och utträdesdatumet för
+     */
+    /* Det är inträdesdatumet för ett upptagandebevis och utträdesdatumet för
      * ett utträdesbevis. En gallrad personakt saknar sektionen, och då blir
      * filnamnet som förut: bara typ och namn.
      */
@@ -1274,19 +1307,21 @@
         return traff ? traff[0] : null;
     }
 
-    /* Dopinbjudan är den enda rapporten som frågar efter ett datum innan den
-     * skapas - en ruta med rubriken "Datum för dopinbjudan", ett fält
-     * förifyllt med dagens datum och knappen Fortsätt. Det datumet, inte
-     * uttagsdatumet, är det inbjudan gäller.
-     *
-     * Rutan är borta när filen väl laddas ner, så värdet läses medan den
-     * står öppen och bärs vidare - samma mönster som gruppnamnet.
+    /* Dopinbjudan är den enda rapporten som frågar efter ett datum innan
+     * användaren skapar den - en ruta med rubriken "Datum för
+     * dopinbjudan", ett fält förifyllt med dagens datum och knappen
+     * Fortsätt. Det datumet, inte uttagsdatumet, är det inbjudan gäller.
+     */
+    /* Rutan är borta när användaren väl laddar ner filen, så skriptet
+     * läser värdet medan rutan står öppen och för det vidare - samma
+     * mönster som gruppnamnet.
      */
     let dopinbjudansDatum = null;
 
     function kommIhagDopinbjudan() {
         // En selektor först: rutan står öppen sällan, och innerText nedan
-        // tvingar fram en omritning vid varje DOM-ändring om den läses fritt.
+        // tvingar fram en omritning vid varje DOM-ändring om skriptet
+        // läser den fritt.
         const falt = document.querySelector('[role="dialog"] input[placeholder="ÅÅÅÅ-MM-DD"]');
         if (!falt) return;
         const ruta = falt.closest('[role="dialog"]');
@@ -1314,10 +1349,11 @@
         return traff ? traff[0] : null;
     }
 
-    /* Gruppblanketten hämtas från Skapa konfirmation, en vy som varken visar
-     * gruppnamnet eller har några personuppgifter att läsa - URL:en bär bara
-     * ett GUID. Namnet plockas därför upp i gruppvyn på vägen dit, som är
-     * enda sättet att nå formuläret, och sparas över sidbytet.
+    /* Skriptet hämtar gruppblanketten från Skapa konfirmation, en vy som
+     * varken visar gruppnamnet eller har några personuppgifter att läsa -
+     * URL:en bär bara ett GUID. Skriptet plockar därför upp namnet i
+     * gruppvyn på vägen dit, som är enda sättet att nå formuläret, och
+     * sparar det över sidbytet.
      */
 
     function kommIhagGruppnamn() {
@@ -1343,8 +1379,8 @@
         const sektion = sektionMed('Datum och tid');
         const falt = sektion && sektion.querySelector('input[placeholder="ÅÅÅÅ-MM-DD"]');
         const datum = falt && (falt.value || '').match(/\d{4}-\d{2}-\d{2}/);
-        // Namnet gäller bara om formuläret nåddes från just den gruppen -
-        // formulärets adress börjar med gruppvyns.
+        // Namnet gäller bara om användaren nådde formuläret från just den
+        // gruppen - formulärets adress börjar med gruppvyns.
         const kalla = sessionStorage.getItem(GRUPPKALLA) || '';
         const gruppnamn = kalla && location.pathname.startsWith(`${kalla}/`)
             ? sessionStorage.getItem(GRUPPNYCKEL) : null;
@@ -1372,9 +1408,9 @@
             if (datum) delar.push(datum);
         } else if (bevis) {
             // Går beviset via ett verifikat bär det händelsedatumet - just
-            // den händelse beviset gäller. Tas det ut i efterhand från
-            // personakten finns inget verifikat, men aktens
-            // tillhörighetsuppgift bär samma datum.
+            // den händelse beviset gäller. Tar användaren ut det i
+            // efterhand från personakten finns inget verifikat, men
+            // aktens tillhörighetsuppgift bär samma datum.
             const handelse = handelsedatum() || tillhorighetsdatum();
             if (handelse) delar.push(handelse);
         } else if (rapport === 'Dopinbjudan') {
@@ -1385,28 +1421,29 @@
             // Verifikatets rapportruta efter ett in- eller utträde listar
             // Välkomstmeddelande sida vid sida med Upptagandebevis. Toge
             // rapporten alltid uttagsdatum medan beviset tar händelsedatum
-            // hade två filer ur samma ruta fått olika datum. Finns ett
-            // händelsedatum gäller det därför båda; annars, som i
-            // personaktens meny, är uttagsdatum det enda som finns.
+            // hade två filer ur samma ruta fått olika datum.
+            //
+            // Finns ett händelsedatum gäller det därför båda. Annars, som
+            // i personaktens meny, är uttagsdatum det enda som finns.
             delar.push(handelsedatum() || idagsDatum());
         }
         delar.push(arBlankett ? typ : bevis || rapport, namn);
         return `${delar.join(' - ')}.pdf`;
     }
 
-    /* ---------- Visa blanketten i stället för att ladda ner den ----------
-     *
-     * Kbok laddar ner blanketten direkt när den väljs i Rapporter-menyn. Den
-     * som bara vill läsa eller skriva ut får då en fil att städa bort efteråt.
-     *
-     * Rutan visar PDF:en ovanpå Kbok med tre val: skriva ut, ladda ner eller
+    /* ---------- Visa blanketten i stället för att ladda ner den ---------- */
+    /* Kbok laddar ner blanketten direkt när användaren väljer den i
+     * Rapporter-menyn. Den som bara vill läsa eller skriva ut får då en
+     * fil att städa bort efteråt.
+     */
+    /* Rutan visar PDF:en ovanpå Kbok med tre val: skriva ut, ladda ner eller
      * stänga. Att i stället öppna blob-URL:en i en ny flik hade varit mindre
-     * kod, men webbläsarens Spara som föreslår då blob-URL:ens GUID som
-     * filnamn - och hela filnamnsbygget ovan hade varit bortkastat.
+     * kod, men webbläsarens Spara föreslår då blob-URL:ens GUID som
+     * filnamn - och skriptet hade slösat bort hela filnamnsbygget ovan.
      */
 
-    // Sparas innan patchen läggs på, så rutans egen nedladdning inte går
-    // genom den och byter namn en gång till.
+    // Skriptet sparar den innan det lägger på patchen, så rutans egen
+    // nedladdning slipper gå genom den och byta namn en gång till.
     const ORIGINALKLICK = HTMLAnchorElement.prototype.click;
     const KNAPP_KLASS = 'svk-kbok-knapp';
 
@@ -1443,8 +1480,8 @@
         lank.remove();
     }
 
-    // Vår egen blob-kopia: laddas ner och släpps sedan, så rapporten inte
-    // ligger kvar i flikens minne.
+    // Vår egen blob-kopia: skriptet laddar ner den och släpper den sedan,
+    // så rapporten inte ligger kvar i flikens minne.
     function laddaNerBlob(blob, filnamn) {
         const url = URL.createObjectURL(blob);
         laddaNer(url, filnamn);
@@ -1533,8 +1570,8 @@
             knapp.className = KNAPP_KLASS + (primar ? '' : ' svk-kbok-sekundar');
             knapp.addEventListener('click', gor);
             fot.appendChild(knapp);
-            // Skriv ut är det vanligaste nästa steg när blanketten väl visas,
-            // och med fokus där går den att nå med Enter direkt.
+            // Skriv ut är det vanligaste nästa steg när Kbok väl visar
+            // blanketten, och med fokus där går den att nå med Enter direkt.
             if (i === 0) forstaKnapp = knapp;
         });
 
@@ -1547,12 +1584,15 @@
         document.body.appendChild(overlay);
 
         /* Fokusfälla. MUI lämnar tillbaka fokus till Rapporter-knappen när
-         * menyn stängs, och eftersom blobben hämtas asynkront hinner rutan
-         * öppnas först - ett enkelt focus() räcker därför inte. Fällan håller
-         * dessutom tabbningen inne i rutan, som en modal ska.
-         *
-         * Skriv ut är det vanligaste nästa steget när blanketten väl visas,
-         * så fokus börjar där och Enter räcker.
+         * menyn stängs, och eftersom skriptet hämtar blobben asynkront
+         * hinner rutan bli synlig först - ett enkelt focus() räcker
+         * därför inte.
+         */
+        /* Fällan håller dessutom tabbningen inne i rutan, som en modal
+         * ska.
+         */
+        /* Skriv ut är det vanligaste nästa steget när Kbok väl visar
+         * blanketten, så fokus börjar där och Enter räcker.
          */
         function tillbakaFokus(e) {
             if (!overlay.isConnected || overlay.contains(e.target)) return;
@@ -1566,20 +1606,19 @@
         }
     }
 
-    /* ---------- Kalkylblad i rutan ----------
-     *
-     * Rapporter-popupen kan leverera samma rapport som kalkylblad i stället
+    /* ---------- Kalkylblad i rutan ---------- */
+    /* Rapporter-popupen kan leverera samma rapport som kalkylblad i stället
      * för PDF. Webbläsaren kan inte visa xlsx, men formatet är en zip med
      * XML och går att packa upp med DecompressionStream - ingen extern
      * modul behövs.
-     *
-     * Kboks kalkylblad är enkla: strängarna ligger inline i cellerna, det
+     */
+    /* Kboks kalkylblad är enkla: strängarna ligger inline i cellerna, det
      * finns ingen sharedStrings.xml, och arket är ett. Tolkningen behöver
      * därför bara läsa xl/worksheets/sheet1.xml.
      */
 
     // Kboks rapporter är små. Större arkiv än så är inte ett kalkylblad vi
-    // ska tolka i sidan - då laddas filen ner i stället.
+    // ska tolka i sidan - då laddar skriptet ner filen i stället.
     const ZIP_MAX_BYTE = 25 * 1024 * 1024;
     const ZIP_MAX_FILER = 200;
     const ARK_MAX_RADER = 20000;
@@ -1589,7 +1628,8 @@
         if (blob.size > ZIP_MAX_BYTE) throw new Error('arkivet är för stort');
         const data = new Uint8Array(await blob.arrayBuffer());
         const vy = new DataView(data.buffer);
-        // Katalogen hittas via End of Central Directory, som ligger sist.
+        // Skriptet hittar katalogen via End of Central Directory, som
+        // ligger sist.
         let eocd = -1;
         for (let i = data.length - 22; i >= 0 && i > data.length - 65558; i--) {
             if (vy.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
@@ -1636,9 +1676,9 @@
         return rader.map((rad) => {
             const celler = [];
             [...rad.getElementsByTagName('c')].forEach((c) => {
-                // Cellens r-attribut bär kolumnbokstaven; tomma celler
-                // utelämnas i filen och måste fyllas i för att kolumnerna
-                // ska hamna rätt.
+                // Cellens r-attribut bär kolumnbokstaven. Kalkylprogrammet
+                // utelämnar tomma celler i filen, och skriptet måste fylla
+                // i dem för att kolumnerna ska hamna rätt.
                 const bokstav = (c.getAttribute('r') || '').replace(/\d+$/, '');
                 let index = 0;
                 for (let i = 0; i < bokstav.length; i++) {
@@ -1719,7 +1759,8 @@
     /* Namn och gruppnamn ligger i sessionStorage bara för att överleva
      * sidbytet till den vy där blanketten tas ut. De ska inte ligga kvar en
      * arbetsdag, och absolut inte till nästa person som loggar in i samma
-     * flik. Därför glöms de efter nedladdningen och vid utloggning. */
+     * flik. */
+    /* Skriptet glömmer dem därför efter nedladdningen och vid utloggning. */
     const NAMNNYCKLAR = [PERSONNYCKEL, GRUPPNYCKEL, GRUPPKALLA];
     const UTLOGGAD_SIDA = /utb_login|utloggad|logga-in|login/i;
 
@@ -1732,8 +1773,9 @@
             || /adfs/i.test(location.hostname);
         if (!utloggad) return;
         glomIhagkomnaNamn();
-        // Hanterad-markeringarna gallras i läsningen; utloggningen är ett
-        // bra tillfälle att låta den köra även om fliken inte öppnats.
+        // Skriptet gallrar Hanterad-markeringarna i läsningen. Utloggningen
+        // är ett bra tillfälle att låta den köra även om användaren inte
+        // öppnat fliken.
         lasHanterade();
     }
 
@@ -1743,17 +1785,19 @@
                 const ursprung = this.getAttribute('download');
                 if (ursprung && installningar.blankettnamn) {
                     const nytt = byggFilnamn(ursprung);
-                    // Går inget namn att bygga lämnas Kboks eget i fred - ett
-                    // igenkännbart filnamn är bättre än ett stympat.
+                    // Går inget namn att bygga lämnar skriptet Kboks eget i
+                    // fred - ett igenkännbart filnamn är bättre än ett
+                    // stympat.
                     if (nytt) this.setAttribute('download', nytt);
                     // Det ihågkomna namnet har gjort sitt när filen fått
-                    // sitt. Öppnas personakten igen sparas det på nytt.
+                    // sitt. Öppnar användaren personakten igen sparar
+                    // skriptet det på nytt.
                     glomIhagkomnaNamn();
                 }
                 if (ursprung && installningar.visaBlankett && this.href) {
                     visaBlankett(this.href, this.getAttribute('download') || ursprung);
-                    // Nedladdningen hoppas över - rutan har en egen knapp för
-                    // den som ändå vill spara filen.
+                    // Skriptet hoppar över nedladdningen - rutan har en egen
+                    // knapp för den som ändå vill spara filen.
                     return undefined;
                 }
             } catch (e) {
@@ -1763,37 +1807,37 @@
         };
     }
 
-    /* ---------- Kom ihåg miljövalet i Utbildningsmiljön ----------
-     *
-     * Utbildningsmiljön låter en välja instans på /utv_selectDb efter
+    /* ---------- Kom ihåg miljövalet i Utbildningsmiljön ---------- */
+    /* Utbildningsmiljön låter en välja instans på /utv_selectDb efter
      * inloggningen. Valet ligger i serversessionen, inte i fliken, och att
      * öppna en länk i en ny flik nollställer det - för BÅDA flikarna,
-     * eftersom sessionen är gemensam. Verifierat: en ny flik mot
-     * /personakt/<id> landar på miljövalet, och den ursprungliga fliken gör
-     * det också vid nästa sidladdning.
-     *
-     * Skriptet kommer därför ihåg vad som valdes senast och fyller i det
-     * igen. Sidan finns bara i Utbildningsmiljön, så inget av det här rör
-     * produktionen.
+     * eftersom sessionen är gemensam.
+     */
+    /* Verifierat: en ny flik mot /personakt/<id> landar på miljövalet, och
+     * den ursprungliga fliken gör det också vid nästa sidladdning.
+     */
+    /* Skriptet kommer därför ihåg vad användaren valde senast och fyller i
+     * det igen. Sidan finns bara i Utbildningsmiljön, så inget av det här
+     * rör produktionen.
      */
 
     const MILJONYCKEL = 'svk-kbok-miljo';
     const MALNYCKEL = 'svk-kbok-onskad-sida';
     const FORSOKNYCKEL = 'svk-kbok-mal-forsokt';
     const MILJOVAL_SIDA = /utv_selectDb/i;
-    // Sidor som aldrig är ett vettigt mål att skickas tillbaka till.
+    // Sidor som skriptet aldrig ska skicka någon tillbaka till.
     const EJ_MAL = /utv_selectDb|login/i;
 
     /* Miljövalet kastar bort adressen man var på väg till: efter valet landar
      * man på startsidan, inte på personakten man klickade.
-     *
-     * Omdirigeringen görs av appen, inte av servern - begäran om
-     * /personakt/<id> besvaras med 200 och appen byter sedan sida.
+     */
+    /* Appen gör omdirigeringen, inte servern - servern besvarar begäran om
+     * /personakt/<id> med 200, och appen byter sedan sida.
      * Navigeringsposten bär därför kvar den ursprungliga adressen, och den
-     * fungerar även för en länk som klistrats in för hand.
-     *
-     * Målet läggs i sessionStorage, som är per flik - två flikar på väg till
-     * olika personakter ska inte kunna ta varandras.
+     * fungerar även för en länk som användaren klistrat in för hand.
+     */
+    /* Skriptet lägger målet i sessionStorage, som är per flik - en flik på
+     * väg till en personakt ska inte kunna ta en annan fliks mål.
      */
 
     function sparaOnskadSida() {
@@ -1826,10 +1870,12 @@
             }
             return;
         }
-        // Tas bort före navigeringen: leder adressen tillbaka till miljövalet
-        // ska skriptet inte försöka igen i all evighet.
+        // Skriptet tar bort målet före navigeringen: leder adressen
+        // tillbaka till miljövalet, försöker skriptet inte igen i all
+        // evighet.
         sessionStorage.removeItem(MALNYCKEL);
-        // Spärren bär målet, så den kan släppas när vi ser att vi kommit dit.
+        // Spärren bär målet, så skriptet kan släppa den när det ser att
+        // navigeringen kommit dit.
         sessionStorage.setItem(FORSOKNYCKEL, mal);
         if (mal === har) return;
         // Måste gå via routern, inte location.href: varje FULL sidladdning
@@ -1846,8 +1892,9 @@
                 && (el.textContent || '').trim() === text);
     }
 
-    // Stegen i dropdownen renderas asynkront, så varje steg väntar in sitt
-    // element i stället för att anta att föregående klick hunnit slå igenom.
+    // React renderar stegen i dropdownen asynkront, så varje steg väntar
+    // in sitt element i stället för att anta att föregående klick hunnit
+    // slå igenom.
     function vantaPa(hitta, forsok = 20) {
         return new Promise((klar, fel) => {
             const prova = (kvar) => {
@@ -1920,16 +1967,16 @@
             });
     }
 
-    /* ---------- Ny version och versionshistorik ----------
-     *
-     * GitHub raw skickar access-control-allow-origin: *, så både skriptfilen
+    /* ---------- Ny version och versionshistorik ---------- */
+    /* GitHub raw skickar access-control-allow-origin: *, så både skriptfilen
      * och changeloggen går att hämta med fetch utan @grant. Det kompletterar
-     * Tampermonkeys egen kontroll: den kollar på sitt eget intervall, det här
-     * ger besked när panelen öppnas.
-     *
-     * Anropet går till GitHub från en flik som visar personuppgifter. Inget
-     * skickas - det är en GET efter en publik fil - men det är ett utgående
-     * anrop till tredjepart, och därför en egen inställning.
+     * Tampermonkeys egen kontroll: den kollar på sitt eget intervall, det
+     * här ger besked när användaren öppnar panelen.
+     */
+    /* Anropet går till GitHub från en flik som visar personuppgifter.
+     * Skriptet skickar inget - det är en GET efter en publik fil - men det
+     * är ett utgående anrop till tredjepart, och därför en egen
+     * inställning.
      */
 
     const CHANGELOG_URL = INSTALLATIONSURL.replace(
@@ -1949,10 +1996,12 @@
         return false;
     }
 
-    /* Svaret cachas ett dygn så att inte varje sidladdning blir ett anrop.
-     * Panelen öppnas sällan och tvingar därför alltid en färsk kontroll -
-     * annars kan en nyss utgiven version se ut att inte finnas, vilket den
-     * gjorde när cachen hunnit fyllas strax före en utgivning.
+    /* Skriptet cachar svaret ett dygn så att inte varje sidladdning blir
+     * ett anrop. Användaren öppnar panelen sällan, så den tvingar därför
+     * alltid en färsk kontroll.
+     */
+    /* Annars kan en ny version se ut att inte finnas. Det hände när
+     * skriptet hann fylla cachen strax före en utgivning.
      */
     function hamtaSenasteVersion(tvinga) {
         let sparat = null;
@@ -1990,16 +2039,17 @@
             });
     }
 
-    // Läses av menyposten, som byggs om av appen och inte kan vänta på ett
-    // nätverksanrop varje gång.
+    // Menyposten läser den här. Appen bygger om menyposten och kan inte
+    // vänta på ett nätverksanrop varje gång.
     let senasteVersion = null;
 
     const VISADNYCKEL = 'svk-kbok-uppdatering-visad';
 
-    /* Changeloggen renderas som markdown. Filen är vår egen och använder bara
-     * en handfull element, så en fullständig parser vore överdrift - men
-     * innehållet byggs som DOM-noder och inte via innerHTML, så en framtida
-     * rad med HTML i sig inte kan köras. */
+    /* Skriptet renderar changeloggen som markdown. Filen är vår egen och
+     * använder bara en handfull element, så en fullständig parser vore
+     * överdrift - men skriptet bygger innehållet som DOM-noder och inte
+     * via innerHTML, så webbläsaren kan inte köra en framtida rad med
+     * HTML i sig. */
 
     function markeraInline(rad, mal) {
         // **fet**, `kod` och [text](adress)
@@ -2024,7 +2074,7 @@
             } else {
                 const delar = bit.match(/\[([^\]]+)\]\(([^)]+)\)/);
                 // Texten kommer från GitHub. Bara vanliga webbadresser blir
-                // länkar; ett javascript:-schema hade kört i Kboks kontext.
+                // länkar. Ett javascript:-schema hade kört i Kboks kontext.
                 if (!/^https?:\/\//i.test(delar[2])) {
                     mal.appendChild(document.createTextNode(delar[1]));
                     return;
@@ -2046,8 +2096,9 @@
     }
 
     /* Markdown viker rader: en listpunkt eller ett stycke fortsätter över
-     * radbrytningar tills en tom rad. Utan att vika ihop dem först bryts
-     * ord som **Skriv ut** mitt itu och renderas som text. */
+     * radbrytningar tills en tom rad. Utan att skriptet viker ihop dem
+     * först bryter det ord som **Skriv ut** mitt itu och renderar dem som
+     * text. */
     function vikBlock(md) {
         const block = [];
         let aktuellt = null;
@@ -2136,7 +2187,7 @@
         return yta;
     }
 
-    /* Egen ruta ovanpå den som öppnade den. Tidigare fälldes ändringarna ut
+    /* Egen ruta ovanpå den som öppnade den. Tidigare föll ändringarna ut
      * inuti panelen, vilket gjorde den lång och lämnade knappen kvar med fel
      * text när man fällde ihop igen. */
 
@@ -2202,8 +2253,8 @@
     }
 
     /* En ny version är lätt att missa som en prick i en meny man sällan
-     * öppnar. Rutan visas därför en gång per dygn - klickar man Senare
-     * kommer den tillbaka i morgon, inte vid nästa sidladdning. */
+     * öppnar. Skriptet visar därför rutan en gång per dygn - klickar man
+     * Senare kommer den tillbaka i morgon, inte vid nästa sidladdning. */
 
     function byggUppdateringsruta(senaste) {
         laggTillKnappstil();
@@ -2234,10 +2285,13 @@
         const fot = document.createElement('div');
         fot.style.cssText = 'display:flex;justify-content:flex-end;gap:.6rem;flex-wrap:wrap';
 
-        /* Dygnsspärren sätts när rutan avfärdas, inte när den visas. Sätts
-         * den vid visningen försvinner rutan i ett dygn så fort sidan laddas
-         * om, även om användaren inte hunnit läsa den. Nu återkommer den vid
-         * varje sidladdning tills man faktiskt tagit ställning. */
+        /* Skriptet sätter dygnsspärren när användaren avfärdar rutan,
+         * inte när skriptet visar den. Hade skriptet satt den vid
+         * visningen i stället, hade rutan försvunnit i ett dygn så fort
+         * användaren laddade om sidan, även om hen inte hunnit läsa den.
+         */
+        /* Nu återkommer den vid varje sidladdning tills användaren
+         * faktiskt tagit ställning. */
         function stang() {
             localStorage.setItem(VISADNYCKEL, String(Date.now()));
             overlay.remove();
@@ -2322,11 +2376,13 @@
         ingress.style.cssText = 'margin:0 0 .6rem;color:#6b6862;font-size:.9rem';
         ruta.appendChild(ingress);
 
-        /* Flikrad. Måtten är avlästa ur Kboks egna MUI-flikar (Aktuella /
+        /* Flikrad. Måtten kommer från Kboks egna MUI-flikar (Aktuella /
          * Senaste / Alla församlingar på startsidan): 14px, halvfet, ingen
          * versalisering, 12px 16px padding, och en 2px indikator i
-         * accentfärgen under den valda. Typsnittet ärvs från panelen i
-         * stället för att sättas till Kboks DM Sans - resten av panelen
+         * accentfärgen under den valda.
+         */
+        /* Flikraden ärver typsnittet från panelen i stället för att
+         * skriptet sätter det till Kboks DM Sans - resten av panelen
          * använder systemtypsnittet, och en avvikande flikrad hade synts
          * mer än den hade liknat. */
         const flikrad = document.createElement('div');
@@ -2554,8 +2610,8 @@
         ruta.appendChild(fot);
 
         if (installningar.kollaUppdatering) {
-            // Panelen öppnas sällan, så den frågar alltid GitHub på nytt i
-            // stället för att lita på dygnscachen.
+            // Användaren öppnar panelen sällan, så den frågar alltid
+            // GitHub på nytt i stället för att lita på dygnscachen.
             hamtaSenasteVersion(true).then((senaste) => {
                 senasteVersion = senaste;
                 if (!senaste || !arNyare(senaste, VERSION)) return;
@@ -2597,22 +2653,24 @@
         document.body.appendChild(overlay);
     }
 
-    /* ---------- Skriv ut ett öppnat verifikat ----------
-     *
-     * Desktopklienten hade en utskriftsikon på verifikatet. Webben har
+    /* ---------- Skriv ut ett öppnat verifikat ---------- */
+    /* Desktopklienten hade en utskriftsikon på verifikatet. Webben har
      * ingen, och webbläsarens Ctrl+P skriver ut hela sidan bakom rutan -
      * verifikatet hamnar på första sidan och resten blir tomma ark. Uppmätt
      * på ett begravningsverifikat: tre sidor.
-     *
-     * Lösningen är ett utskriftsstilblad, inte en egen utskriftsvy. Då
+     */
+    /* Lösningen är ett utskriftsstilblad, inte en egen utskriftsvy. Då
      * gäller den både för ikonen och för den som trycker Ctrl+P av gammal
      * vana - hade knappen byggt sin egen ruta hade Ctrl+P fortsatt ge tre
      * sidor.
-     *
-     * Reglerna hänger på en klass som sätts på verifikatrutans portalrot,
-     * alltså den direkta barnnoden till body som rymmer dialogen. Allt
-     * annat under body döljs vid utskrift; knapparna inne i rutan döljs
-     * också, eftersom de är kontroller och inte innehåll.
+     */
+    /* Reglerna hänger på en klass som skriptet sätter på verifikatrutans
+     * portalrot, alltså den direkta barnnoden till body som rymmer
+     * dialogen.
+     */
+    /* Stilbladet döljer allt annat under body vid utskrift. Det döljer
+     * knapparna inne i rutan också, eftersom de är kontroller och inte
+     * innehåll.
      */
 
     const UTSKRIFT_KLASS = 'svk-kbok-utskriftsrot';
@@ -2664,7 +2722,7 @@
     function laggTillUtskriftsknapp() {
         const dialog = [...document.querySelectorAll('[role="dialog"]')]
             .find(arVerifikatruta);
-        // Spärren på body följer rutan: på medan den är öppen, av annars,
+        // Spärren på body följer rutan: på medan den är öppen, annars av,
         // så Ctrl+P på en vanlig sida skriver ut sidan som vanligt.
         const kopia = document.querySelector('.svk-kbok-avstamningsutskrift');
         document.body.classList.toggle(UTSKRIFT_AKTIV, !!dialog || !!kopia);
@@ -2714,27 +2772,29 @@
             window.print();
         });
 
-        // Stängkrysset sitter längst till höger i rubrikraden. Ikonen läggs
-        // före det, så krysset behåller sin plats i hörnet.
+        // Stängkrysset sitter längst till höger i rubrikraden. Skriptet
+        // lägger ikonen före det, så krysset behåller sin plats i hörnet.
         const kryss = rubrik.querySelector('button');
         if (kryss) kryss.insertAdjacentElement('beforebegin', knapp);
         else rubrik.appendChild(knapp);
     }
 
-    /* ---------- Sökbar plats ----------
-     *
-     * Fältet Välj plats i handlingsformulären och Pålyses i kyrka i
+    /* ---------- Sökbar plats ---------- */
+    /* Fältet Välj plats i handlingsformulären och Pålyses i kyrka i
      * pålysningsformuläret är en MUI Autocomplete med fritext, men utan
      * filter: listan visar alla församlingens kyrkor oavsett vad man skriver.
      * Mätt i Utbildningsmiljön med fyra kyrkor - "hopp" visade alla fyra.
      * Med sjutton kyrkor i en församling blir det bläddring varje gång.
-     *
-     * Skriptet lägger ett filter ovanpå Kboks egen lista: alternativ som inte
-     * innehåller det skrivna döljs, piltangenterna flyttar en egen markering
-     * bland de synliga, Enter klickar det markerade alternativet så MUI
-     * själv sätter värdet. Tab lämnar fältet som förut, med fritexten kvar.
-     * Kboks egen tangentnavigering stoppas bara medan listan är öppen och
-     * bara i de här fälten - den hade annars gått igenom dolda rader.
+     */
+    /* Skriptet lägger ett filter ovanpå Kboks egen lista: det döljer
+     * alternativ som inte innehåller det skrivna, piltangenterna flyttar
+     * en egen markering bland de synliga, Enter klickar det markerade
+     * alternativet så MUI själv sätter värdet. Tab lämnar fältet som
+     * förut, med fritexten kvar.
+     */
+    /* Skriptet stoppar Kboks egen tangentnavigering bara medan listan är
+     * öppen och bara i de här fälten - den hade annars gått igenom dolda
+     * rader.
      */
 
     const PLATSFALT = /^(Välj plats|Pålyses i kyrka|Pålysningsplats)$/;
@@ -2835,44 +2895,49 @@
                 vald.click();
                 return;
             }
-            /* Ingen träff: fritexten står kvar och listan stängs. Utan det
-             * hade Enter gått vidare till Kbok, där Enter i platsfältet
-             * skickar hela formuläret och skapar posten - mätt i
-             * Utbildningsmiljön, med och utan skriptet. Ett Enter för att
-             * "bekräfta" ett eget kyrknamn ska inte spara en begravning. */
+            /* Ingen träff: fritexten står kvar och skriptet stänger
+             * listan. Utan det hade Enter gått vidare till Kbok, där
+             * Enter i platsfältet skickar hela formuläret och skapar
+             * posten - mätt i Utbildningsmiljön, med och utan skriptet.
+             */
+            /* Ett Enter för att "bekräfta" ett eget kyrknamn ska inte
+             * spara en begravning. */
             input.dispatchEvent(new KeyboardEvent('keydown',
                 { key: 'Escape', code: 'Escape', bubbles: true }));
         }
     }
 
-    /* ---------- Avstämning av tacksägelser ----------
-     *
-     * Kyrkoordningen 24 kap. 6 §: efter ett dödsfall ska tacksägelse hållas
-     * i en församlings gudstjänst, oavsett om det blir en begravning i
-     * Svenska kyrkans ordning. Kbok visar ingenstans vem som saknar en. Den
-     * här fliken i Pålysningsboken ställer dödsfallsverifikaten för en
+    /* ---------- Avstämning av tacksägelser ---------- */
+    /* Kyrkoordningen 24 kap. 6 §: efter ett dödsfall ska en församling hålla
+     * tacksägelse i sin gudstjänst, oavsett om det blir en begravning i
+     * Svenska kyrkans ordning. Kbok visar ingenstans vem som saknar en.
+     */
+    /* Den här fliken i Pålysningsboken ställer dödsfallsverifikaten för en
      * period mot dödsfallspålysningarna och listar dem som saknar.
-     *
-     * Verifikaten söks för den inloggade församlingen - sökningen har ingen
-     * enhetsparameter, den ignoreras tyst. Pålysningarna söks i alla
-     * församlingar användaren har behörighet till, så en tacksägelse i
-     * grannförsamlingen räknas.
-     *
-     * Fyra anrop, alla mot Kboks API med appens egen cookie:
-     *
-     *   Verifikat/FetchVerifikatBySearchlist   arendeTypsID 5 = Dödsfall
+     */
+    /* Skriptet söker verifikaten för den inloggade församlingen. Sökningen
+     * saknar en enhetsparameter, och Kbok ignorerar den tyst.
+     */
+    /* Skriptet söker pålysningarna i alla församlingar som användaren har
+     * behörighet till, så Kbok räknar också en tacksägelse i
+     * grannförsamlingen.
+     */
+    /* Fyra anrop, alla mot Kboks API med appens egen cookie: */
+    /*   Verifikat/FetchVerifikatBySearchlist   arendeTypsID 5 = Dödsfall
      *   Palysning/SearchByAttribute            kodtypPALYSNING DL = Dödsfall
      *   Verifikat/FetchVerifikatByVerifikatsId ett per verifikat - listan bär
      *                                          bara personId, inte personnummer
      *   Palysning/FetchOrCreatePalysning       ett per matchad pålysning -
      *                                          kyrklighandlingsId 0 = fristående
-     *
-     * Löpnumret i pålysningslistan går inte att använda för arten: för en
-     * fristående pålysning fylls det med ett värde från en annan rad i
-     * träfflistan (Kbok-bugg, rapporterad 2026-09-07). Därför detaljanropet.
-     *
-     * Inget hämtat sparas. Kryssrutan Hanterad sparas i webbläsaren som
-     * verifikatets id och dagens datum, inget mer, och gallras efter ett år.
+     */
+    /* Löpnumret i pålysningslistan går inte att använda för arten. För en
+     * fristående pålysning fyller Kbok det med ett värde från en annan rad
+     * i träfflistan (Kbok-bugg, rapporterad 2026-09-07).
+     */
+    /* Därför gör skriptet detaljanropet. */
+    /* Skriptet sparar inget hämtat. Webbläsaren sparar kryssrutan Hanterad
+     * som verifikatets id och dagens datum, inget mer, och gallrar det
+     * efter ett år.
      */
 
     const HANTERADE_NYCKEL = 'svk-kbok-hanterade';
@@ -2884,8 +2949,9 @@
         'augusti', 'september', 'oktober', 'november', 'december'];
 
     /* API:t ligger på en annan värd än appen (kbok-utb-api.ksys.se för
-     * Utbildningsmiljön) och produktionens adress är inte känd. Basen läses därför ur appens egna anrop när de passerar
-     * XHR-patchen, aldrig ur en lista. */
+     * Utbildningsmiljön), och produktionens adress är inte känd. Skriptet
+     * läser därför basen ur appens egna anrop när de passerar XHR-patchen,
+     * aldrig ur en lista. */
     let apiBas = null;
 
     function kommIhagApiBas(url) {
@@ -2931,7 +2997,8 @@
 
     /* Sidar igenom ett sökanrop. Verifikatsvaret säger total, pålysningssvaret
      * totalt. Servern får kapa sidstorleken - loopen räknar på det som kom.
-     * Kom en full sida fortsätter den även om totalt säger att allt är
+     */
+    /* Kom en full sida fortsätter den även om totalt säger att allt är
      * hämtat: samma API-familj räknar bevisligen fel på löpnumret, och en
      * tyst trunkering hade gett falska Saknas. */
     async function hamtaAlla(sokvag, kropp, sidstorlek) {
@@ -2966,7 +3033,8 @@
 
     /* Kbok levererar personnumret som tolv siffror med bindestreck i båda
      * listorna (mätt). Bara den formen blir en nyckel - ett tiosiffrigt eller
-     * saknat nummer går inte att para ihop säkert och räknas som okänt. */
+     * saknat nummer går inte att para ihop säkert, så skriptet räknar det
+     * som okänt. */
     function normaliseratPnr(v) {
         const siffror = String(v || '').replace(/\D/g, '');
         return siffror.length === 12 ? siffror : '';
@@ -3022,7 +3090,7 @@
 
     async function stamAv(fran, till, status, avbruten) {
         // Efter varje väntan: har användaren bytt period eller lämnat vyn
-        // slutar vi hämta. Det som redan hämtats kastas av anroparen.
+        // slutar vi hämta. Anroparen kastar det som redan hämtats.
         const kolla = () => { if (avbruten()) throw new Error('avbruten'); };
         status('Hämtar församlingar…');
         const session = await apiAnrop('GET', 'GetUserSession');
@@ -3045,12 +3113,16 @@
         }, 50);
 
         kolla();
-        /* Pålysningsfönstret är bredare än perioden åt båda håll. Bakåt:
-         * aviseringen från Skatteverket kommer dagar efter dödsfallet, och
-         * en tacksägelse söndagen efter kan alltså ligga före verifikatets
-         * datum - dör någon 28 augusti, pålyses 31 augusti och aviseras 3
-         * september hör pålysningen till septemberavstämningen. Framåt:
-         * pålysningen kan ligga på en minnesgudstjänst ett år senare. */
+        /* Pålysningsfönstret är bredare än perioden åt båda håll.
+         */
+        /* Bakåt: aviseringen från Skatteverket kommer dagar efter
+         * dödsfallet, och en tacksägelse söndagen efter kan alltså ligga
+         * före verifikatets datum - dör någon 28 augusti, pålyser
+         * församlingen 31 augusti och Skatteverket aviserar 3 september,
+         * hör pålysningen till septemberavstämningen.
+         */
+        /* Framåt: pålysningen kan ligga på en minnesgudstjänst ett år
+         * senare. */
         const fonsterFran = new Date(fran);
         fonsterFran.setMonth(fonsterFran.getMonth() - 6);
         const fonsterTill = new Date(till > isoDatum(new Date()) ? till : isoDatum(new Date()));
@@ -3091,8 +3163,9 @@
                 aviserat: v.datum,
                 namn: '',
                 personnummer: '',
-                // null = kunde inte stämmas av: uppgiften saknas eller gick
-                // inte att hämta. Skiljs från en tom lista, som betyder Saknas.
+                // null = skriptet kunde inte stämma av: uppgiften saknas
+                // eller gick inte att hämta. Skriptet skiljer det från en
+                // tom lista, som betyder Saknas.
                 palysningar: null,
                 fel: '',
             };
@@ -3133,9 +3206,10 @@
         });
         kolla();
 
-        // Verifikatet bär inget dödsdatum. Saknas pålysning hämtas det ur
-        // personakten, där avregistreringsdatumet är dödsdagen. Uppmätt att
-        // anropet inte hamnar i startsidans Senaste personer.
+        // Verifikatet bär inget dödsdatum. Saknas pålysning hämtar
+        // skriptet det ur personakten, där avregistreringsdatumet är
+        // dödsdagen. Uppmätt att anropet inte hamnar i startsidans
+        // Senaste personer.
         const utanDatum = rader.filter((r) => !r.dodsdatum && r.personId);
         if (utanDatum.length) status(`Hämtar dödsdatum för ${utanDatum.length} avlidna…`);
         await parallellt(utanDatum, 4, async (r) => {
@@ -3155,8 +3229,8 @@
 
     /* --- Vyn --- */
 
-    // Ett objekt per sidladdning av Pålysningsboken: flikknappen, panelen
-    // och om vår flik är den valda.
+    // Ett objekt varje gång Pålysningsboken laddar om: flikknappen,
+    // panelen och om vår flik är den valda.
     let avstamning = null;
 
     function laggTillAvstamningsstil() {
@@ -3211,9 +3285,9 @@
         laggTillAvstamningsstil();
         laggTillKnappstil();
 
-        /* Flikknappen får appens egna MUI-klasser från en granne, så den
-         * ser ut som de andra. Klassen Mui-selected sätts och tas bort av
-         * skriptet självt - React känner inte till knappen. */
+        /* Flikknappen får samma MUI-klasser som appen från en granne, så
+         * den ser ut som de andra. Skriptet sätter och tar själv bort
+         * klassen Mui-selected - React känner inte till knappen. */
         const granne = tablist.querySelector('[role="tab"]');
         const flik = document.createElement('button');
         flik.type = 'button';
@@ -3328,8 +3402,8 @@
         /* Varje körning får ett eget nummer och låser sin period vid start.
          * Byter användaren månad medan en hämtning pågår är den gamla
          * körningen inaktuell: den slutar hämta, ritar ingenting och en ny
-         * körning startar för den valda perioden. Utan det hade en
-         * augustilista kunnat visas under septembers rubrik. */
+         * körning startar för den valda perioden. Utan det hade skriptet
+         * kunnat visa en augustilista under septembers rubrik. */
         let pagar = false;
         let senasteKorning = 0;
         async function korAvstamning() {
@@ -3368,7 +3442,8 @@
             } finally {
                 pagar = false;
                 kor.disabled = false;
-                // Perioden byttes under hämtningen: kör om för den nya.
+                // Användaren bytte perioden under hämtningen: kör om för
+                // den nya.
                 if (korning !== senasteKorning && !tillstand.borttagen) korAvstamning();
             }
         }
@@ -3513,8 +3588,8 @@
             verifikatlank.title = 'Öppnar verifikatet';
             verifikatlank.addEventListener('click', (e) => {
                 e.preventDefault();
-                // Flikraden är appens eget element och bär en React-fiber;
-                // vår tabell gör det inte.
+                // Flikraden är appens eget element och bär en React-fiber.
+                // Vår tabell gör det inte.
                 oppnaVerifikat(r.verifikatId, document.querySelector('[role="tablist"]'));
             });
             oppna.appendChild(verifikatlank);
@@ -3533,18 +3608,23 @@
         return tabell;
     }
 
-    /* Verifikatet har ingen egen adress. Rutan styrs av en React-kontext
-     * (VerifikatWindowProvider) som ligger runt hela appen, och dess värde
-     * går att nå från vilket element som helst genom att följa fiberns
-     * föräldrakedja uppåt: Provider-fibern bär värdet i memoizedProps.value.
-     * Anropet öppnar rutan på plats, på den sida man står. Löftet det
-     * returnerar infrias först när rutan stängs, så det inväntas inte.
-     *
-     * Reserv: startsidan läser ett openVerifikatId ur navigeringens
+    /* Verifikatet har ingen egen adress. En React-kontext
+     * (VerifikatWindowProvider) styr rutan och ligger runt hela appen.
+     */
+    /* Dess värde går att nå från vilket element som helst genom att följa
+     * fiberns föräldrakedja uppåt: Provider-fibern bär värdet i
+     * memoizedProps.value.
+     */
+    /* Anropet öppnar rutan på plats, på den sida man står. Löftet det
+     * returnerar löser sig först när rutan stängs, så skriptet väntar
+     * inte in det.
+     */
+    /* Reserv: startsidan läser ett openVerifikatId ur navigeringens
      * tillstånd - så gör appen själv efter en registrering. Routern lyssnar
      * på popstate och läser history.state.usr, så ett pushState följt av
      * ett eget popstate-event tar samma väg, men byter sida.
-     * Båda vägarna verifierade i Utbildningsmiljön. */
+     */
+    /* Båda vägarna verifierade i Utbildningsmiljön. */
     function verifikatfonster(fran) {
         const nyckel = Object.keys(fran).find((k) => k.startsWith('__reactFiber$'));
         let fiber = nyckel && fran[nyckel];
@@ -3614,9 +3694,9 @@
     }
 
     /* Körs vid varje DOM-ändring. Ser till att fliken finns när
-     * Pålysningsboken visas, och att vald-läget håller trots att React ritar
-     * om flikraden - React sätter tillbaka Mui-selected på sin egen flik och
-     * visar sin panel, så båda tas om hand här. */
+     * användaren öppnar Pålysningsboken, och att vald-läget håller trots
+     * att React ritar om flikraden - React sätter tillbaka Mui-selected på
+     * sin egen flik och visar sin panel, så skriptet hanterar båda här. */
     function synkaAvstamningsflik() {
         const forsta = document.getElementById('palysning-tab-0');
         const tablist = forsta && forsta.closest('[role="tablist"]');
@@ -3634,8 +3714,9 @@
         if (!avstamning) {
             avstamning = byggAvstamning(tablist);
         } else {
-            // React kan ha ritat om flikraden eller panelernas förälder;
-            // samma knapp och panel sätts då tillbaka med sitt innehåll.
+            // React kan ha ritat om flikraden eller panelernas förälder.
+            // Skriptet sätter då tillbaka samma knapp och panel med sitt
+            // innehåll.
             if (!tablist.contains(avstamning.flik)) tablist.appendChild(avstamning.flik);
             if (!document.body.contains(avstamning.panel)) {
                 placeraAvstamningspanel(tablist, avstamning.panel);
@@ -3712,20 +3793,21 @@
         avstamning = null;
     }
 
-    /* ---------- Menypost i användarmenyn ----------
-     *
-     * Avatarmenyn är en NAV.MuiList-root med posterna Byt församling,
-     * Inställningar och Logga ut. Posten klonas från Inställningar, så den
-     * ärver appens egen formatering i stället för att härma den.
-     *
-     * Menyn byggs om varje gång den öppnas, så posten måste läggas till på
-     * nytt vid varje öppning - det sköter MutationObserver.
+    /* ---------- Menypost i användarmenyn ---------- */
+    /* Avatarmenyn är en NAV.MuiList-root med posterna Byt församling,
+     * Inställningar och Logga ut. Skriptet klonar posten från
+     * Inställningar, så den ärver appens egen formatering i stället för
+     * att härma den.
+     */
+    /* Appen bygger om menyn varje gång användaren öppnar den, så skriptet
+     * måste lägga till posten på nytt vid varje öppning - det sköter
+     * MutationObserver.
      */
 
     function laggTillMenypost() {
-        // Menyposten byggs om av appen vid varje öppning. Har versionsläget
-        // ändrats sedan den sattes in måste den bytas ut, annars saknas
-        // pricken tills menyn öppnas nästa gång.
+        // Appen bygger om menyposten vid varje öppning. Har versionsläget
+        // ändrats sedan skriptet satte in den måste skriptet byta ut den,
+        // annars saknas pricken tills användaren öppnar menyn nästa gång.
         const befintlig = document.querySelector('.' + MENY_KLASS);
         if (befintlig && befintlig.dataset.svkKbokNy !== String(finnsNyareVersion())) {
             befintlig.remove();
@@ -3767,10 +3849,11 @@
         }
 
         // Klonen bär med sig förlagans lyssnare i vissa webbläsare - byt ut
-        // noden mot en ren kopia av sig själv innan vår egen kopplas på.
+        // noden mot en ren kopia av sig själv innan skriptet kopplar på
+        // vår egen.
         const ren = post.cloneNode(true);
-        // Speglar versionsläget posten byggdes med, så den kan bytas ut när
-        // det ändras.
+        // Speglar versionsläget skriptet byggde posten med, så det kan
+        // byta ut den när versionsläget blir ett annat.
         ren.dataset.svkKbokNy = String(finnsNyareVersion());
         ren.addEventListener('click', (e) => {
             e.preventDefault();
@@ -3783,19 +3866,20 @@
     }
 
     function stangMenyn() {
-        // Menyn ligger i en MUI-popover; Escape stänger den utan att välja.
+        // Menyn ligger i en MUI-popover. Escape stänger den utan att välja.
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         const bakgrund = document.querySelector('.MuiBackdrop-root');
         if (bakgrund) bakgrund.click();
     }
 
-    /* ---------- Markerbart personnummer ----------
-     *
-     * MUI DataGrid fångar klick på hela raden, så ett försök att markera
+    /* ---------- Markerbart personnummer ---------- */
+    /* MUI DataGrid fångar klick på hela raden, så ett försök att markera
      * ett personnummer med musen öppnar personakten i stället. Cellen har
-     * data-field="PERSNR" - klickhändelser stoppas där, så texten går att
-     * dra över och kopiera. Dubbelklick för att öppna posten fungerar
-     * fortfarande överallt utom i just den cellen.
+     * data-field="PERSNR" - skriptet stoppar klickhändelser där, så
+     * texten går att dra över och kopiera.
+     */
+    /* Dubbelklick för att öppna posten fungerar fortfarande överallt utom
+     * i just den cellen.
      */
 
     function gorPersonnummerMarkerbart(rad) {
@@ -3809,20 +3893,20 @@
         cell.dataset.svkKbokMarkerbar = '1';
         // Lyssnaren sitter kvar men frågar efter inställningen vid varje
         // klick. Att koppla bort den hade krävt namngivna funktioner per
-        // cell, och cellerna byts ut hela tiden av gridens virtualisering.
+        // cell, och gridens virtualisering byter ut cellerna hela tiden.
         ['mousedown', 'click', 'dblclick'].forEach((h) =>
             cell.addEventListener(h, (e) => {
                 if (installningar.markerbartPersonnummer) e.stopPropagation();
             }));
     }
 
-    /* ---------- Fokus på Bekräfta verifikat ----------
-     *
-     * Verifikat-dialogen öppnas utan att någon knapp har fokus - kontrollerat
-     * via document.activeElement, som är dialogens container. Enter gör
-     * därför ingenting, till skillnad från enkla OK-dialoger där OK-knappen
-     * fokuseras automatiskt. I desktopklienten kunde man bekräfta direkt med
-     * Enter efter att ha stämplat.
+    /* ---------- Fokus på Bekräfta verifikat ---------- */
+    /* Kbok öppnar verifikat-dialogen utan att någon knapp har fokus -
+     * kontrollerat via document.activeElement, som är dialogens container.
+     */
+    /* Enter gör därför ingenting, till skillnad från enkla OK-dialoger där
+     * appen fokuserar OK-knappen automatiskt. I desktopklienten kunde man
+     * bekräfta direkt med Enter efter att ha stämplat.
      */
 
     function fokuseraBekrafta() {
@@ -3839,9 +3923,9 @@
     /* ---------- Kör om vid varje DOM-ändring ---------- */
 
     /* Varje steg körs för sig. Utan det skulle ett undantag i en funktion
-     * avbryta alla som står efter i listan - och eftersom uppdatera() körs vid
-     * varje DOM-ändring skulle avbrottet upprepas för resten av sidbesöket,
-     * tyst för den som inte har konsolen öppen. */
+     * avbryta alla som står efter i listan - och eftersom MutationObserver
+     * kör uppdatera() vid varje DOM-ändring skulle felet komma igen för
+     * resten av sidbesöket, tyst för den som inte har konsolen öppen. */
     function sakert(namn, gor) {
         try {
             gor();
@@ -3896,14 +3980,15 @@
 
     /* Patcharna läggs på omedelbart, före appen hunnit köra något. Skriptet
      * körs därför med @run-at document-start.
-     *
-     * Det spelar roll för fangaPersonid: kommer patchen efter appens första
+     */
+    /* Det spelar roll för fangaPersonid: kommer patchen efter appens första
      * anrop har svaret redan passerat, kartan är tom och Ministerialbokens
-     * rader får ingen ikon förrän användaren söker om. Verifierat - med
-     * skriptet pålagt efter listladdningen blev det 0 ikoner, och 12 först
-     * efter en ny sökning.
-     *
-     * De läggs på en gång, inte i uppdatera() - den körs vid varje DOM-ändring
+     * rader får ingen ikon förrän användaren söker om.
+     */
+    /* Verifierat - med skriptet pålagt efter listladdningen blev det 0
+     * ikoner, och 12 först efter en ny sökning.
+     */
+    /* De läggs på en gång, inte i uppdatera() - den körs vid varje DOM-ändring
      * och hade staplat lager på lager av omslutande funktioner.
      */
     dopOmNedladdningar();
@@ -3933,7 +4018,8 @@
         }, true);
         document.addEventListener('keydown', hanteraDagensDatum, true);
         uppdatera();
-        // Efter uppdatera(), så inställningarna hunnit läsas in.
+        // Efter uppdatera(), så att skriptet hunnit läsa in
+        // inställningarna.
         sakert('uppdateringskontroll', kollaUppdateringVidStart);
 
         console.log('svk-kbok-enhancements laddat');
