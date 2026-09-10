@@ -215,7 +215,7 @@ Klart när: repot ligger på GitHub, raw-adressen svarar, och skriptet är genom
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Gå igenom githistorik, docs och backlog och ta bort hänvisningar till testmiljön-miljön
+## [P3][done] [svk-kbok-enhancements] Gå igenom githistorik, docs och backlog och ta bort hänvisningar till testmiljön-miljön
 
 Rasmus 2026-09-09 (todo).
 
