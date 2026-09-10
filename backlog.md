@@ -243,7 +243,7 @@ Klart när: tabellen ser ut som Pålysningsbokens grid vid en jämförelse sida 
 
 ---
 
-## [P3][todo] [svk-kbok-enhancements] Kör hela skriptet inklusive kommentarer genom klarspråksverktyget när avstämningsmodulen är klar
+## [P3][done] [svk-kbok-enhancements] Kör hela skriptet inklusive kommentarer genom klarspråksverktyget när avstämningsmodulen är klar
 
 Rasmus 2026-09-07, under bygget av TASK-1667 (avstämning av tacksägelser).
 
