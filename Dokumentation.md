@@ -182,6 +182,7 @@ Uppdelningen ser ut så här:
 | --- | --- | --- |
 | Sök personer | `21070` | personaktens id |
 | Ministerialbok | `4318026` | blankettnumret |
+| Pålysningsboken | `123456` | pålysningens id |
 | Verifikat | `27708792` | verifikatets id |
 | Alla församlingar | `21` | församlingens id |
 
@@ -233,15 +234,12 @@ Verifierat att länken pekar dit appens eget dubbelklick går, i både
 Ministerialboken och Sök personer. Startsidans tre verifikatflikar får
 ingen ikon alls - där finns inget personakt-id att bygga av.
 
-Pålysningsboken får ingen ikon i dag, men skulle kunna få en. Dess
-kolumner är gemena som Ministerialbokens (`palysningsdatum`, `namn`,
-`personnummer`, `lopnr`), så `gridArPersonlista()` känner inte igen den.
-Målet är däremot inte en personakt: en pålysning är ett eget objekt med
-eget id, och appen navigerar till `/palysning/<palysningId>`. Rapportlagret
-har ett eget `selectionIdType` för det, `PalysningsId`. Utrett i TASK-530;
-kvar är att avgöra om radens `data-id` redan är `palysningId` eller om det
-krävs ihopparning mot `Palysning/FetchPalysningarAktuella` och dess tre
-motsvarigheter.
+Pålysningsbokens fyra flikar får också ikonen. Skriptet känner igen griden
+på kolumnen `palysningsdatum`. Radens `data-id` är samma `palysningsId` som
+API-svaret innehåller. Länken går därför direkt till `/palysning/<id>` utan
+ihopparning mot API-svar. Vi har jämfört id:t rad för rad med
+`Palysning/FetchPalysningarTidigare`. Appens eget dubbelklick öppnar samma
+adress.
 
 ## Om adresskravet
 

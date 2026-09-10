@@ -342,6 +342,7 @@
      *
      *   Sök personer     data-id 21070    personaktens id
      *   Ministerialbok   data-id 4318026  blankettnumret
+     *   Pålysningsbok    data-id 123456   pålysningens id
      *   Verifikat        data-id 27708792 verifikatets id
      *   Alla församlingar                 församlingens id
      *
@@ -355,9 +356,9 @@
      * gemener (personnummer, namn). PERSNR betyder alltså att radens data-id
      * är personaktens id och går att länka rakt av.
      *
-     * För de övriga finns id:t ändå - bara inte i DOM:en. Listans API-svar
-     * (SearchMinisterialbokPrel) bär personid för varje post, sida vid sida
-     * med kyrklighandlingsId som blir radens data-id:
+     * För Ministerialboken finns id:t ändå - bara inte i DOM:en. Listans
+     * API-svar (SearchMinisterialbokPrel) bär personid för varje post, sida
+     * vid sida med kyrklighandlingsId som blir radens data-id:
      *
      *   {"namn": "Svensson, Roger", "personid": 21068,
      *    "kyrklighandlingsId": 4318026, ...}
@@ -425,6 +426,8 @@
     function lankmalFor(rad) {
         const id = rad.getAttribute('data-id');
         if (!arId(id)) return null;
+        // Pålysningsboken: radens id är pålysningens id.
+        if (arPalysningsbok(rad)) return `${location.origin}/palysning/${id}`;
         // Sök personer: radens id ÄR personaktens, och där finns ingen
         // handling att öppna.
         if (arPersonlista(rad)) return personaktUrl(id);
@@ -450,12 +453,32 @@
         return grid.dataset.svkKbokPersonlista === '1';
     }
 
+    function gridArPalysningsbok(grid) {
+        if (grid.dataset.svkKbokPalysningsbok === undefined) {
+            const har = [...grid.querySelectorAll('[role="columnheader"]')].some(
+                (h) => h.getAttribute('data-field') === 'palysningsdatum');
+            grid.dataset.svkKbokPalysningsbok = har ? '1' : '0';
+        }
+        return grid.dataset.svkKbokPalysningsbok === '1';
+    }
+
     function arPersonlista(rad) {
         let el = rad;
         for (let i = 0; i < 12 && el.parentElement; i++) {
             el = el.parentElement;
             if (el.getAttribute && el.getAttribute('role') === 'grid') {
                 return gridArPersonlista(el);
+            }
+        }
+        return false;
+    }
+
+    function arPalysningsbok(rad) {
+        let el = rad;
+        for (let i = 0; i < 12 && el.parentElement; i++) {
+            el = el.parentElement;
+            if (el.getAttribute && el.getAttribute('role') === 'grid') {
+                return gridArPalysningsbok(el);
             }
         }
         return false;
@@ -490,9 +513,11 @@
         a.href = mal;
         a.target = '_blank';
         a.rel = 'noopener';
-        a.title = arPersonlista(rad)
-            ? 'Öppna personakten i ny flik'
-            : 'Öppna ministerialboksposten i ny flik';
+        a.title = arPalysningsbok(rad)
+            ? 'Öppna pålysningen i ny flik'
+            : arPersonlista(rad)
+                ? 'Öppna personakten i ny flik'
+                : 'Öppna ministerialboksposten i ny flik';
         a.innerHTML = NYFLIK_IKON;
         a.style.cssText = 'text-decoration:none;line-height:0;display:flex;'
             + 'opacity:.45;cursor:pointer;color:inherit;padding:3px 4px';

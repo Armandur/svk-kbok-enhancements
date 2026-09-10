@@ -29,7 +29,7 @@ till höger, tillsammans med Byt församling och Inställningar.
 
 | Funktion | Beskrivning | Standard |
 | --- | --- | --- |
-| Öppna i ny flik | Länkikon i varje rad i personlistorna. Vanligt klick, mittenklick och högerklickmenyns Öppna i ny flik fungerar alla, eftersom ikonen är en riktig länk. Mittenklick var som helst på raden gör samma sak. | På |
+| Öppna i ny flik | Länkikon i varje rad i personlistorna och Pålysningsboken. Vanligt klick, mittenklick och högerklickmenyns Öppna i ny flik fungerar alla, eftersom ikonen är en riktig länk. Mittenklick var som helst på raden gör samma sak. | På |
 | Auto-hämta person | Klickar Hämta åt dig så fort ett komplett personnummer skrivits eller klistrats in i ett personnummerfält - relationspersoner och Inträde. | På |
 | Hoppa över datumväljaren | Tabb går från datumfältet vidare i formuläret i stället för in i kalenderknappen. | På |
 | Markerbart personnummer | Gör personnumret i listorna markerbart, så det går att dra över och kopiera utan att posten öppnas. | På |

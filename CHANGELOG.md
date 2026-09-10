@@ -5,6 +5,7 @@ byggt framgår av commit-historiken.
 
 ## 0.46
 
+- Länkikonen finns nu även i Pålysningsboken och öppnar pålysningen i ny flik.
 - **Avstämning av tacksägelser** i Pålysningsboken: en ny flik visar vilka
   avlidna som saknar pålysning för vald månad, förvalt den föregående.
   Dödsfallen gäller den församling du är inloggad i, medan tillägget söker
