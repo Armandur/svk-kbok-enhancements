@@ -3,7 +3,10 @@
 Den första personen får en mockad tillhörighet i en annan församling än
 pålysningens, så varningen Fel församling ska visas på den raden om
 pålysningen har Minnesgudstjänst eller Närmast anhörig. Övriga får
-pålysningens egen församling som tillhörighet.
+pålysningens egen församling som tillhörighet. Med --riktig-personakt
+hämtas personakterna på riktigt i stället. Då ska första personen ha en
+pålysning med Minnesgudstjänst eller anhörig i en annan församling än sin
+tillhörighet, och de övriga inte.
 
 Utbildningsmiljön har i praktiken inga dödsfallsverifikat, så skriptet
 mockar verifikatsökningen: 60 påhittade avlidna aviserade i december 2025,
@@ -19,6 +22,7 @@ Körs i en fish-shell så KBOK_UTB_* ur secrets.fish finns:
         --person "Olsson, Isabel=19390421-7464"
 
     --bredd 390        viewport-bredd, förval 1440
+    --riktig-personakt mocka inte personakten, se ovan
     --ta-over          klicka "Logga in ändå" om kontot redan är inloggat.
                        Det loggar ut den som sitter i miljön - fråga först.
     --ut KATALOG       skärmdumpar, förval /tmp/kbok-enhancements-shots
@@ -133,7 +137,8 @@ async def kor(arg):
         await page.add_init_script(path=SKRIPT)
         mock = bygg_mock(personer)
         await page.route("**/Verifikat/**", mock)
-        await page.route("**/Person/FetchPersonakt", mock)
+        if not arg.riktig_personakt:
+            await page.route("**/Person/FetchPersonakt", mock)
         await logga_in(page, arg.ta_over)
 
         print("1. Avstämningen för december 2025")
@@ -185,8 +190,8 @@ async def kor(arg):
             print("    rad:", rad)
             kontrollera("Saknas" not in rad[3], f"{person} har matchats mot en pålysning")
             if n == 1:
-                kontrollera("Fel församling" in rad[4],
-                            f"{person} varnas för fel församling (mockad tillhörighet)")
+                kalla = "riktig tillhörighet" if arg.riktig_personakt else "mockad tillhörighet"
+                kontrollera("Fel församling" in rad[4], f"{person} varnas för fel församling ({kalla})")
             else:
                 kontrollera("Fel församling" not in rad[4], f"{person} varnas inte")
         await panel.screenshot(path=f"{arg.ut}/avstamning-{arg.bredd}-sorterad.png")
@@ -230,6 +235,7 @@ def main():
     tolk.add_argument("--person", action="append", default=[],
                       help='"Efternamn, Förnamn=ÅÅÅÅMMDD-NNNN" med dödsfallspålysning i miljön, upprepas')
     tolk.add_argument("--bredd", type=int, default=1440)
+    tolk.add_argument("--riktig-personakt", action="store_true")
     tolk.add_argument("--ta-over", action="store_true")
     tolk.add_argument("--ut", default="/tmp/kbok-enhancements-shots")
     arg = tolk.parse_args()
