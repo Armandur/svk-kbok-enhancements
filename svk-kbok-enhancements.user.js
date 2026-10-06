@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.48
+// @version      0.49
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -50,7 +50,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.48';
+    const VERSION = '0.49';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -3768,11 +3768,6 @@
                     }
                     art.appendChild(artrad);
                 });
-                const forsamlingar = new Set(r.palysningar.map((p) => p.forsamling));
-                if (forsamlingar.size > 1) {
-                    art.appendChild(el('div', 'svk-kbok-dampad',
-                        `${forsamlingar.size} församlingar`));
-                }
             }
             tr.appendChild(palysning);
             tr.appendChild(art);

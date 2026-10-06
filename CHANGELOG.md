@@ -3,6 +3,11 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.49
+
+- Raden "2 församlingar" under arten är borta. Församlingen står redan vid
+  varje pålysning, och raden gjorde att Art inte linjerade med Pålysning.
+
 ## 0.48
 
 - **Avstämningens lista går att sortera** genom att klicka på rubrikerna.
