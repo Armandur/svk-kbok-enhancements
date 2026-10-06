@@ -831,6 +831,16 @@ heller öppningen via länken Verifikat (`markInfoAsViewedOnClose: false`)
 Granskad adversariellt 2026-09-08 av en Claude-subagent och Codex, se
 `CODE-REVIEWS.md`. Samma dag granskades hela filen på samma sätt.
 
+`verktyg/verifiera_avstamning.py` kör fliken i Utbildningsmiljön med
+skriptet injicerat. Miljön saknar dödsfallsverifikat, så verktyget mockar
+verifikatsökningen med 60 avlidna och låter de första vara riktiga personer
+med pålysningar, angivna med `--person`. Pålysningarna hämtas på riktigt.
+Verktyget kontrollerar matchning, art och Minnesgudstjänst, sortering på
+rubrikerna, Visa alla och Visa sidvis, och faller vid första avvikelse.
+Miljön nollas varje natt, så pålysningarna läggs in på nytt före en körning.
+Är kontot redan inloggat stannar verktyget. Flaggan `--ta-over` loggar ut
+den som sitter där.
+
 ## Vad tillägget sparar i webbläsaren
 
 Allt ligger i webbläsarens egen lagring för Kbok-domänen. Inget skickas
