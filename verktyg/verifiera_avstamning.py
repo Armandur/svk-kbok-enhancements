@@ -193,6 +193,12 @@ async def kor(arg):
         kontrollera(len(rader) == 50, "första sidan har 50 rader")
         panel = page.locator("#svk-kbok-avstamning")
         await panel.screenshot(path=f"{arg.ut}/avstamning-{arg.bredd}.png")
+        # Knappraden ligger under Kboks fasta sidhuvud i panelbilden.
+        await page.locator("#svk-kbok-avstamning .svk-kbok-rad").scroll_into_view_if_needed()
+        await page.evaluate("window.scrollBy(0, -160)")
+        await page.wait_for_timeout(300)
+        await page.locator("#svk-kbok-avstamning .svk-kbok-rad").screenshot(
+            path=f"{arg.ut}/avstamning-{arg.bredd}-knapprad.png")
 
         print("2. Sortering på Avliden: stigande, fallande, förvald")
         await (await rubrik(page, "Avliden")).click()
