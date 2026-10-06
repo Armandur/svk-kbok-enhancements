@@ -3,6 +3,11 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.50
+
+- **Avstämningen visar om pålysningen har Minnesgudstjänst ibockad**, med
+  året den gäller, bredvid arten.
+
 ## 0.49
 
 - Raden "2 församlingar" under arten är borta. Församlingen står redan vid

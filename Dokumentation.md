@@ -705,7 +705,7 @@ header, så anropen görs med `withCredentials`.
 | 2 | `POST Verifikat/FetchVerifikatBySearchlist`, `arendeTypsID: 5` (Dödsfall), utan statusfilter | en rad per verifikat: `verifikatsId`, `datum`, `personId`, `arskyddadperson` |
 | 3 | `POST Palysning/SearchByAttribute`, `kodtypPALYSNING: "DL"`, alla enheter, från sex månader före periodens start till ett år efter dess slut | en rad per pålysning: `palysningsId`, `palysningsdatum`, `kyrka`, `forsamling`, `datum`, `personnummer`, `lopnr` |
 | 4 | `GET Verifikat/FetchVerifikatByVerifikatsId`, ett per verifikat | `rows` med Namn och Personnummer |
-| 5 | `POST Palysning/FetchOrCreatePalysning {palysningsId}`, ett per matchad pålysning | `kyrklighandlingsId` (0 = fristående), `dodsdatum` |
+| 5 | `POST Palysning/FetchOrCreatePalysning {palysningsId}`, ett per matchad pålysning | `kyrklighandlingsId` (0 = fristående), `dodsdatum`, `arMinnesgudstjanst` med `minnesgudstjanstAr` och `minnesgudstjanstArTyp` (Innevarande/Nästkommande) |
 
 Verifikatsökningen gäller den inloggade församlingen. Enhetsparametrar i
 kroppen ignoreras tyst, så för ett pastorat byter man församling och kör om.

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.49
+// @version      0.50
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -50,7 +50,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.49';
+    const VERSION = '0.50';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -3281,9 +3281,13 @@
                     { palysningsId: p.palysningsId });
                 p.knuten = !!d.kyrklighandlingsId;
                 p.dodsdatum = d.dodsdatum || p.datum;
+                // Kryssrutan Minnesgudstjänst i pålysningen, med året
+                // den gäller (innevarande eller nästkommande).
+                p.minnesgudstjanst = d.arMinnesgudstjanst ? (d.minnesgudstjanstAr || true) : false;
             } catch (e) {
                 p.knuten = null;
                 p.dodsdatum = p.datum;
+                p.minnesgudstjanst = null;
             }
         });
         rader.forEach((r) => {
@@ -3362,6 +3366,7 @@
             .svk-kbok-avstamningstabell .svk-kbok-mitt input { vertical-align: middle; }
             .svk-kbok-avstamningstabell .svk-kbok-saknas { color: #b3261e; font-weight: 600; }
             .svk-kbok-avstamningstabell .svk-kbok-fristaende { color: ${ACCENT}; font-weight: 600; }
+            .svk-kbok-avstamningstabell .svk-kbok-minnes { color: #1b5e20; }
             .svk-kbok-avstamningstabell tr.svk-kbok-hanterad td { opacity: .5; }
             .svk-kbok-avstamningstabell a { color: ${ACCENT}; }
             .svk-kbok-avstamningstabell .svk-kbok-dampad { color: #6b6862; font-size: .9em; }
@@ -3680,7 +3685,8 @@
         'Pålysning': (r) => !r.palysningar ? '1' : !r.palysningar.length ? '0'
             : '2' + r.palysningar.map((p) => datumnyckel(p.palysningsdatum)).sort()[0],
         Art: (r) => !r.palysningar ? '1' : !r.palysningar.length ? '0'
-            : '2' + r.palysningar.map((p) => (p.knuten === true ? 'a' : p.knuten === false ? 'b' : 'c')).sort().join(''),
+            : '2' + r.palysningar.map((p) => (p.knuten === true ? 'a' : p.knuten === false ? 'b' : 'c')
+                + (p.minnesgudstjanst ? 'm' : 'x')).sort().join(''),
         Hanterad: (r) => (r.hanterad ? 1 : 0),
         'Öppna': (r) => (personaktUrl(r.personId) ? 0 : 1),
     };
@@ -3691,7 +3697,7 @@
         // bryta rad. Bredderna ger namn och pålysning mest plats, datumen
         // och kryssrutan minst.
         const kolumner = el('colgroup');
-        [26, 11, 11, 18, 9, 9, 16].forEach((procent) => {
+        [22, 10, 10, 17, 22, 8, 11].forEach((procent) => {
             const kol = el('col');
             kol.style.width = `${procent}%`;
             kolumner.appendChild(kol);
@@ -3754,6 +3760,7 @@
                     const lank = el('a', null,
                         [visaDatum(p.palysningsdatum), p.forsamling].filter(Boolean).join(' · '));
                     lank.href = `/palysning/${p.palysningsId}`;
+                    lank.title = lank.textContent;
                     const palrad = el('div');
                     palrad.appendChild(lank);
                     palysning.appendChild(palrad);
@@ -3766,6 +3773,13 @@
                     } else {
                         artrad.textContent = 'Art okänd';
                     }
+                    if (p.minnesgudstjanst) {
+                        artrad.appendChild(document.createTextNode(' · '));
+                        artrad.appendChild(el('span', 'svk-kbok-minnes',
+                            `Minnesgudstjänst${p.minnesgudstjanst === true ? '' : ' ' + p.minnesgudstjanst}`));
+                    }
+                    // Cellen klipper med ellips, så hela texten som tooltip.
+                    artrad.title = artrad.textContent;
                     art.appendChild(artrad);
                 });
             }
