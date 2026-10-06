@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.51
+// @version      0.52
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -50,7 +50,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.51';
+    const VERSION = '0.52';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -3811,8 +3811,9 @@
                     if (p.felForsamling) {
                         const vad = [p.minnesgudstjanst && 'minnesgudstjänst', p.harAnhorig && 'närmast anhörig']
                             .filter(Boolean).join(' och ');
-                        const varning = el('span', 'svk-kbok-saknas', ' · Fel församling');
-                        artrad.appendChild(varning);
+                        // Först i cellen, så varningen aldrig klipps bort.
+                        artrad.insertBefore(document.createTextNode(' · '), artrad.firstChild);
+                        artrad.insertBefore(el('span', 'svk-kbok-saknas', 'Fel församling'), artrad.firstChild);
                         artrad.title = `Pålysningen i ${p.forsamling} har ${vad}, men den avlidna `
                             + `tillhörde ${r.tillhorighet}. Rutinen är att det ligger i `
                             + 'tillhörighetsförsamlingens pålysning och att en extra pålysning '

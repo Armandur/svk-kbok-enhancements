@@ -3,6 +3,11 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.52
+
+- Varningen "Fel församling" står först i artkolumnen, så den inte klipps
+  bort i ett smalt fönster.
+
 ## 0.51
 
 - **Avstämningen varnar med "Fel församling"** när en pålysning med
