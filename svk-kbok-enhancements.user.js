@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.53
+// @version      0.54
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -50,7 +50,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.53';
+    const VERSION = '0.54';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -3389,7 +3389,8 @@
             .svk-kbok-avstamningstabell .svk-kbok-sortpil { font-size: 10px; color: ${ACCENT}; }
             .svk-kbok-avstamningstabell tbody tr { height: 36px; }
             .svk-kbok-avstamningstabell tbody tr:hover { background: rgba(0, 0, 0, .04); }
-            .svk-kbok-avstamningstabell td { height: 36px; border-bottom: 0;
+            .svk-kbok-avstamningstabell td { height: 36px;
+                border-bottom: 1px solid rgb(224, 224, 224);
                 font-size: 14px; line-height: 35px; }
             .svk-kbok-avstamningstabell td.svk-kbok-flerrad { line-height: 1.4;
                 padding-top: 8px; padding-bottom: 8px; }
@@ -3763,7 +3764,7 @@
         // bryta rad. Bredderna ger namn och pålysning mest plats, datumen
         // och kryssrutan minst.
         const kolumner = el('colgroup');
-        [22, 10, 10, 17, 22, 8, 11].forEach((procent) => {
+        [16, 10, 10, 16, 35, 5, 8].forEach((procent) => {
             const kol = el('col');
             kol.style.width = `${procent}%`;
             kolumner.appendChild(kol);
@@ -3775,8 +3776,10 @@
         ['Avliden', 'Dödsdatum', 'Aviserat', 'Pålysning', 'Art', 'Hanterad', 'Öppna'].forEach((t) => {
             const th = el('th', t === 'Hanterad' ? 'svk-kbok-mitt' : null);
             const aktiv = sortering && sortering.kolumn === t;
-            const knapp = el('button', 'svk-kbok-sortknapp', t);
+            // Kolumnen är bara en kryssruta bred, så rubriken förkortas.
+            const knapp = el('button', 'svk-kbok-sortknapp', t === 'Hanterad' ? 'Hant.' : t);
             knapp.type = 'button';
+            knapp.setAttribute('aria-label', t);
             knapp.title = aktiv && sortering.fallande ? 'Återgå till förvald ordning'
                 : `Sortera på ${t.toLocaleLowerCase('sv')}`;
             if (aktiv) {
@@ -3802,14 +3805,20 @@
             const tr = el('tr', r.hanterad ? 'svk-kbok-hanterad' : '');
             tr.dataset.verifikatId = r.verifikatId;
 
-            const avliden = el('td');
-            avliden.appendChild(document.createTextNode(r.namn || '(uppgift saknas)'));
+            // Personnumret på egen rad: namnet får klippas, aldrig numret.
+            const avliden = el('td', 'svk-kbok-flerrad');
+            const namnrad = el('div', null, r.namn || '(uppgift saknas)');
+            namnrad.title = r.namn || '';
+            avliden.appendChild(namnrad);
             if (r.personnummer) {
-                avliden.appendChild(el('span', 'svk-kbok-dampad', ` ${r.personnummer}`));
+                avliden.appendChild(el('div', 'svk-kbok-dampad', r.personnummer));
             }
             tr.appendChild(avliden);
 
-            tr.appendChild(el('td', null, r.dodsdatum || ''));
+            const dodsdatum = el('td', 'svk-kbok-flerrad');
+            (r.dodsdatum || '').split(', ').filter(Boolean)
+                .forEach((d) => dodsdatum.appendChild(el('div', null, d)));
+            tr.appendChild(dodsdatum);
             tr.appendChild(el('td', null, visaDatum(r.aviserat)));
 
             // Flera pålysningar står på var sin rad - cellerna klipper
@@ -3882,7 +3891,7 @@
             hanterad.appendChild(kryss);
             tr.appendChild(hanterad);
 
-            const oppna = el('td');
+            const oppna = el('td', 'svk-kbok-flerrad');
             const verifikatlank = el('a', null, 'Verifikat');
             verifikatlank.href = '/';
             verifikatlank.title = 'Öppnar verifikatet';
@@ -3892,14 +3901,17 @@
                 // Vår tabell gör det inte.
                 oppnaVerifikat(r.verifikatId, document.querySelector('[role="tablist"]'));
             });
-            oppna.appendChild(verifikatlank);
+            const verifikatrad = el('div');
+            verifikatrad.appendChild(verifikatlank);
+            oppna.appendChild(verifikatrad);
             if (personaktUrl(r.personId)) {
-                oppna.appendChild(el('span', 'svk-kbok-dampad', ' · '));
                 const lank = el('a', null, 'Personakt');
                 lank.href = personaktUrl(r.personId);
                 lank.target = '_blank';
                 lank.rel = 'noopener';
-                oppna.appendChild(lank);
+                const personaktrad = el('div');
+                personaktrad.appendChild(lank);
+                oppna.appendChild(personaktrad);
             }
             tr.appendChild(oppna);
             kropp.appendChild(tr);

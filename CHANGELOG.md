@@ -3,6 +3,12 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.54
+
+- Avstämningens lista har fått radavdelare och mer plats för arten, så
+  minnesgudstjänstens år syns. Verifikat och Personakt står under varandra,
+  och Hanterad-kolumnen är bara så bred som kryssrutan.
+
 ## 0.53
 
 - **Urval i avstämningen**: rullistan bredvid Visa alla visar bara dem utan
