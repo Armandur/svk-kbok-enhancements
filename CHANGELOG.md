@@ -3,6 +3,12 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.53
+
+- **Urval i avstämningen**: rullistan bredvid Visa alla visar bara dem utan
+  pålysning, dem med Fel församling eller dem som har pålysning men ingen
+  minnesgudstjänst. Antalet står i rullistan.
+
 ## 0.52
 
 - Varningen "Fel församling" står först i artkolumnen, så den inte klipps

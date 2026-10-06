@@ -231,7 +231,31 @@ async def kor(arg):
         ifyllda = [d for d in datum if d]
         kontrollera(datum[:len(ifyllda)] == sorted(ifyllda), "ifyllda dödsdatum först, stigande")
 
-        print("4. Visa alla och Visa sidvis")
+        print("4. Urvalet")
+        urval = page.get_by_label("Visa", exact=True)
+        await urval.select_option("felForsamling")
+        await page.wait_for_timeout(300)
+        rader = await tabell(page)
+        kontrollera(len(rader) == 1 and rader[0][0].startswith(personer[1][0]),
+                    "Fel församling visar bara första personen")
+        await urval.select_option("utanMinnes")
+        await page.wait_for_timeout(300)
+        rader = await tabell(page)
+        utan = [r[0] for r in rader]
+        kontrollera(all("Minnesgudstjänst" not in r[4] and "Saknas" not in r[3] for r in rader),
+                    f"Utan minnesgudstjänst visar bara pålysta utan kryss: {utan}")
+        await urval.select_option("saknar")
+        await page.wait_for_timeout(300)
+        rader = await tabell(page)
+        kontrollera(len(rader) == 50 and all(r[3] == "Saknas" for r in rader),
+                    "Utan pålysning visar 50 rader med Saknas på första sidan")
+        kontrollera(await page.locator('button:has-text("Visa alla")').inner_text() == f"Visa alla ({ANTAL - len(personer)})",
+                    "Visa alla räknar det filtrerade antalet")
+        await urval.select_option("alla")
+        await page.wait_for_timeout(300)
+        kontrollera(len(await tabell(page)) == 50, "Alla ger första sidan igen")
+
+        print("5. Visa alla och Visa sidvis")
         knapp = page.locator('button:has-text("Visa alla")')
         kontrollera(await knapp.inner_text() == f"Visa alla ({ANTAL})", "knappen visar antalet")
         await knapp.click()

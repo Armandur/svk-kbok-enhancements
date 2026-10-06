@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.52
+// @version      0.53
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -50,7 +50,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.52';
+    const VERSION = '0.53';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -3021,6 +3021,16 @@
     const DOLJ_KLASS = 'svk-kbok-dold-av-avstamning';
     const ARENDETYP_DODSFALL = 5;
     const PALYSNINGSTYP_DODSFALL = 'DL';
+    // Urvalet i avstämningen. Utan minnesgudstjänst gäller dem som har
+    // pålysning men ingen med kryssrutan ibockad - de utan pålysning har
+    // sitt eget urval.
+    const AVSTAMNING_URVAL = {
+        alla: { text: 'Alla', passar: () => true },
+        saknar: { text: 'Utan pålysning', passar: (r) => r.palysningar && !r.palysningar.length },
+        felForsamling: { text: 'Fel församling', passar: (r) => !!r.felForsamling },
+        utanMinnes: { text: 'Utan minnesgudstjänst',
+            passar: (r) => (r.palysningar || []).length > 0 && !r.palysningar.some((p) => p.minnesgudstjanst) },
+    };
     const MANADER = ['januari', 'februari', 'mars', 'april', 'maj', 'juni', 'juli',
         'augusti', 'september', 'oktober', 'november', 'december'];
 
@@ -3356,6 +3366,8 @@
             #${AVSTAMNING_ID} .svk-kbok-manad { font: inherit; font-weight: 600; min-width: 10rem;
                 text-align: center; text-transform: capitalize; border: 1px solid #c9c5bd;
                 border-radius: 6px; padding: .3rem .5rem; background: #fff; cursor: pointer; }
+            #${AVSTAMNING_ID} .svk-kbok-urval { font: inherit; border: 1px solid #c9c5bd;
+                border-radius: 6px; padding: .3rem .5rem; background: #fff; cursor: pointer; }
             #${AVSTAMNING_ID} .svk-kbok-pil { border: 1px solid #c9c5bd; background: #fff;
                 border-radius: 6px; width: 2rem; height: 2rem; cursor: pointer; font: inherit; }
             #${AVSTAMNING_ID} input[type=date] { font: inherit; padding: .3rem .5rem;
@@ -3453,7 +3465,7 @@
             borttagen: false, sida: 0, sidstorlek: lasAvstamningssidstorlek(),
             // null = förvald ordning: utan pålysning först, sedan fel
             // församling, hanterade sist.
-            sortering: null, visaAlla: false,
+            sortering: null, visaAlla: false, urval: 'alla',
         };
 
         // Föregående kalendermånad är förvald: avstämningen görs månaden
@@ -3488,6 +3500,19 @@
         // sökformulärets knapprad och döljer listans fot medan allt visas.
         // Valet gäller bara den här körningen, så en lång lista inte
         // öppnas i sin helhet av misstag nästa period.
+        const urval = document.createElement('select');
+        urval.className = 'svk-kbok-urval';
+        urval.setAttribute('aria-label', 'Visa');
+        Object.entries(AVSTAMNING_URVAL).forEach(([nyckel, u]) => {
+            const val = el('option', null, u.text);
+            val.value = nyckel;
+            urval.appendChild(val);
+        });
+        urval.addEventListener('change', () => {
+            tillstand.urval = urval.value;
+            tillstand.sida = 0;
+            if (tillstand.resultat) tillstand.rita();
+        });
         const visaAlla = el('button', `${KNAPP_KLASS} svk-kbok-sekundar`, 'Visa alla');
         visaAlla.type = 'button';
         visaAlla.disabled = true;
@@ -3504,7 +3529,7 @@
         const rensa = el('button', `${KNAPP_KLASS} svk-kbok-sekundar`, 'Rensa sparade markeringar');
         rensa.type = 'button';
         rad.append(bakat, manadstext, framat, franFalt, el('span', null, 'till'), tillFalt,
-            visaAlla, kor, skrivUt, rensa);
+            urval, visaAlla, kor, skrivUt, rensa);
         panel.appendChild(rad);
 
         const summering = el('p', 'svk-kbok-summering');
@@ -3640,16 +3665,29 @@
             }
 
             sorteraRader(rader, tillstand.sortering);
+            const u = AVSTAMNING_URVAL[tillstand.urval] || AVSTAMNING_URVAL.alla;
+            const visade = rader.filter(u.passar);
+            // Antalen i rullistan uppdateras per körning.
+            urval.querySelectorAll('option').forEach((val) => {
+                const def = AVSTAMNING_URVAL[val.value];
+                val.textContent = val.value === 'alla' ? def.text
+                    : `${def.text} (${rader.filter(def.passar).length})`;
+            });
+            if (!visade.length) {
+                yta.appendChild(el('p', 'svk-kbok-status', `Inga rader i urvalet ${u.text.toLocaleLowerCase('sv')}.`));
+                visaAlla.textContent = 'Visa alla (0)';
+                return;
+            }
 
-            const sidstorlek = tillstand.visaAlla ? Math.max(1, rader.length) : tillstand.sidstorlek;
-            const antalSidor = Math.max(1, Math.ceil(rader.length / sidstorlek));
+            const sidstorlek = tillstand.visaAlla ? Math.max(1, visade.length) : tillstand.sidstorlek;
+            const antalSidor = Math.max(1, Math.ceil(visade.length / sidstorlek));
             tillstand.sida = Math.min(tillstand.sida, antalSidor - 1);
             const fran = tillstand.sida * sidstorlek;
-            const till = Math.min(fran + sidstorlek, rader.length);
-            yta.appendChild(byggTabell(rader, tillstand, fran, till));
-            if (!tillstand.visaAlla) yta.appendChild(byggPaginering(rader.length, tillstand, rita));
-            visaAlla.textContent = tillstand.visaAlla ? 'Visa sidvis' : `Visa alla (${rader.length})`;
-            visaAlla.disabled = !tillstand.visaAlla && rader.length <= tillstand.sidstorlek;
+            const till = Math.min(fran + sidstorlek, visade.length);
+            yta.appendChild(byggTabell(visade, tillstand, fran, till));
+            if (!tillstand.visaAlla) yta.appendChild(byggPaginering(visade.length, tillstand, rita));
+            visaAlla.textContent = tillstand.visaAlla ? 'Visa sidvis' : `Visa alla (${visade.length})`;
+            visaAlla.disabled = !tillstand.visaAlla && visade.length <= tillstand.sidstorlek;
 
             if (skyddade.length) {
                 const p = el('p', 'svk-kbok-status');
