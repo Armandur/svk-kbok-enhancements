@@ -3,6 +3,16 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.48
+
+- **Avstämningens lista går att sortera** genom att klicka på rubrikerna.
+  Första klicket sorterar stigande, andra fallande, tredje återgår till
+  förvald ordning.
+- **Knappen Visa alla (N)** bredvid Stäm av visar hela perioden på en sida,
+  som i Kboks egna listor.
+- När en avliden har flera pålysningar står de på var sin rad, så inte
+  bara den första syns i ett smalt fönster.
+
 ## 0.47
 
 - **Konfirmationsgrupper hämtas när du byter församling**, så gamla grupper

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.47
+// @version      0.48
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -50,7 +50,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.47';
+    const VERSION = '0.48';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -1528,6 +1528,9 @@
                 border-color: ${ACCENT_HOVER}; }
             .${KNAPP_KLASS}.svk-kbok-sekundar { background: #fff; color: ${ACCENT}; }
             .${KNAPP_KLASS}.svk-kbok-sekundar:hover { background: #f3e9ed; }
+            .${KNAPP_KLASS}:disabled { opacity: .45; cursor: default; }
+            .${KNAPP_KLASS}:disabled:hover { background: ${ACCENT}; border-color: ${ACCENT}; }
+            .${KNAPP_KLASS}.svk-kbok-sekundar:disabled:hover { background: #fff; }
             .${KNAPP_KLASS}:focus-visible, .${KNAPP_KLASS}:focus {
                 outline: 2px solid ${ACCENT}; outline-offset: 2px; }
         `;
@@ -3114,9 +3117,19 @@
     }
 
     // Pålysningens datum kommer som 20250906, verifikatets som 2025-09-06.
+    // Ett dödsdatum kan vara ofullständigt: 202607 när bara år och månad
+    // är kända, 2026 när bara året är det.
     function visaDatum(v) {
         const s = String(v || '').trim();
-        return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6)}` : s;
+        if (/^\d{8}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6)}`;
+        if (/^\d{6}$/.test(s)) return `${s.slice(0, 4)}-${s.slice(4)}`;
+        return s;
+    }
+
+    // Sorteringsnyckel för ett datum i visningsform. Bara siffrorna, så
+    // 2026-07 hamnar före 2026-07-06 och efter 2026-06-30.
+    function datumnyckel(v) {
+        return String(v || '').replace(/\D/g, '');
     }
 
     function isoDatum(d) {
@@ -3332,10 +3345,19 @@
                 text-align: left; text-overflow: ellipsis; white-space: nowrap; }
             .svk-kbok-avstamningstabell th { height: 42px; border-bottom: 2px solid #000;
                 background: #fff; font-size: 14px; font-weight: 600; line-height: 40px; }
+            .svk-kbok-avstamningstabell .svk-kbok-sortknapp { border: 0; background: transparent;
+                padding: 0; font: inherit; color: inherit; cursor: pointer; max-width: 100%;
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .svk-kbok-avstamningstabell .svk-kbok-sortknapp:hover { text-decoration: underline; }
+            .svk-kbok-avstamningstabell .svk-kbok-sortpil { font-size: 10px; color: ${ACCENT}; }
             .svk-kbok-avstamningstabell tbody tr { height: 36px; }
             .svk-kbok-avstamningstabell tbody tr:hover { background: rgba(0, 0, 0, .04); }
             .svk-kbok-avstamningstabell td { height: 36px; border-bottom: 0;
                 font-size: 14px; line-height: 35px; }
+            .svk-kbok-avstamningstabell td.svk-kbok-flerrad { line-height: 1.4;
+                padding-top: 8px; padding-bottom: 8px; }
+            .svk-kbok-avstamningstabell td.svk-kbok-flerrad > div { overflow: hidden;
+                text-overflow: ellipsis; white-space: nowrap; }
             .svk-kbok-avstamningstabell .svk-kbok-mitt { text-align: center; }
             .svk-kbok-avstamningstabell .svk-kbok-mitt input { vertical-align: middle; }
             .svk-kbok-avstamningstabell .svk-kbok-saknas { color: #b3261e; font-weight: 600; }
@@ -3403,6 +3425,8 @@
         const tillstand = {
             flik, panel, vald: false, fran: null, till: null, resultat: null, period: null,
             borttagen: false, sida: 0, sidstorlek: lasAvstamningssidstorlek(),
+            // null = förvald ordning: utan pålysning först, hanterade sist.
+            sortering: null, visaAlla: false,
         };
 
         // Föregående kalendermånad är förvald: avstämningen görs månaden
@@ -3433,6 +3457,19 @@
         const tillFalt = document.createElement('input');
         tillFalt.type = 'date';
         tillFalt.setAttribute('aria-label', 'Aviserat t.o.m.');
+        // Kbok lägger Visa alla (N) som kantlinjeknapp till vänster i
+        // sökformulärets knapprad och döljer listans fot medan allt visas.
+        // Valet gäller bara den här körningen, så en lång lista inte
+        // öppnas i sin helhet av misstag nästa period.
+        const visaAlla = el('button', `${KNAPP_KLASS} svk-kbok-sekundar`, 'Visa alla');
+        visaAlla.type = 'button';
+        visaAlla.disabled = true;
+        visaAlla.addEventListener('click', () => {
+            if (!tillstand.resultat) return;
+            tillstand.visaAlla = !tillstand.visaAlla;
+            tillstand.sida = 0;
+            tillstand.rita();
+        });
         const kor = el('button', KNAPP_KLASS, 'Stäm av');
         kor.type = 'button';
         const skrivUt = el('button', `${KNAPP_KLASS} svk-kbok-sekundar`, 'Skriv ut');
@@ -3440,7 +3477,7 @@
         const rensa = el('button', `${KNAPP_KLASS} svk-kbok-sekundar`, 'Rensa sparade markeringar');
         rensa.type = 'button';
         rad.append(bakat, manadstext, framat, franFalt, el('span', null, 'till'), tillFalt,
-            kor, skrivUt, rensa);
+            visaAlla, kor, skrivUt, rensa);
         panel.appendChild(rad);
 
         const summering = el('p', 'svk-kbok-summering');
@@ -3517,8 +3554,10 @@
             };
             const inaktuell = () => korning !== senasteKorning || tillstand.borttagen;
             tillstand.sida = 0;
+            tillstand.visaAlla = false;
             pagar = true;
             kor.disabled = true;
+            visaAlla.disabled = true;
             status.classList.remove('svk-kbok-fel');
             yta.textContent = '';
             summering.textContent = '';
@@ -3545,6 +3584,7 @@
             }
         }
 
+        tillstand.rita = rita;
         function rita() {
             const { aktiv, antalEnheter, rader, skyddade } = tillstand.resultat;
             const hanterade = new Set(lasHanterade().map((p) => String(p.verifikatId)));
@@ -3562,22 +3602,23 @@
                 + `Pålysningar sökta i ${antalEnheter} ${antalEnheter === 1 ? 'församling' : 'församlingar'}.`;
 
             yta.textContent = '';
+            visaAlla.disabled = true;
             if (!rader.length && !skyddade.length) {
                 yta.appendChild(el('p', 'svk-kbok-status', 'Inga dödsfallsverifikat i perioden.'));
                 return;
             }
 
-            // Utan pålysning först, sedan de som inte gick att stämma av,
-            // hanterade sist, annars senast aviserad först.
-            const ordning = (r) => (r.hanterad ? 3 : !r.palysningar ? 1 : r.palysningar.length ? 2 : 0);
-            rader.sort((a, b) => ordning(a) - ordning(b) || (a.aviserat < b.aviserat ? 1 : -1));
+            sorteraRader(rader, tillstand.sortering);
 
-            const antalSidor = Math.max(1, Math.ceil(rader.length / tillstand.sidstorlek));
+            const sidstorlek = tillstand.visaAlla ? Math.max(1, rader.length) : tillstand.sidstorlek;
+            const antalSidor = Math.max(1, Math.ceil(rader.length / sidstorlek));
             tillstand.sida = Math.min(tillstand.sida, antalSidor - 1);
-            const fran = tillstand.sida * tillstand.sidstorlek;
-            const till = Math.min(fran + tillstand.sidstorlek, rader.length);
+            const fran = tillstand.sida * sidstorlek;
+            const till = Math.min(fran + sidstorlek, rader.length);
             yta.appendChild(byggTabell(rader, tillstand, fran, till));
-            yta.appendChild(byggPaginering(rader.length, tillstand, rita));
+            if (!tillstand.visaAlla) yta.appendChild(byggPaginering(rader.length, tillstand, rita));
+            visaAlla.textContent = tillstand.visaAlla ? 'Visa sidvis' : `Visa alla (${rader.length})`;
+            visaAlla.disabled = !tillstand.visaAlla && rader.length <= tillstand.sidstorlek;
 
             if (skyddade.length) {
                 const p = el('p', 'svk-kbok-status');
@@ -3611,6 +3652,39 @@
         (appPanel || rot).insertAdjacentElement('afterend', panel);
     }
 
+    /* Förvald ordning: utan pålysning först, sedan de som inte gick att
+     * stämma av, hanterade sist, annars senast aviserad först. Klickar
+     * användaren en rubrik sorteras på den kolumnen, med förvald ordning
+     * som skiljare vid lika värden. */
+    function sorteraRader(rader, sortering) {
+        const rang = (r) => (r.hanterad ? 3 : !r.palysningar ? 1 : r.palysningar.length ? 2 : 0);
+        const forvald = (a, b) => rang(a) - rang(b) || (a.aviserat < b.aviserat ? 1 : -1);
+        if (!sortering) { rader.sort(forvald); return; }
+        const nyckel = SORTNYCKLAR[sortering.kolumn];
+        const riktning = sortering.fallande ? -1 : 1;
+        rader.sort((a, b) => {
+            const x = nyckel(a);
+            const y = nyckel(b);
+            if (x !== y) return (x < y ? -1 : 1) * riktning;
+            return forvald(a, b);
+        });
+    }
+
+    // Pålysning och Art sorteras på läget först (saknas, okänt, finns) och
+    // sedan på första pålysningsdatum respektive arten, så raderna som
+    // kräver åtgärd samlas i ena änden.
+    const SORTNYCKLAR = {
+        Avliden: (r) => (r.namn || '\uffff').toLocaleLowerCase('sv'),
+        'Dödsdatum': (r) => datumnyckel(r.dodsdatum) || '\uffff',
+        Aviserat: (r) => datumnyckel(r.aviserat),
+        'Pålysning': (r) => !r.palysningar ? '1' : !r.palysningar.length ? '0'
+            : '2' + r.palysningar.map((p) => datumnyckel(p.palysningsdatum)).sort()[0],
+        Art: (r) => !r.palysningar ? '1' : !r.palysningar.length ? '0'
+            : '2' + r.palysningar.map((p) => (p.knuten === true ? 'a' : p.knuten === false ? 'b' : 'c')).sort().join(''),
+        Hanterad: (r) => (r.hanterad ? 1 : 0),
+        'Öppna': (r) => (personaktUrl(r.personId) ? 0 : 1),
+    };
+
     function byggTabell(rader, tillstand, fran = 0, till = rader.length) {
         const tabell = el('table', 'svk-kbok-avstamningstabell');
         // Fast tabellayout klipper långa värden med ellips i stället för att
@@ -3625,8 +3699,29 @@
         tabell.appendChild(kolumner);
         const huvud = el('thead');
         const hr = el('tr');
-        ['Avliden', 'Dödsdatum', 'Aviserat', 'Pålysning', 'Art', 'Hanterad', 'Öppna']
-            .forEach((t) => hr.appendChild(el('th', t === 'Hanterad' ? 'svk-kbok-mitt' : null, t)));
+        const sortering = tillstand.sortering;
+        ['Avliden', 'Dödsdatum', 'Aviserat', 'Pålysning', 'Art', 'Hanterad', 'Öppna'].forEach((t) => {
+            const th = el('th', t === 'Hanterad' ? 'svk-kbok-mitt' : null);
+            const aktiv = sortering && sortering.kolumn === t;
+            const knapp = el('button', 'svk-kbok-sortknapp', t);
+            knapp.type = 'button';
+            knapp.title = aktiv && sortering.fallande ? 'Återgå till förvald ordning'
+                : `Sortera på ${t.toLocaleLowerCase('sv')}`;
+            if (aktiv) {
+                th.setAttribute('aria-sort', sortering.fallande ? 'descending' : 'ascending');
+                knapp.appendChild(el('span', 'svk-kbok-sortpil', sortering.fallande ? ' ▼' : ' ▲'));
+            }
+            // Stigande, fallande, sedan tillbaka till förvald ordning.
+            knapp.addEventListener('click', () => {
+                if (!tillstand.rita) return;
+                tillstand.sortering = !aktiv ? { kolumn: t, fallande: false }
+                    : sortering.fallande ? null : { kolumn: t, fallande: true };
+                tillstand.sida = 0;
+                tillstand.rita();
+            });
+            th.appendChild(knapp);
+            hr.appendChild(th);
+        });
         huvud.appendChild(hr);
         tabell.appendChild(huvud);
         const kropp = el('tbody');
@@ -3645,34 +3740,37 @@
             tr.appendChild(el('td', null, r.dodsdatum || ''));
             tr.appendChild(el('td', null, visaDatum(r.aviserat)));
 
-            const palysning = el('td');
-            const art = el('td');
+            // Flera pålysningar står på var sin rad - cellerna klipper
+            // annars allt efter den första när fönstret är smalt.
+            const palysning = el('td', 'svk-kbok-flerrad');
+            const art = el('td', 'svk-kbok-flerrad');
             if (!r.palysningar) {
                 palysning.appendChild(el('span', 'svk-kbok-dampad', r.fel || 'Kan inte stämmas av här'));
             } else if (!r.palysningar.length) {
                 palysning.appendChild(el('span', 'svk-kbok-saknas', 'Saknas'));
             } else {
-                r.palysningar.forEach((p, i) => {
+                r.palysningar.forEach((p) => {
                     // Datum och församling räcker här - kyrkan står i pålysningen.
                     const lank = el('a', null,
                         [visaDatum(p.palysningsdatum), p.forsamling].filter(Boolean).join(' · '));
                     lank.href = `/palysning/${p.palysningsId}`;
-                    if (i) palysning.appendChild(document.createTextNode(' · '));
-                    palysning.appendChild(lank);
-                    if (i) art.appendChild(document.createTextNode(' · '));
+                    const palrad = el('div');
+                    palrad.appendChild(lank);
+                    palysning.appendChild(palrad);
                     // Löpnumret säger självt att pålysningen är knuten.
+                    const artrad = el('div');
                     if (p.knuten === true) {
-                        art.appendChild(document.createTextNode(p.lopnr || 'Knuten'));
+                        artrad.textContent = p.lopnr || 'Knuten';
                     } else if (p.knuten === false) {
-                        art.appendChild(el('span', 'svk-kbok-fristaende', 'Fristående'));
+                        artrad.appendChild(el('span', 'svk-kbok-fristaende', 'Fristående'));
                     } else {
-                        art.appendChild(document.createTextNode('Art okänd'));
+                        artrad.textContent = 'Art okänd';
                     }
+                    art.appendChild(artrad);
                 });
                 const forsamlingar = new Set(r.palysningar.map((p) => p.forsamling));
                 if (forsamlingar.size > 1) {
-                    art.appendChild(document.createTextNode(' · '));
-                    art.appendChild(el('span', 'svk-kbok-dampad',
+                    art.appendChild(el('div', 'svk-kbok-dampad',
                         `${forsamlingar.size} församlingar`));
                 }
             }
