@@ -76,8 +76,12 @@ async def logga_in(page, ta_over):
         await page.wait_for_load_state("networkidle", timeout=15000)
 
 
-def bygg_mock(personer):
-    """Svarar på verifikatanropen i stället för Kbok."""
+def bygg_mock(personer, person_ids):
+    """Svarar på verifikatanropen i stället för Kbok.
+
+    person_ids fylls efter inloggningen med riktiga person-id för de
+    angivna personerna, så att personakten går att hämta på riktigt.
+    """
 
     async def mock(route):
         url = route.request.url
@@ -86,7 +90,7 @@ def bygg_mock(personer):
             skip, limit = int(kropp.get("skip", 0)), int(kropp.get("limit", 50))
             rader = [
                 {"verifikatsId": i, "datum": f"2025-12-{(i % 28) + 1:02d}",
-                 "personId": 90000 + i, "arskyddadperson": False}
+                 "personId": person_ids.get(i, 90000 + i), "arskyddadperson": False}
                 for i in range(1, ANTAL + 1)
             ][skip:skip + limit]
             await route.fulfill(json={"total": ANTAL, "paginatedResults": rader})
@@ -102,6 +106,7 @@ def bygg_mock(personer):
             ]})
         elif "FetchPersonakt" in url:
             n = int((route.request.post_data_json or {}).get("personId", 0)) - 90000
+            # Mocken används bara utan --riktig-personakt, då är alla id påhittade.
             annan = n == 1
             await route.fulfill(json={"kyrkoperson": {
                 "rattforsamlingsID": ANNAN_ENHET if annan else ENHET,
@@ -135,11 +140,26 @@ async def kor(arg):
         webblasare = await p.chromium.launch(channel="chromium", args=["--no-sandbox"])
         page = await webblasare.new_page(viewport={"width": arg.bredd, "height": 900})
         await page.add_init_script(path=SKRIPT)
-        mock = bygg_mock(personer)
+        person_ids = {}
+        mock = bygg_mock(personer, person_ids)
         await page.route("**/Verifikat/**", mock)
         if not arg.riktig_personakt:
             await page.route("**/Person/FetchPersonakt", mock)
         await logga_in(page, arg.ta_over)
+        if arg.riktig_personakt:
+            print("0. Slår upp person-id för de angivna personerna")
+            for n, (namn, pnr) in personer.items():
+                svar = await page.evaluate(
+                    """async (pnr) => {
+                        const r = await fetch('https://kbok-utb-api.ksys.se/Person/FetchKyrkopersonByPersonnummer', {
+                            method: 'POST', credentials: 'include',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ personnummer: pnr, personId: null }) });
+                        return r.ok ? r.json() : null;
+                    }""", pnr.replace("-", ""))
+                person_id = (svar or {}).get("kyrkopersonID")
+                kontrollera(bool(person_id), f"{namn} har person-id {person_id}")
+                person_ids[n] = person_id
 
         print("1. Avstämningen för december 2025")
         await page.get_by_role("link", name="Pålysningsbok", exact=True).click()
