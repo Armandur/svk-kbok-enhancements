@@ -3,6 +3,13 @@
 Nyast först. Vad som ändrats för dig som använder tillägget - hur det är
 byggt framgår av commit-historiken.
 
+## 0.51
+
+- **Avstämningen varnar med "Fel församling"** när en pålysning med
+  Minnesgudstjänst eller Närmast anhörig ligger i en annan församling än den
+  avlidnas tillhörighetsförsamling. Håll muspekaren över texten för
+  förklaringen. Raderna hamnar direkt efter dem som saknar pålysning.
+
 ## 0.50
 
 - **Avstämningen visar om pålysningen har Minnesgudstjänst ibockad**, med

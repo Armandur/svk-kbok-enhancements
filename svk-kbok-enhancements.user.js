@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Kbok-tillägg
 // @namespace    https://kbok.svenskakyrkan.se/
-// @version      0.50
+// @version      0.51
 // @description  Öppna posten i ny flik, auto-hämta personen, tabb förbi datumväljaren, döpta blanketter, adresskrav på verifikat, avstämning av tacksägelser och tangentbordsgenvägar. Inställningar via Kbok Plus i menyn under avataren.
 // @match        https://kbok.svenskakyrkan.se/*
 // @match        https://kbok-utbildning.svenskakyrkan.se/*
@@ -50,7 +50,7 @@
     const KOLUMNBREDD = 34;
     const MENY_KLASS = 'svk-kbok-menypost';
     const PRODUKTNAMN = 'Kbok Plus';
-    const VERSION = '0.50';
+    const VERSION = '0.51';
     // Tampermonkey hämtar den här adressen med jämna mellanrum, jämför
     // @version och erbjuder uppdatering när numret höjts.
     const INSTALLATIONSURL = 'https://raw.githubusercontent.com/armandur/'
@@ -3284,10 +3284,14 @@
                 // Kryssrutan Minnesgudstjänst i pålysningen, med året
                 // den gäller (innevarande eller nästkommande).
                 p.minnesgudstjanst = d.arMinnesgudstjanst ? (d.minnesgudstjanstAr || true) : false;
+                p.enhetsId = (d.palysningsEnhet || {}).enhetsId || null;
+                p.harAnhorig = [d.anh1, d.anh2].some((a) => a && (a.persnr || a.efternamn));
             } catch (e) {
                 p.knuten = null;
                 p.dodsdatum = p.datum;
                 p.minnesgudstjanst = null;
+                p.enhetsId = null;
+                p.harAnhorig = false;
             }
         });
         rader.forEach((r) => {
@@ -3300,18 +3304,35 @@
         // skriptet det ur personakten, där avregistreringsdatumet är
         // dödsdagen. Uppmätt att anropet inte hamnar i startsidans
         // Senaste personer.
-        const utanDatum = rader.filter((r) => !r.dodsdatum && r.personId);
-        if (utanDatum.length) status(`Hämtar dödsdatum för ${utanDatum.length} avlidna…`);
-        await parallellt(utanDatum, 4, async (r) => {
+        //
+        // Personakten ger också tillhörighetsförsamlingen. Rutinen är att
+        // pålysningen med minnesgudstjänst och närmast anhörig ligger i
+        // tillhörighetsförsamlingen, och att en extra pålysning i annan
+        // församling görs fristående utan dem. Skriptet flaggar avvikelsen.
+        const behoverAkt = rader.filter((r) => r.personId
+            && (!r.dodsdatum || (r.palysningar || []).length));
+        if (behoverAkt.length) status(`Hämtar personakter för ${behoverAkt.length} avlidna…`);
+        await parallellt(behoverAkt, 4, async (r) => {
             try {
                 const akt = await apiAnrop('POST', 'Person/FetchPersonakt', { personId: r.personId });
                 const person = akt.kyrkoperson || {};
-                if ((person.avregistreringsorsak || {}).kod === 'AV') {
+                if (!r.dodsdatum && (person.avregistreringsorsak || {}).kod === 'AV') {
                     r.dodsdatum = visaDatum(person.avregistreringsdatum);
                 }
+                // För en avliden är tillhorighetsforsamlingsid tomt, men
+                // rattforsamlingsID pekar på församlingen som äger akten.
+                r.tillhorighetId = person.rattforsamlingsID || person.tillhorighetsforsamlingsid || null;
+                r.tillhorighet = person.rattforsamlingsnamn || person.tillhorighetsforsamlingsnamn || '';
             } catch (e) {
                 // Kolumnen blir tom, resten av raden står kvar.
             }
+        });
+        rader.forEach((r) => {
+            (r.palysningar || []).forEach((p) => {
+                p.felForsamling = !!(r.tillhorighetId && p.enhetsId
+                    && p.enhetsId !== r.tillhorighetId && (p.minnesgudstjanst || p.harAnhorig));
+            });
+            r.felForsamling = (r.palysningar || []).some((p) => p.felForsamling);
         });
 
         return { aktiv, antalEnheter: enheter.length, rader, skyddade };
@@ -3430,7 +3451,8 @@
         const tillstand = {
             flik, panel, vald: false, fran: null, till: null, resultat: null, period: null,
             borttagen: false, sida: 0, sidstorlek: lasAvstamningssidstorlek(),
-            // null = förvald ordning: utan pålysning först, hanterade sist.
+            // null = förvald ordning: utan pålysning först, sedan fel
+            // församling, hanterade sist.
             sortering: null, visaAlla: false,
         };
 
@@ -3596,12 +3618,16 @@
             rader.forEach((r) => { r.hanterad = hanterade.has(String(r.verifikatId)); });
 
             const saknar = rader.filter((r) => r.palysningar && !r.palysningar.length);
+            const felForsamling = rader.filter((r) => r.felForsamling);
             const okanda = rader.filter((r) => !r.palysningar);
             const p = tillstand.period;
             const period = p.text === 'Eget intervall' ? `${p.fran} till ${p.till}` : `i ${p.text}`;
             summering.textContent = `${aktiv ? aktiv.enhetsNamn : 'Vald församling'}: `
                 + `${rader.length + skyddade.length} dödsfall aviserade ${period}, `
                 + `${saknar.length} utan pålysning, `
+                + (felForsamling.length
+                    ? `${felForsamling.length} med minnesgudstjänst eller anhörig i annan församling än tillhörigheten, `
+                    : '')
                 + (okanda.length ? `${okanda.length} som inte kunde stämmas av, ` : '')
                 + `${rader.filter((r) => r.hanterad).length} markerade som hanterade. `
                 + `Pålysningar sökta i ${antalEnheter} ${antalEnheter === 1 ? 'församling' : 'församlingar'}.`;
@@ -3657,12 +3683,14 @@
         (appPanel || rot).insertAdjacentElement('afterend', panel);
     }
 
-    /* Förvald ordning: utan pålysning först, sedan de som inte gick att
-     * stämma av, hanterade sist, annars senast aviserad först. Klickar
+    /* Förvald ordning: utan pålysning först, sedan de med minnesgudstjänst
+     * eller anhörig i fel församling, sedan de som inte gick att stämma
+     * av, hanterade sist, annars senast aviserad först. Klickar
      * användaren en rubrik sorteras på den kolumnen, med förvald ordning
      * som skiljare vid lika värden. */
     function sorteraRader(rader, sortering) {
-        const rang = (r) => (r.hanterad ? 3 : !r.palysningar ? 1 : r.palysningar.length ? 2 : 0);
+        const rang = (r) => (r.hanterad ? 4 : !r.palysningar ? 2
+            : !r.palysningar.length ? 0 : r.felForsamling ? 1 : 3);
         const forvald = (a, b) => rang(a) - rang(b) || (a.aviserat < b.aviserat ? 1 : -1);
         if (!sortering) { rader.sort(forvald); return; }
         const nyckel = SORTNYCKLAR[sortering.kolumn];
@@ -3685,7 +3713,7 @@
         'Pålysning': (r) => !r.palysningar ? '1' : !r.palysningar.length ? '0'
             : '2' + r.palysningar.map((p) => datumnyckel(p.palysningsdatum)).sort()[0],
         Art: (r) => !r.palysningar ? '1' : !r.palysningar.length ? '0'
-            : '2' + r.palysningar.map((p) => (p.knuten === true ? 'a' : p.knuten === false ? 'b' : 'c')
+            : (r.felForsamling ? '2' : '3') + r.palysningar.map((p) => (p.knuten === true ? 'a' : p.knuten === false ? 'b' : 'c')
                 + (p.minnesgudstjanst ? 'm' : 'x')).sort().join(''),
         Hanterad: (r) => (r.hanterad ? 1 : 0),
         'Öppna': (r) => (personaktUrl(r.personId) ? 0 : 1),
@@ -3780,6 +3808,16 @@
                     }
                     // Cellen klipper med ellips, så hela texten som tooltip.
                     artrad.title = artrad.textContent;
+                    if (p.felForsamling) {
+                        const vad = [p.minnesgudstjanst && 'minnesgudstjänst', p.harAnhorig && 'närmast anhörig']
+                            .filter(Boolean).join(' och ');
+                        const varning = el('span', 'svk-kbok-saknas', ' · Fel församling');
+                        artrad.appendChild(varning);
+                        artrad.title = `Pålysningen i ${p.forsamling} har ${vad}, men den avlidna `
+                            + `tillhörde ${r.tillhorighet}. Rutinen är att det ligger i `
+                            + 'tillhörighetsförsamlingens pålysning och att en extra pålysning '
+                            + 'i annan församling görs fristående utan dem.';
+                    }
                     art.appendChild(artrad);
                 });
             }

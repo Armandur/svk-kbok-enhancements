@@ -705,7 +705,8 @@ header, så anropen görs med `withCredentials`.
 | 2 | `POST Verifikat/FetchVerifikatBySearchlist`, `arendeTypsID: 5` (Dödsfall), utan statusfilter | en rad per verifikat: `verifikatsId`, `datum`, `personId`, `arskyddadperson` |
 | 3 | `POST Palysning/SearchByAttribute`, `kodtypPALYSNING: "DL"`, alla enheter, från sex månader före periodens start till ett år efter dess slut | en rad per pålysning: `palysningsId`, `palysningsdatum`, `kyrka`, `forsamling`, `datum`, `personnummer`, `lopnr` |
 | 4 | `GET Verifikat/FetchVerifikatByVerifikatsId`, ett per verifikat | `rows` med Namn och Personnummer |
-| 5 | `POST Palysning/FetchOrCreatePalysning {palysningsId}`, ett per matchad pålysning | `kyrklighandlingsId` (0 = fristående), `dodsdatum`, `arMinnesgudstjanst` med `minnesgudstjanstAr` och `minnesgudstjanstArTyp` (Innevarande/Nästkommande) |
+| 5 | `POST Palysning/FetchOrCreatePalysning {palysningsId}`, ett per matchad pålysning | `kyrklighandlingsId` (0 = fristående), `dodsdatum`, `arMinnesgudstjanst` med `minnesgudstjanstAr` och `minnesgudstjanstArTyp` (Innevarande/Nästkommande), `palysningsEnhet`, `anh1`/`anh2` |
+| 6 | `POST Person/FetchPersonakt {personId}`, ett per avliden med pålysning eller utan dödsdatum | `kyrkoperson.rattforsamlingsID`, `rattforsamlingsnamn`, `avregistreringsdatum` |
 
 Verifikatsökningen gäller den inloggade församlingen. Enhetsparametrar i
 kroppen ignoreras tyst, så för ett pastorat byter man församling och kör om.
@@ -736,7 +737,26 @@ verifikat som inte går att hämta fäller inte månaden: raden visas med
 Verifikatet bär inget dödsdatum. Kolumnen fylls ur pålysningen när en finns,
 annars ur personakten (`POST Person/FetchPersonakt {personId}`, fältet
 `avregistreringsdatum` när orsaken är `AV`). Uppmätt att det anropet inte
-lägger personen i startsidans Senaste personer. Statusfiltret utelämnas med flit: ett dödsfallsverifikat går från Nytt till
+lägger personen i startsidans Senaste personer.
+
+Personakten ger också tillhörighetsförsamlingen. Rutinen Rasmus beskrev
+2026-10-06: pålysningen med Minnesgudstjänst och Närmast anhörig ligger i
+tillhörighetsförsamlingen, och vill anhöriga ha tacksägelse i ytterligare
+en församling görs den fristående utan de uppgifterna, så
+minnesgudstjänstlistan och anhörigutskicken hamnar rätt. Skriptet flaggar
+"Fel församling" på en pålysning vars `palysningsEnhet` skiljer sig från
+tillhörigheten och som har `arMinnesgudstjanst` eller en anhörig med
+personnummer eller efternamn. Flaggade rader sorteras direkt efter dem som
+saknar pålysning.
+
+Uppmätt 2026-10-06 på en avliden i Utbildningsmiljön: `kyrkoperson` har
+`tillhorighetsforsamlingsid` och `tillhorighetsforsamlingsnamn` som `null`
+efter avregistreringen, medan `rattforsamlingsID` och `rattforsamlingsnamn`
+står kvar och pekar på församlingen som äger akten. Skriptet jämför därför
+med `rattforsamlingsID` och faller tillbaka på tillhörighetsfältet om det
+skulle vara ifyllt i stället. Fälten som bunten läser under rubriken
+Tillhörighetsförsamling i personaktsvyn hör till ett annat objekt än
+`kyrkoperson`. Statusfiltret utelämnas med flit: ett dödsfallsverifikat går från Nytt till
 Åtgärdat så snart någon öppnat det (`SetVerifikatAsViewed`), och lästa
 verifikat ska med i avstämningen.
 

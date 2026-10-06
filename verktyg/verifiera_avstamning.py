@@ -1,5 +1,10 @@
 """Verifierar fliken Avstämning i Pålysningsboken med skriptet injicerat.
 
+Den första personen får en mockad tillhörighet i en annan församling än
+pålysningens, så varningen Fel församling ska visas på den raden om
+pålysningen har Minnesgudstjänst eller Närmast anhörig. Övriga får
+pålysningens egen församling som tillhörighet.
+
 Utbildningsmiljön har i praktiken inga dödsfallsverifikat, så skriptet
 mockar verifikatsökningen: 60 påhittade avlidna aviserade i december 2025,
 där de första kan bytas mot riktiga personer som har pålysningar i miljön.
@@ -39,6 +44,9 @@ ROT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SKRIPT = os.path.join(ROT, "svk-kbok-enhancements.user.js")
 ANTAL = 60
 PERIOD = ("2025-12-01", "2025-12-31")
+# Erik den heliges församling, där pålysningarna läggs in.
+ENHET = 21
+ANNAN_ENHET = 999
 
 
 def kontrollera(villkor, text):
@@ -89,7 +97,12 @@ def bygg_mock(personer):
                 {"label": "Personnummer", "text": pnr},
             ]})
         elif "FetchPersonakt" in url:
-            await route.fulfill(json={"kyrkoperson": {}})
+            n = int((route.request.post_data_json or {}).get("personId", 0)) - 90000
+            annan = n == 1
+            await route.fulfill(json={"kyrkoperson": {
+                "rattforsamlingsID": ANNAN_ENHET if annan else ENHET,
+                "rattforsamlingsnamn": "Annan församling" if annan else "Erik den heliges församling",
+            }})
         else:
             await route.continue_()
 
@@ -149,6 +162,8 @@ async def kor(arg):
         summering = await page.locator(".svk-kbok-summering").inner_text()
         print("   ", summering)
         kontrollera(f"{ANTAL} dödsfall" in summering, f"summeringen räknar {ANTAL} dödsfall")
+        kontrollera("1 med minnesgudstjänst eller anhörig i annan församling" in summering,
+                    "summeringen räknar en i fel församling")
         rader = await tabell(page)
         kontrollera(len(rader) == 50, "första sidan har 50 rader")
         panel = page.locator("#svk-kbok-avstamning")
@@ -169,6 +184,11 @@ async def kor(arg):
             kontrollera(rad is not None, f"{person} finns i listan")
             print("    rad:", rad)
             kontrollera("Saknas" not in rad[3], f"{person} har matchats mot en pålysning")
+            if n == 1:
+                kontrollera("Fel församling" in rad[4],
+                            f"{person} varnas för fel församling (mockad tillhörighet)")
+            else:
+                kontrollera("Fel församling" not in rad[4], f"{person} varnas inte")
         await panel.screenshot(path=f"{arg.ut}/avstamning-{arg.bredd}-sorterad.png")
         await (await rubrik(page, "Avliden")).click()
         await page.wait_for_timeout(300)
